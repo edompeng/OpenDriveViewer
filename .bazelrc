@@ -1,0 +1,20 @@
+# =============================================================================
+# Shared Build Settings (version-controlled)
+# =============================================================================
+build --cxxopt=-DPROJ_NEW_API
+build --cxxopt=-I.
+
+# Platform-specific C++ standard flags
+build:linux --cxxopt=-std=c++17
+build:macos --cxxopt=-std=c++17
+build:windows --cxxopt=/std:c++17
+build:windows --cxxopt=/Zc:__cplusplus
+build:windows --cxxopt=/permissive-
+
+test --test_output=errors
+
+# =============================================================================
+# Import user-local overrides (.bazelrc.user is NOT version-controlled).
+# This is where each developer sets QT6_ROOT and PROJ_ROOT for their machine.
+# =============================================================================
+try-import %workspace%/.bazelrc.user

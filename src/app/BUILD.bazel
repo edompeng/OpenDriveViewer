@@ -1,0 +1,118 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("//bazel:qt.bzl", "PROJ_COPTS", "QT_COPTS", "qt_moc_genrule")
+
+COMMON_COPTS = []
+
+MOC_HEADERS = [
+    "async_map_loader.h",
+    "coordinate_points_widget.h",
+    "favorites_widget.h",
+    "floating_panel_widget.h",
+    "geo_viewer.h",
+    "layer_control_widget.h",
+    "loading_progress_widget.h",
+    "main_window.h",
+    "measure_tool_controller.h",
+    "open_scenario_widget.h",
+    "routing_widget.h",
+]
+
+qt_moc_genrule(
+    name = "moc_files",
+    headers = MOC_HEADERS,
+)
+
+cc_library(
+    name = "app_core",
+    srcs = [
+        "camera_controller.cpp",
+        "layer_tree_model.cpp",
+        "scene_index_builder.cpp",
+        "spatial_grid_index.cpp",
+    ],
+    hdrs = [
+        "camera_controller.h",
+        "layer_tree_model.h",
+        "scene_geometry_types.h",
+        "scene_index_builder.h",
+        "spatial_grid_index.h",
+    ],
+    copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel:qt6",
+        "//src/utility:geoviewer_utility_core",
+        "//third_party/libOpenDRIVE:opendrive",
+    ],
+)
+
+cc_library(
+    name = "app",
+    srcs = [
+        "async_map_loader.cpp",
+        "coordinate_points_widget.cpp",
+        "favorites_widget.cpp",
+        "floating_panel_widget.cpp",
+        "geo_viewer.cpp",
+        "geo_viewer_scene.cpp",
+        "highlight_manager.cpp",
+        "layer_control_widget.cpp",
+        "loading_progress_widget.cpp",
+        "main_window.cpp",
+        "measure_tool_controller.cpp",
+        "open_scenario_parser.cpp",
+        "open_scenario_widget.cpp",
+        "routing_buffer_manager.cpp",
+        "routing_widget.cpp",
+        ":moc_files",
+    ],
+    hdrs = [
+        "async_map_loader.h",
+        "coordinate_points_widget.h",
+        "favorites_widget.h",
+        "floating_panel_widget.h",
+        "geo_viewer.h",
+        "highlight_manager.h",
+        "layer_control_widget.h",
+        "loading_progress_widget.h",
+        "main_window.h",
+        "measure_tool_controller.h",
+        "open_scenario_parser.h",
+        "open_scenario_widget.h",
+        "routing_buffer_manager.h",
+        "routing_widget.h",
+    ],
+    copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":app_core",
+        "//bazel:qt6",
+        "//src/utility:geoviewer_utility",
+        "//third_party/libOpenDRIVE:opendrive",
+        "//third_party/pugixml:pugixml",
+    ],
+)
+
+cc_binary(
+    name = "OpenDriveViewer",
+    srcs = [
+        "main.cpp",
+        "//translations:qrc_translations",
+    ],
+    copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":app",
+        "//bazel:qt6",
+    ],
+    linkopts = select({
+        "@platforms//os:windows": [
+            "/SUBSYSTEM:WINDOWS",
+            "/ENTRY:mainCRTStartup",
+        ],
+        "@platforms//os:macos": [
+            "-Wl,-framework,CoreFoundation",
+        ],
+        "//conditions:default": [],
+    }),
+)

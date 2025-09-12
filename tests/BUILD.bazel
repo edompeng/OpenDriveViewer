@@ -1,0 +1,56 @@
+load("@rules_cc//cc:defs.bzl", "cc_test")
+load("//bazel:qt.bzl", "QT_COPTS")
+
+COMMON_COPTS = []
+
+COMMON_DEFINES = [
+    "GEOVIEWER_SOURCE_DIR=\\\".\\\"",
+]
+
+cc_test(
+    name = "JunctionGroupingTests",
+    srcs = ["junction_grouping_test.cpp"],
+    copts = COMMON_COPTS,
+    defines = COMMON_DEFINES,
+    data = ["//:test_data"],
+    deps = [
+        "//src/utility:geoviewer_utility_core",
+        "//third_party/Catch2:catch2_main",
+    ],
+)
+
+cc_test(
+    name = "ViewerCoreTests",
+    srcs = [
+        "camera_controller_test.cpp",
+        "favorites_store_test.cpp",
+        "input_parsing_test.cpp",
+        "layer_tree_model_test.cpp",
+        "routing_logic_test.cpp",
+        "scene_index_builder_test.cpp",
+        "spatial_grid_index_test.cpp",
+        "viewer_text_util_test.cpp",
+    ],
+    copts = COMMON_COPTS + QT_COPTS,
+    defines = COMMON_DEFINES,
+    data = ["//:test_data"],
+    deps = [
+        "//src/app:app_core",
+        "//src/utility:geoviewer_utility_core",
+        "//third_party/Catch2:catch2_main",
+    ],
+)
+
+cc_test(
+    name = "MeasureToolTests",
+    srcs = [
+        "measure_tool_controller_test.cpp",
+    ],
+    copts = COMMON_COPTS + QT_COPTS,
+    defines = COMMON_DEFINES,
+    deps = [
+        "//src/app:app",
+        "//src/utility:geoviewer_utility_core",
+        "//third_party/Catch2:catch2_main",
+    ],
+)
