@@ -1,0 +1,33 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+sh_binary(
+    name = "update_translations",
+    srcs = ["update_translations.sh"],
+)
+
+py_binary(
+    name = "moc_wrapper",
+    srcs = ["moc_wrapper.py"],
+    main = "moc_wrapper.py",
+)
+
+py_binary(
+    name = "qt_tool_wrapper",
+    srcs = ["qt_tool_wrapper.py"],
+    main = "qt_tool_wrapper.py",
+)
+
+# Aliases so BUILD files use //bazel:qt6 and //bazel:proj
+# without knowing about external repository details.
+alias(
+    name = "qt6",
+    actual = "@qt6_config//:qt6",
+)
+
+alias(
+    name = "proj",
+    actual = "@proj_config//:proj",
+)

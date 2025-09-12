@@ -1,0 +1,67 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "PROJ_COPTS")
+
+COMMON_COPTS = []
+
+cc_library(
+    name = "geoviewer_utility_core",
+    srcs = [
+        "favorites_store.cpp",
+        "input_parsing.cpp",
+        "junction_grouping.cpp",
+        "layer_tree_model.cpp",
+        "open_scenario_parser.cpp",
+        "routing_logic.cpp",
+        "viewer_text_util.cpp",
+    ],
+    hdrs = [
+        "favorites_store.h",
+        "input_parsing.h",
+        "junction_grouping.h",
+        "layer_tree_model.h",
+        "open_scenario_parser.h",
+        "routing_logic.h",
+        "scene_enums.h",
+        "viewer_text_util.h",
+    ],
+    copts = COMMON_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//third_party/libOpenDRIVE:opendrive",
+        "//third_party/pugixml:pugixml",
+    ],
+)
+
+cc_library(
+    name = "coordinate_util",
+    srcs = ["coordinate_util.cpp"],
+    hdrs = ["coordinate_util.h"],
+    copts = COMMON_COPTS + PROJ_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel:proj",
+    ],
+)
+
+cc_library(
+    name = "map_loader",
+    srcs = ["map_loader.cpp"],
+    hdrs = ["map_loader.h"],
+    copts = COMMON_COPTS + PROJ_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":coordinate_util",
+        ":geoviewer_utility_core",
+        "//third_party/libOpenDRIVE:opendrive",
+    ],
+)
+
+cc_library(
+    name = "geoviewer_utility",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":coordinate_util",
+        ":geoviewer_utility_core",
+        ":map_loader",
+    ],
+)

@@ -1,0 +1,188 @@
+name: Cross-Platform Build & Release Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            qt_host: 'linux'
+            qt_arch: 'linux_gcc_64'
+            vcpkg_triplet: 'x64-linux'
+            qt_version: '6.9.*'
+            artifact_name: 'app-linux.tar.gz'
+            
+          - os: macos-14
+            qt_host: 'mac'
+            qt_arch: 'clang_64'
+            vcpkg_triplet: 'arm64-osx'
+            qt_version: '6.9.1'
+            artifact_name: 'app-macos.dmg'
+            
+          - os: windows-2022
+            qt_host: 'windows'
+            qt_arch: 'win64_msvc2022_64'
+            vcpkg_triplet: 'x64-windows'
+            qt_version: '6.9.1'
+            artifact_name: 'app-windows.zip'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install System Dependencies (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb patchelf libproj-dev
+
+      - name: Install System Dependencies (macOS)
+        if: matrix.os == 'macos-14'
+        run: |
+          brew install proj
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt_version }}
+          host: ${{ matrix.qt_host }}
+          target: 'desktop'
+          arch: ${{ matrix.qt_arch }}
+          cache: true
+          cache-key-prefix: qt-${{ matrix.os }}
+
+      - name: Setup vcpkg (Windows only for PROJ)
+        if: matrix.os == 'windows-2022'
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgJsonGlob: '**/vcpkg.json'
+          runVcpkgInstall: true
+        env:
+          VCPKG_DEFAULT_TRIPLET: ${{ matrix.vcpkg_triplet }}
+          VCPKG_INSTALLED_DIR: '${{ github.workspace }}/vcpkg_installed'
+          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+
+
+      - name: Set Environment Variables
+        shell: bash
+        run: |
+          echo "QT6_ROOT=${{ env.QT_ROOT_DIR }}" >> $GITHUB_ENV
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            echo "PROJ_ROOT=/usr" >> $GITHUB_ENV
+          elif [ "${{ matrix.os }}" = "macos-14" ]; then
+            echo "PROJ_ROOT=$(brew --prefix proj)" >> $GITHUB_ENV
+          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+            # Elegant solution: vcpkg in manifest mode puts artifacts in vcpkg_installed/<triplet>.
+            # The packaging script will find all DLLs inside the 'bin' subdirectory.
+            echo "PROJ_ROOT=${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}" >> $GITHUB_ENV
+          fi
+
+      - name: Build with Bazel
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            bazel build -c opt //... --config=linux \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
+          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+            bazel build -c opt //... --config=windows \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
+              --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
+          else
+            bazel build -c opt //... --config=macos \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
+          fi
+
+      - name: Test with Bazel
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            xvfb-run --auto-servernum bazel test -c opt //... --test_output=errors --config=linux \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
+          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+            bazel test -c opt //... --test_output=errors --config=windows \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
+              --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
+              --test_env=PATH
+          else
+            bazel test -c opt //... --test_output=errors --config=macos \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
+          fi
+
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-22.04' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          chmod +x scripts/deploy/package_linux.sh
+          ./scripts/deploy/package_linux.sh
+          # Create archive for release
+          tar -czvf ${{ github.workspace }}/${{ matrix.artifact_name }} -C dist/linux OpenDriveViewer_linux_x64
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-14' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          chmod +x scripts/deploy/package_macos.sh
+          ./scripts/deploy/package_macos.sh
+          # Create DMG
+          ${{ env.QT_ROOT_DIR }}/bin/macdeployqt dist/mac/OpenDriveViewer.app -dmg
+          mv dist/mac/OpenDriveViewer.dmg ${{ github.workspace }}/${{ matrix.artifact_name }}
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-2022' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          QT6_ROOT: ${{ env.QT6_ROOT }}
+          PROJ_ROOT: ${{ env.PROJ_ROOT }}
+        run: |
+          ./scripts/deploy/package_windows.ps1
+          # The script produces a folder: dist/windows/OpenDriveViewer_win_x64
+          Compress-Archive -Path dist/windows/OpenDriveViewer_win_x64 -DestinationPath ${{ github.workspace }}/${{ matrix.artifact_name }}
+
+      - name: Upload Intermediate Artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ github.workspace }}/${{ matrix.artifact_name }}
+          retention-days: 1
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          files: release-assets/*
+          generate_release_notes: true
