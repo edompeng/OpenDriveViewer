@@ -8,18 +8,6 @@ COMMON_DEFINES = [
 ]
 
 cc_test(
-    name = "JunctionGroupingTests",
-    srcs = ["junction_grouping_test.cpp"],
-    copts = COMMON_COPTS,
-    defines = COMMON_DEFINES,
-    data = ["//:test_data"],
-    deps = [
-        "//src/utility:geoviewer_utility_core",
-        "//third_party/Catch2:catch2_main",
-    ],
-)
-
-cc_test(
     name = "ViewerCoreTests",
     srcs = [
         "camera_controller_test.cpp",

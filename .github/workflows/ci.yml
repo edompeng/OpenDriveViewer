@@ -76,6 +76,7 @@ jobs:
           runVcpkgInstall: true
         env:
           VCPKG_DEFAULT_TRIPLET: ${{ matrix.vcpkg_triplet }}
+          VCPKG_INSTALLED_DIR: '${{ github.workspace }}/vcpkg_installed'
           VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
 
@@ -89,10 +90,30 @@ jobs:
           elif [ "${{ matrix.os }}" = "macos-14" ]; then
             echo "PROJ_ROOT=$(brew --prefix proj)" >> $GITHUB_ENV
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+            # Elegant solution: vcpkg in manifest mode puts artifacts in vcpkg_installed/<triplet>.
+            # The packaging script will find all DLLs inside the 'bin' subdirectory.
             echo "PROJ_ROOT=${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}" >> $GITHUB_ENV
           fi
 
-      - name: Build and Test with Bazel
+      - name: Build with Bazel
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            bazel build -c opt //... --config=linux \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
+          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+            bazel build -c opt //... --config=windows \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
+              --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
+          else
+            bazel build -c opt //... --config=macos \
+              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
+              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
+          fi
+
+      - name: Test with Bazel
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
@@ -100,13 +121,10 @@ jobs:
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            # Format PATH for Windows test environment (using semicolon separator for Windows natively, though git bash handles it)
-            # Actually, passing the bash PATH to test_env=PATH usually preserves the git bash path.
-            # But just in case, we also explicitly prefix the bin folders.
-            export PATH="${{ env.QT_ROOT_DIR }}/bin:${{ env.PROJ_ROOT }}/bin:$PATH"
             bazel test -c opt //... --test_output=errors --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
+              --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
               --test_env=PATH
           else
             bazel test -c opt //... --test_output=errors --config=macos \
@@ -134,6 +152,9 @@ jobs:
       - name: Package (Windows)
         if: matrix.os == 'windows-2022' && startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
+        env:
+          QT6_ROOT: ${{ env.QT6_ROOT }}
+          PROJ_ROOT: ${{ env.PROJ_ROOT }}
         run: |
           ./scripts/deploy/package_windows.ps1
           # The script produces a folder: dist/windows/OpenDriveViewer_win_x64

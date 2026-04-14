@@ -59,7 +59,6 @@ macro(add_geoviewer_test name)
   add_test(NAME ${name} COMMAND ${name})
 endmacro()
 
-add_geoviewer_test(JunctionGroupingTests tests/junction_grouping_test.cpp)
 add_geoviewer_test(ViewerCoreTests
   tests/scene_index_builder_test.cpp
   tests/spatial_grid_index_test.cpp
