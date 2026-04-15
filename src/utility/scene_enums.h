@@ -29,3 +29,4 @@ enum class TreeNodeType {
   kJunctionGroup,
   kJunction
 };
+enum class CoordinateMode { kWGS84, kLocal };

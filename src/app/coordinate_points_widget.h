@@ -8,6 +8,7 @@
 #include <QVBoxLayout>
 #include "src/app/floating_panel_widget.h"
 #include "src/app/geo_viewer.h"
+#include "src/utility/scene_enums.h"
 
 /// @brief Coordinate points management panel
 ///
@@ -20,6 +21,8 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
  public:
   explicit CoordinatePointsWidget(GeoViewerWidget* viewer,
                                   QWidget* parent = nullptr);
+  void SetCoordinateMode(CoordinateMode mode);
+
 
  protected:
   void RetranslateUi() override;
@@ -49,4 +52,6 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   QPushButton* clear_btn_ = nullptr;
   QLabel* list_label_ = nullptr;
   bool is_collapsed_ = false;
+  CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
 };
+

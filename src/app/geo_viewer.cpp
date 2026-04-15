@@ -109,12 +109,18 @@ bool GeoViewerWidget::IsElementActuallyVisible(
 void GeoViewerWidget::AddUserPoint(double lon, double lat,
                                    std::optional<double> alt) {
   if (!map_) return;
+  if (!georeference_valid_) return;
 
   double lx, ly, lz;
   lx = lon;
   ly = lat;
   lz = alt.value_or(0.0);
-  CoordinateUtil::Instance().WGS84ToLocal(&lx, &ly, &lz);
+  try {
+    CoordinateUtil::Instance().WGS84ToLocal(&lx, &ly, &lz);
+  } catch (const std::exception& e) {
+    qDebug() << "AddUserPoint conversion error:" << e.what();
+    return;
+  }
 
   if (alt.has_value()) {
     // Direct placement: convert local coords to renderer coords
@@ -123,7 +129,7 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
     if (right_hand_traffic_) ry = -ry;
     QVector3D worldPos(static_cast<float>(lx), static_cast<float>(lz),
                        static_cast<float>(ry));
-    user_points_.push_back({worldPos, lon, lat, *alt});
+    user_points_.push_back(UserPoint(worldPos, lon, lat, *alt));
   } else {
     // Raycast mode: cast a vertical ray downward at the (lx, ly) position
     // to find all lane surface intersections.
@@ -161,14 +167,14 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
         RendererToLocalCoord(hit.position, hit_lx, hit_ly, hit_lz);
         double p_lon, p_lat, p_alt;
         LocalToWGS84(hit_lx, hit_ly, hit_lz, p_lon, p_lat, p_alt);
-        user_points_.push_back({hit.position, p_lon, p_lat, p_alt});
+        user_points_.push_back(UserPoint(hit.position, p_lon, p_lat, p_alt));
       }
     }
 
     if (user_points_.size() == points_before) {
       // Fallback: place at ground level (Y=0) if no hit or grid not ready
       QVector3D worldPos(static_cast<float>(lx), 0.0f, static_cast<float>(ry));
-      user_points_.push_back({worldPos, lon, lat, 0.0});
+      user_points_.push_back(UserPoint(worldPos, lon, lat, 0.0));
     }
   }
 
@@ -180,6 +186,72 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
 void GeoViewerWidget::RemoveUserPoint(int index) {
   if (index < 0 || index >= static_cast<int>(user_points_.size())) return;
   user_points_.erase(user_points_.begin() + index);
+  UpdateUserPointsBuffers();
+  update();
+  emit userPointsChanged();
+}
+
+void GeoViewerWidget::AddUserPointLocal(double x, double y, std::optional<double> z) {
+  if (!map_) return;
+  const double local_z = z.value_or(0.0);
+  double ry = y;
+  if (right_hand_traffic_) ry = -ry;
+
+  auto resolve_lonlat = [&](double local_x, double local_y, double local_alt,
+                            double& out_lon, double& out_lat,
+                            double& out_alt) {
+    out_lon = local_x;
+    out_lat = local_y;
+    out_alt = local_alt;
+    if (!georeference_valid_) return;
+    LocalToWGS84(local_x, local_y, local_alt, out_lon, out_lat, out_alt);
+  };
+
+  if (z.has_value()) {
+    QVector3D world_pos(static_cast<float>(x), static_cast<float>(local_z),
+                        static_cast<float>(ry));
+    double lon = x, lat = y, alt = local_z;
+    resolve_lonlat(x, y, local_z, lon, lat, alt);
+    user_points_.push_back(UserPoint(world_pos, lon, lat, alt));
+  } else {
+    const size_t points_before = user_points_.size();
+    constexpr float kRayStartHeight = 10000.0f;
+    QVector3D ray_origin(static_cast<float>(x), kRayStartHeight,
+                         static_cast<float>(ry));
+    QVector3D ray_dir(0.0f, -1.0f, 0.0f);
+
+    if (spatial_grid_ready_) {
+      const auto hits = RaycastAllHits(
+          grid_boxes_, ray_origin, ray_dir,
+          [this](uint32_t layer_tag) {
+            return MeshForLayer(static_cast<LayerType>(layer_tag));
+          },
+          [](uint32_t layer_tag) {
+            return static_cast<LayerType>(layer_tag) == LayerType::kLanes;
+          },
+          [this](uint32_t layer_tag, uint32_t triangle_index,
+                 size_t vertex_index) {
+            return IsTrianglePickVisible(static_cast<LayerType>(layer_tag),
+                                         triangle_index, vertex_index);
+          });
+
+      for (const auto& hit : hits) {
+        double hit_lx, hit_ly, hit_lz;
+        RendererToLocalCoord(hit.position, hit_lx, hit_ly, hit_lz);
+        double lon = hit_lx, lat = hit_ly, alt = hit_lz;
+        resolve_lonlat(hit_lx, hit_ly, hit_lz, lon, lat, alt);
+        user_points_.push_back(UserPoint(hit.position, lon, lat, alt));
+      }
+    }
+
+    if (user_points_.size() == points_before) {
+      QVector3D world_pos(static_cast<float>(x), 0.0f, static_cast<float>(ry));
+      double lon = x, lat = y, alt = 0.0;
+      resolve_lonlat(x, y, 0.0, lon, lat, alt);
+      user_points_.push_back(UserPoint(world_pos, lon, lat, alt));
+    }
+  }
+
   UpdateUserPointsBuffers();
   update();
   emit userPointsChanged();
@@ -211,12 +283,13 @@ int GeoViewerWidget::UserPointCount() const {
 
 GeoViewerWidget::UserPointSnapshot GeoViewerWidget::GetUserPointSnapshot(
     int index) const {
-  if (index < 0 || index >= static_cast<int>(user_points_.size())) {
-    return {0.0, 0.0, 0.0, false, {1.0f, 0.3f, 0.3f}};
-  }
+  if (index < 0 || index >= (int)user_points_.size()) return UserPointSnapshot();
   const auto& p = user_points_[index];
-  return {p.lon, p.lat, p.alt, p.visible, p.color};
+  double lx, ly, lz;
+  RendererToLocalCoord(p.worldPos, lx, ly, lz);
+  return UserPointSnapshot(p.lon, p.lat, p.alt, lx, ly, lz, p.visible, p.color);
 }
+
 
 void GeoViewerWidget::UpdateUserPointsBuffers() {
   makeCurrent();
@@ -1200,7 +1273,8 @@ void GeoViewerWidget::ClearRoutingPaths() {
 
 void GeoViewerWidget::RendererToLocalCoord(const QVector3D& rendererPos,
                                            double& localX, double& localY,
-                                           double& localZ) {
+                                           double& localZ) const {
+
   localX = rendererPos.x();
   localY = rendererPos.z();
   if (right_hand_traffic_) localY = -localY;  // Reverse mirroring
@@ -1208,7 +1282,7 @@ void GeoViewerWidget::RendererToLocalCoord(const QVector3D& rendererPos,
 }
 
 bool GeoViewerWidget::LocalToWGS84(double localX, double localY, double localZ,
-                                   double& lon, double& lat, double& alt) {
+                                   double& lon, double& lat, double& alt) const {
   try {
     double x = localX, y = localY;
     CoordinateUtil::Instance().LocalToWGS84(&x, &y, nullptr);
@@ -1266,15 +1340,21 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
   double localX, localY, localZ;
   RendererToLocalCoord(worldPos, localX, localY, localZ);
 
-  double lon, lat, alt;
-  if (!LocalToWGS84(localX, localY, localZ, lon, lat, alt)) {
-    return;
+  double lon = localX, lat = localY, alt = localZ;
+  const bool has_wgs84 = georeference_valid_ &&
+                         LocalToWGS84(localX, localY, localZ, lon, lat, alt);
+  QString coordText;
+  if (coord_mode_ == CoordinateMode::kWGS84 && has_wgs84) {
+    coordText = QString("%1,%2,%3")
+                    .arg(lon, 0, 'f', 8)
+                    .arg(lat, 0, 'f', 8)
+                    .arg(alt, 0, 'f', 2);
+  } else {
+    coordText = QString("%1,%2,%3")
+                    .arg(localX, 0, 'f', 3)
+                    .arg(localY, 0, 'f', 3)
+                    .arg(localZ, 0, 'f', 3);
   }
-
-  QString coordText = QString("%1,%2,%3")
-                          .arg(lon, 0, 'f', 8)
-                          .arg(lat, 0, 'f', 8)
-                          .arg(alt, 0, 'f', 2);
   QString infoText;
 
   if (pickedIdx.has_value() && map_) {
@@ -1934,10 +2014,12 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
 
   double localX, localY, localZ;
   RendererToLocalCoord(worldPos, localX, localY, localZ);
-  double lon = 0.0, lat = 0.0, alt = 0.0;
-  LocalToWGS84(localX, localY, localZ, lon, lat, alt);
+  double lon = localX, lat = localY, alt = localZ;
+  if (georeference_valid_) {
+    LocalToWGS84(localX, localY, localZ, lon, lat, alt);
+  }
 
-  emit hoverInfoChanged(lon, lat, alt, typeStr, idStr, nameStr);
+  emit hoverInfoChanged(localX, localY, localZ, lon, lat, alt, typeStr, idStr, nameStr);
 }
 
 void GeoViewerWidget::SearchObject(LayerType type, const QString& idStr) {
@@ -2502,29 +2584,35 @@ void GeoViewerWidget::JumpToLocation(double lon, double lat, double alt) {
   double x = lon, y = lat, z = alt;
   try {
     CoordinateUtil::Instance().WGS84ToLocal(&x, &y, &z);
-
-    // In our coordinate system:
-    // x = local x (East)
-    // y = local y (North)
-    // z = local z (Up)
-    // In renderer:
-    // renderer.x = x
-    // renderer.y = z
-    // renderer.z = y
-
-    float rz = static_cast<float>(y);
-    if (right_hand_traffic_) rz = -rz;
-
-    camera_.SetTarget(
-        QVector3D(static_cast<float>(x), static_cast<float>(z), rz));
-    camera_.SetPitch(-89.0f);  // Look straight down
-    camera_.SetYaw(0.0f);
-    camera_.SetDistance(100.0f);  // Zoom level
-    update();
+    JumpToLocalLocation(x, y, z);
   } catch (const std::exception& e) {
     qDebug() << "Jump to location error:" << e.what();
   }
 }
+
+void GeoViewerWidget::JumpToLocalLocation(double x, double y, double z) {
+  if (!map_) return;
+
+  // In our coordinate system:
+  // x = local x (East)
+  // y = local y (North)
+  // z = local z (Up)
+  // In renderer:
+  // renderer.x = x
+  // renderer.y = z
+  // renderer.z = y
+
+  float rz = static_cast<float>(y);
+  if (right_hand_traffic_) rz = -rz;
+
+  camera_.SetTarget(
+      QVector3D(static_cast<float>(x), static_cast<float>(z), rz));
+  camera_.SetPitch(-89.0f);  // Look straight down
+  camera_.SetYaw(0.0f);
+  camera_.SetDistance(100.0f);  // Zoom level
+  update();
+}
+
 
 void GeoViewerWidget::GenerateRefLinePoints(
     std::shared_ptr<odr::OpenDriveMap> map, std::vector<float>& allVertices,

@@ -98,8 +98,8 @@ std::vector<ParsedUserPoint> CoordinateInputParser::ParseUserPoints(
     const auto coords = Split(point, ',');
     if (coords.size() == 2) {
       ParsedUserPoint parsed;
-      if (ParseDouble(coords[0], &parsed.lon) &&
-          ParseDouble(coords[1], &parsed.lat)) {
+      if (ParseDouble(coords[0], &parsed.x) &&
+          ParseDouble(coords[1], &parsed.y)) {
         points.push_back(parsed);
       }
       continue;
@@ -107,13 +107,14 @@ std::vector<ParsedUserPoint> CoordinateInputParser::ParseUserPoints(
 
     if (coords.size() == 3) {
       ParsedUserPoint parsed;
-      double alt = 0.0;
-      if (ParseDouble(coords[0], &parsed.lon) &&
-          ParseDouble(coords[1], &parsed.lat) && ParseDouble(coords[2], &alt)) {
-        parsed.alt = alt;
+      double z = 0.0;
+      if (ParseDouble(coords[0], &parsed.x) &&
+          ParseDouble(coords[1], &parsed.y) && ParseDouble(coords[2], &z)) {
+        parsed.z = z;
         points.push_back(parsed);
       }
     }
+
   }
 
   return points;
@@ -138,13 +139,14 @@ std::optional<ParsedJumpLocation> CoordinateInputParser::ParseJumpLocation(
   }
 
   ParsedJumpLocation parsed;
-  if (ParseDouble(coords[0], &parsed.lon) == false ||
-      ParseDouble(coords[1], &parsed.lat) == false) {
+  if (ParseDouble(coords[0], &parsed.x) == false ||
+      ParseDouble(coords[1], &parsed.y) == false) {
     return std::nullopt;
   }
-  if (coords.size() == 3 && ParseDouble(coords[2], &parsed.alt) == false) {
+  if (coords.size() == 3 && ParseDouble(coords[2], &parsed.z) == false) {
     return std::nullopt;
   }
+
 
   return parsed;
 }

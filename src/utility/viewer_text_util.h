@@ -3,7 +3,8 @@
 #include <string>
 #include <vector>
 #include "src/utility/scene_enums.h"
-#include "third_party/libOpenDRIVE/include/RoutingGraph.h"
+#include "Lane.h"
+#include "RoutingGraph.h"
 
 std::string FormatSectionValue(double value);
 std::string FavoriteTypeLabel(TreeNodeType type);

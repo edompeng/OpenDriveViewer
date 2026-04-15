@@ -30,6 +30,19 @@ cc_test(
 )
 
 cc_test(
+    name = "CoordinateModePolicyTests",
+    srcs = [
+        "coordinate_mode_policy_test.cpp",
+    ],
+    copts = COMMON_COPTS + QT_COPTS,
+    defines = COMMON_DEFINES,
+    deps = [
+        "//src/utility:geoviewer_utility_core",
+        "//third_party/Catch2:catch2_main",
+    ],
+)
+
+cc_test(
     name = "MeasureToolTests",
     srcs = [
         "measure_tool_controller_test.cpp",

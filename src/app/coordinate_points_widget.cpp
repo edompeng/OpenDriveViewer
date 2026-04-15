@@ -124,27 +124,42 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
   hide();  // Default hidden
 }
 
+void CoordinatePointsWidget::SetCoordinateMode(CoordinateMode mode) {
+  if (coord_mode_ == mode) return;
+  coord_mode_ = mode;
+  RetranslateUi();
+}
+
+
 void CoordinatePointsWidget::RetranslateUi() {
   title_label_->setText(tr("<b>Coordinate Points</b>"));
-  input_label_->setText(tr("(lon,lat[,alt]); ...:"));
-  input_points_edit_->setPlaceholderText(
-      tr("(lon,lat) or (lon,lat,alt) semicolon separated"));
+  if (coord_mode_ == CoordinateMode::kWGS84) {
+    input_label_->setText(tr("(lon,lat[,alt]); ...:"));
+    input_points_edit_->setPlaceholderText(
+        tr("(lon,lat) or (lon,lat,alt) semicolon separated"));
+  } else {
+    input_label_->setText(tr("(x,y[,z]); ...:"));
+    input_points_edit_->setPlaceholderText(
+        tr("(x,y) or (x,y,z) semicolon separated"));
+  }
   add_btn_->setText(tr("Add"));
   clear_btn_->setText(tr("Clear All"));
   list_label_->setText(tr("Added points:"));
   RefreshPointsList();
 }
 
+
 void CoordinatePointsWidget::HandleAddPoint() {
   const auto points = CoordinateInputParser::ParseUserPoints(
       input_points_edit_->text().toStdString());
   for (const auto& point : points) {
-    if (point.alt.has_value()) {
-      viewer_->AddUserPoint(point.lon, point.lat, *point.alt);
+    if (coord_mode_ == CoordinateMode::kWGS84) {
+      viewer_->AddUserPoint(point.x, point.y, point.z);
     } else {
-      viewer_->AddUserPoint(point.lon, point.lat);
+      viewer_->AddUserPointLocal(point.x, point.y, point.z);
     }
   }
+
   // List is refreshed via the userPointsChanged signal
 }
 
@@ -159,7 +174,11 @@ void CoordinatePointsWidget::HandleItemDoubleClicked(QListWidgetItem* item) {
   if (!item) return;
   int index = item->data(Qt::UserRole).toInt();
   auto snap = viewer_->GetUserPointSnapshot(index);
-  viewer_->JumpToLocation(snap.lon, snap.lat, snap.alt);
+  if (coord_mode_ == CoordinateMode::kWGS84) {
+    viewer_->JumpToLocation(snap.lon, snap.lat, snap.alt);
+  } else {
+    viewer_->JumpToLocalLocation(snap.x, snap.y, snap.z);
+  }
 }
 
 void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
@@ -194,7 +213,11 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
       RefreshPointsList();
     }
   } else if (selected == jump_to) {
-    viewer_->JumpToLocation(snap.lon, snap.lat, snap.alt);
+    if (coord_mode_ == CoordinateMode::kWGS84) {
+      viewer_->JumpToLocation(snap.lon, snap.lat, snap.alt);
+    } else {
+      viewer_->JumpToLocalLocation(snap.x, snap.y, snap.z);
+    }
   } else if (selected == remove) {
     viewer_->RemoveUserPoint(index);
     // List is refreshed via the userPointsChanged signal
@@ -249,11 +272,20 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
   layout->addWidget(colorBtn);
 
   // Coordinate label
-  QString coordText = QString("%1, %2, %3")
-                          .arg(snap.lon, 0, 'f', 7)
-                          .arg(snap.lat, 0, 'f', 7)
-                          .arg(snap.alt, 0, 'f', 2);
+  QString coordText;
+  if (coord_mode_ == CoordinateMode::kWGS84) {
+    coordText = QString("%1, %2, %3")
+                    .arg(snap.lon, 0, 'f', 7)
+                    .arg(snap.lat, 0, 'f', 7)
+                    .arg(snap.alt, 0, 'f', 2);
+  } else {
+    coordText = QString("%1, %2, %3")
+                    .arg(snap.x, 0, 'f', 3)
+                    .arg(snap.y, 0, 'f', 3)
+                    .arg(snap.z, 0, 'f', 3);
+  }
   auto* label = new QLabel(coordText, widget);
+
   label->setStyleSheet(QString("color: %1; font-size: 11px;")
                            .arg(snap.visible ? "#eee" : "#777"));
   layout->addWidget(label, 1);

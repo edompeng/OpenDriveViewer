@@ -18,17 +18,20 @@
 #include "src/app/loading_progress_widget.h"
 #include "src/app/open_scenario_widget.h"
 #include "src/app/routing_widget.h"
+#include "src/utility/scene_enums.h"
 
 class MainWindow : public QMainWindow {
+
   Q_OBJECT
  public:
   MainWindow(QWidget *parent = nullptr);
 
  private slots:
   void HandleLoadMap();
-  void HandleHoverInfo(double lon, double lat, double alt,
-                       const QString &typeStr, const QString &idStr,
-                       const QString &nameStr);
+  void HandleHoverInfo(double x, double y, double z, double lon, double lat,
+                       double alt, const QString &typeStr,
+                       const QString &idStr, const QString &nameStr);
+
   void HandleJumpToCoords();
   void ToggleWidgetVisibility(QWidget *widget, bool visible);
   void ChangeLanguage(const QString &locale);
@@ -44,6 +47,7 @@ class MainWindow : public QMainWindow {
   QWidget *BuildCoordinateTools();
   void SetupConnections();
   void StartMapLoad(const QString &path);
+  void ApplyCoordinateModePolicy(bool georeference_valid);
 
   GeoViewerWidget *view_;
   QLineEdit *jump_to_coords_edit_;
@@ -66,4 +70,7 @@ class MainWindow : public QMainWindow {
   QAction *load_action_;
   QLabel *jump_label_;
   std::vector<QCheckBox *> layer_checkboxes_;
+  CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
+  QComboBox *coord_mode_combo_ = nullptr;
+  bool wgs84_mode_allowed_ = true;
 };

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include "src/utility/junction_grouping.h"
+#include "src/utility/scene_enums.h"
 #include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
 
 namespace odr {
@@ -13,8 +14,13 @@ struct MapSceneData {
   std::shared_ptr<odr::OpenDriveMap> map;
   odr::RoadNetworkMesh mesh;
   JunctionClusterResult junction_grouping;
+  bool georeference_valid = false;
 
   bool IsValid() const { return static_cast<bool>(map); }
+  bool IsWgs84ModeAvailable() const { return georeference_valid; }
+  CoordinateMode DefaultCoordinateMode() const {
+    return georeference_valid ? CoordinateMode::kWGS84 : CoordinateMode::kLocal;
+  }
 };
 
 class IMapSceneLoader {

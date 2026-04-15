@@ -3,19 +3,21 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "third_party/libOpenDRIVE/include/RoutingGraph.h"
+#include "Lane.h"
+#include "RoutingGraph.h"
 
 struct ParsedUserPoint {
-  double lon = 0.0;
-  double lat = 0.0;
-  std::optional<double> alt;
+  double x = 0.0;
+  double y = 0.0;
+  std::optional<double> z;
 };
 
 struct ParsedJumpLocation {
-  double lon = 0.0;
-  double lat = 0.0;
-  double alt = 0.0;
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
 };
+
 
 class CoordinateInputParser {
  public:

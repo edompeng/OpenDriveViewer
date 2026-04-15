@@ -102,6 +102,14 @@ def _configure_macos(repository_ctx, qt6_root, modules, repo_dir):
         for m in modules
     ]
 
+    # Qt6's qyieldcpu.h may call __yield() on Apple Silicon without pulling in
+    # the declaration. Force-include arm_acle.h for macOS arm64 to keep builds
+    # stable under strict warning settings (-Werror).
+    uname_result = repository_ctx.execute(["uname", "-m"])
+    arch = uname_result.stdout.strip().lower() if uname_result.return_code == 0 else ""
+    if arch in ["arm64", "aarch64"]:
+        qt_copts += ["-include", "arm_acle.h"]
+
     # Link flags
     macos_linkopts = [
         "-F{}/lib".format(qt6_root),

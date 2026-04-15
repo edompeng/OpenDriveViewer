@@ -18,9 +18,9 @@ TEST_CASE("ParseUserPoints - single 2D point parsed correctly",
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073");
   REQUIRE(result.size() == 1);
-  CHECK(result[0].lon == Catch::Approx(116.3912));
-  CHECK(result[0].lat == Catch::Approx(39.9073));
-  CHECK(!result[0].alt.has_value());
+  CHECK(result[0].x == Catch::Approx(116.3912));
+  CHECK(result[0].y == Catch::Approx(39.9073));
+  CHECK(!result[0].z.has_value());
 }
 
 TEST_CASE("ParseUserPoints - 2D point with parentheses parsed correctly",
@@ -28,8 +28,8 @@ TEST_CASE("ParseUserPoints - 2D point with parentheses parsed correctly",
   const auto result =
       CoordinateInputParser::ParseUserPoints("(116.3912, 39.9073)");
   REQUIRE(result.size() == 1);
-  CHECK(result[0].lon == Catch::Approx(116.3912));
-  CHECK(result[0].lat == Catch::Approx(39.9073));
+  CHECK(result[0].x == Catch::Approx(116.3912));
+  CHECK(result[0].y == Catch::Approx(39.9073));
 }
 
 TEST_CASE("ParseUserPoints - 3D point with altitude parsed correctly",
@@ -37,10 +37,10 @@ TEST_CASE("ParseUserPoints - 3D point with altitude parsed correctly",
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073, 50.5");
   REQUIRE(result.size() == 1);
-  CHECK(result[0].lon == Catch::Approx(116.3912));
-  CHECK(result[0].lat == Catch::Approx(39.9073));
-  REQUIRE(result[0].alt.has_value());
-  CHECK(*result[0].alt == Catch::Approx(50.5));
+  CHECK(result[0].x == Catch::Approx(116.3912));
+  CHECK(result[0].y == Catch::Approx(39.9073));
+  REQUIRE(result[0].z.has_value());
+  CHECK(*result[0].z == Catch::Approx(50.5));
 }
 
 TEST_CASE("ParseUserPoints - multiple points separated by semicolons",
@@ -48,13 +48,13 @@ TEST_CASE("ParseUserPoints - multiple points separated by semicolons",
   const auto result = CoordinateInputParser::ParseUserPoints(
       "1.0, 2.0; 3.0, 4.0; 5.0, 6.0, 7.0");
   REQUIRE(result.size() == 3);
-  CHECK(result[0].lon == Catch::Approx(1.0));
-  CHECK(result[1].lon == Catch::Approx(3.0));
-  CHECK(result[2].lon == Catch::Approx(5.0));
-  CHECK(!result[0].alt.has_value());
-  CHECK(!result[1].alt.has_value());
-  REQUIRE(result[2].alt.has_value());
-  CHECK(*result[2].alt == Catch::Approx(7.0));
+  CHECK(result[0].x == Catch::Approx(1.0));
+  CHECK(result[1].x == Catch::Approx(3.0));
+  CHECK(result[2].x == Catch::Approx(5.0));
+  CHECK(!result[0].z.has_value());
+  CHECK(!result[1].z.has_value());
+  REQUIRE(result[2].z.has_value());
+  CHECK(*result[2].z == Catch::Approx(7.0));
 }
 
 TEST_CASE("ParseUserPoints - invalid text returns empty vector",
@@ -84,9 +84,9 @@ TEST_CASE("ParseJumpLocation - comma-separated 2D coordinate",
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912,39.9073");
   REQUIRE(result.has_value());
-  CHECK(result->lon == Catch::Approx(116.3912));
-  CHECK(result->lat == Catch::Approx(39.9073));
-  CHECK(result->alt == Catch::Approx(0.0));
+  CHECK(result->x == Catch::Approx(116.3912));
+  CHECK(result->y == Catch::Approx(39.9073));
+  CHECK(result->z == Catch::Approx(0.0));
 }
 
 TEST_CASE("ParseJumpLocation - space-separated 2D coordinate",
@@ -94,8 +94,8 @@ TEST_CASE("ParseJumpLocation - space-separated 2D coordinate",
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912 39.9073");
   REQUIRE(result.has_value());
-  CHECK(result->lon == Catch::Approx(116.3912));
-  CHECK(result->lat == Catch::Approx(39.9073));
+  CHECK(result->x == Catch::Approx(116.3912));
+  CHECK(result->y == Catch::Approx(39.9073));
 }
 
 TEST_CASE("ParseJumpLocation - 3D coordinate with altitude",
@@ -103,9 +103,9 @@ TEST_CASE("ParseJumpLocation - 3D coordinate with altitude",
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912, 39.9073, 100.0");
   REQUIRE(result.has_value());
-  CHECK(result->lon == Catch::Approx(116.3912));
-  CHECK(result->lat == Catch::Approx(39.9073));
-  CHECK(result->alt == Catch::Approx(100.0));
+  CHECK(result->x == Catch::Approx(116.3912));
+  CHECK(result->y == Catch::Approx(39.9073));
+  CHECK(result->z == Catch::Approx(100.0));
 }
 
 TEST_CASE("ParseJumpLocation - more than 3 components returns nullopt",

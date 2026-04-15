@@ -1,5 +1,6 @@
 add_library(GeoViewerUtility STATIC
   coordinate_util.cpp coordinate_util.h
+  coordinate_mode_policy.h
   favorites_store.cpp favorites_store.h
   input_parsing.cpp input_parsing.h
   junction_grouping.cpp junction_grouping.h

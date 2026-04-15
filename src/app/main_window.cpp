@@ -5,11 +5,13 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QTimer>
 #include <QToolBar>
 #include <QTranslator>
 #include <QWidget>
 #include "src/app/layer_control_widget.h"
+#include "src/utility/coordinate_mode_policy.h"
 #include "src/utility/input_parsing.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -37,13 +39,21 @@ void MainWindow::HandleLoadMap() {
   StartMapLoad(path);
 }
 
-void MainWindow::HandleHoverInfo(double lon, double lat, double alt,
-                                 const QString& typeStr, const QString& idStr,
-                                 const QString& nameStr) {
-  QString statusText = tr("Coords: %1,%2,%3")
-                           .arg(lon, 0, 'f', 8)
-                           .arg(lat, 0, 'f', 8)
-                           .arg(alt, 0, 'f', 2);
+void MainWindow::HandleHoverInfo(double x, double y, double z, double lon,
+                                 double lat, double alt, const QString& typeStr,
+                                 const QString& idStr, const QString& nameStr) {
+  QString statusText;
+  if (coord_mode_ == CoordinateMode::kWGS84) {
+    statusText = tr("Coords: %1, %2, %3")
+                     .arg(lon, 0, 'f', 8)
+                     .arg(lat, 0, 'f', 8)
+                     .arg(alt, 0, 'f', 2);
+  } else {
+    statusText = tr("Coords: %1, %2, %3")
+                     .arg(x, 0, 'f', 3)
+                     .arg(y, 0, 'f', 3)
+                     .arg(z, 0, 'f', 3);
+  }
 
   if (!typeStr.isEmpty()) {
     statusText += tr(" | Type: %1 | ID: %2").arg(typeStr).arg(idStr);
@@ -55,22 +65,36 @@ void MainWindow::HandleHoverInfo(double lon, double lat, double alt,
   status_->showMessage(statusText);
 }
 
+
 void MainWindow::HandleJumpToCoords() {
   const auto target = CoordinateInputParser::ParseJumpLocation(
       jump_to_coords_edit_->text().toStdString());
   if (!target.has_value()) {
-    status_->showMessage(
-        tr("Please enter longitude, latitude (optional altitude), separated by "
-           "comma or space"));
+    if (coord_mode_ == CoordinateMode::kWGS84) {
+      status_->showMessage(tr("Please enter longitude, latitude (optional "
+                              "altitude), separated by comma or space"));
+    } else {
+      status_->showMessage(tr("Please enter x, y (optional z), separated by "
+                              "comma or space"));
+    }
     return;
   }
 
-  view_->JumpToLocation(target->lon, target->lat, target->alt);
-  status_->showMessage(tr("Jumped to: %1, %2, %3")
-                           .arg(target->lon, 0, 'f', 8)
-                           .arg(target->lat, 0, 'f', 8)
-                           .arg(target->alt, 0, 'f', 2));
+  if (coord_mode_ == CoordinateMode::kWGS84) {
+    view_->JumpToLocation(target->x, target->y, target->z);
+    status_->showMessage(tr("Jumped to: %1, %2, %3")
+                             .arg(target->x, 0, 'f', 8)
+                             .arg(target->y, 0, 'f', 8)
+                             .arg(target->z, 0, 'f', 2));
+  } else {
+    view_->JumpToLocalLocation(target->x, target->y, target->z);
+    status_->showMessage(tr("Jumped to: %1, %2, %3")
+                             .arg(target->x, 0, 'f', 3)
+                             .arg(target->y, 0, 'f', 3)
+                             .arg(target->z, 0, 'f', 3));
+  }
 }
+
 
 void MainWindow::ChangeLanguage(const QString& locale) {
   qApp->removeTranslator(translator_);
@@ -104,8 +128,19 @@ void MainWindow::RetranslateUi() {
   panels_btn_->setText(tr("Windows"));
   lang_btn_->setText(tr("Language"));
   measure_action_->setText(tr("Measure"));
-  jump_label_->setText(tr("Jump to (lon,lat,alt):"));
-  jump_to_coords_edit_->setPlaceholderText(tr("lon,lat,alt"));
+
+  if (coord_mode_ == CoordinateMode::kWGS84) {
+    jump_label_->setText(tr("Jump to (lon,lat,alt):"));
+    jump_to_coords_edit_->setPlaceholderText(tr("lon,lat,alt"));
+  } else {
+    jump_label_->setText(tr("Jump to (x,y,z):"));
+    jump_to_coords_edit_->setPlaceholderText(tr("x,y,z"));
+  }
+
+  if (coord_mode_combo_) {
+    coord_mode_combo_->setItemText(0, tr("WGS84 (lon, lat)"));
+    coord_mode_combo_->setItemText(1, tr("Local (x, y)"));
+  }
 
   // Update Panel menu
   panels_menu_->setTitle(tr("Panels"));
@@ -229,6 +264,28 @@ QWidget* MainWindow::BuildCoordinateTools() {
   QHBoxLayout* layout = new QHBoxLayout(container);
 
   layout->addSpacing(20);
+
+  coord_mode_combo_ = new QComboBox(container);
+  coord_mode_combo_->addItem(tr("WGS84 (lon, lat)"));
+  coord_mode_combo_->addItem(tr("Local (x, y)"));
+  coord_mode_combo_->setFixedWidth(140);
+  connect(coord_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int index) {
+            if (!wgs84_mode_allowed_ && index == 0) {
+              const QSignalBlocker blocker(coord_mode_combo_);
+              coord_mode_combo_->setCurrentIndex(1);
+              return;
+            }
+            coord_mode_ =
+                (index == 0) ? CoordinateMode::kWGS84 : CoordinateMode::kLocal;
+            coordinate_points_panel_->SetCoordinateMode(coord_mode_);
+            view_->SetCoordinateMode(coord_mode_);
+            RetranslateUi();
+          });
+
+  layout->addWidget(coord_mode_combo_);
+
+  layout->addSpacing(10);
   jump_label_ = new QLabel(tr("Jump to (lon,lat,alt):"), container);
   layout->addWidget(jump_label_);
   jump_to_coords_edit_ = new QLineEdit(container);
@@ -237,6 +294,7 @@ QWidget* MainWindow::BuildCoordinateTools() {
   connect(jump_to_coords_edit_, &QLineEdit::returnPressed, this,
           &MainWindow::HandleJumpToCoords);
   layout->addWidget(jump_to_coords_edit_);
+
 
   QWidget* layers_widget = new QWidget(container);
   QHBoxLayout* layers_layout = new QHBoxLayout(layers_widget);
@@ -332,15 +390,24 @@ void MainWindow::SetupConnections() {
 
     view_->SetMapAndMesh(data.map, std::move(data.mesh),
                          &data.junction_grouping);
+    view_->SetGeoreferenceAvailable(data.IsWgs84ModeAvailable());
+    ApplyCoordinateModePolicy(data.IsWgs84ModeAvailable());
 
     if (load_progress_) {
       load_progress_->HideLoading();
     }
 
-    status_->showMessage(tr("Map ready. Building layer tree..."));
+    status_->showMessage(data.IsWgs84ModeAvailable()
+                             ? tr("Map ready. Building layer tree...")
+                             : tr("Map ready in local coordinates mode. Building layer tree..."));
     QTimer::singleShot(0, this, [this]() {
       layer_control_->UpdateTree();
-      status_->showMessage(tr("Map loaded successfully."));
+      if (wgs84_mode_allowed_) {
+        status_->showMessage(tr("Map loaded successfully."));
+      } else {
+        status_->showMessage(
+            tr("Map loaded successfully. Invalid georeference: local coordinate mode only."));
+      }
     });
   });
 }
@@ -356,4 +423,22 @@ void MainWindow::StartMapLoad(const QString& path) {
 
   status_->showMessage(tr("Loading map and generating mesh..."));
   map_loader_->Start(path);
+}
+
+void MainWindow::ApplyCoordinateModePolicy(bool georeference_valid) {
+  wgs84_mode_allowed_ = IsWgs84ModeAllowed(georeference_valid);
+  coord_mode_ = ResolveDefaultCoordinateMode(georeference_valid);
+
+  if (coord_mode_combo_) {
+    const QSignalBlocker blocker(coord_mode_combo_);
+    coord_mode_combo_->setItemData(
+        0, wgs84_mode_allowed_ ? QVariant() : 0, Qt::UserRole - 1);
+    coord_mode_combo_->setEnabled(wgs84_mode_allowed_);
+    coord_mode_combo_->setCurrentIndex(coord_mode_ == CoordinateMode::kWGS84 ? 0
+                                                                              : 1);
+  }
+
+  coordinate_points_panel_->SetCoordinateMode(coord_mode_);
+  view_->SetCoordinateMode(coord_mode_);
+  RetranslateUi();
 }

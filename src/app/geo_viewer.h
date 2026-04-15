@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <QString>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -97,6 +98,10 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   // ---------- Coordinates & Traffic Direction ----------
   void SetRightHandTraffic(bool rht);
   bool IsRightHandTraffic() const { return right_hand_traffic_; }
+  void SetCoordinateMode(CoordinateMode mode) { coord_mode_ = mode; }
+  CoordinateMode GetCoordinateMode() const { return coord_mode_; }
+  void SetGeoreferenceAvailable(bool available) { georeference_valid_ = available; }
+  bool IsGeoreferenceAvailable() const { return georeference_valid_; }
 
   // ---------- Batch Updates ----------
   void BeginBatchUpdate() { batch_update_count_++; }
@@ -110,17 +115,39 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   // ---------- User Annotation Points ----------
   void AddUserPoint(double lon, double lat,
                     std::optional<double> alt = std::nullopt);
+  // Add point using local coordinates (x, y, z)
+  void AddUserPointLocal(double x, double y, std::optional<double> z = std::nullopt);
   void RemoveUserPoint(int index);
   void SetUserPointVisible(int index, bool visible);
   void SetUserPointColor(int index, const QVector3D& color);
   void ClearUserPoints();
   int UserPointCount() const;
   struct UserPointSnapshot {
+    UserPointSnapshot() : lon(0), lat(0), alt(0), x(0), y(0), z(0), visible(false) {}
+    UserPointSnapshot(double lo, double la, double al, double px, double py,
+                      double pz, bool vis, const QVector3D& col)
+        : lon(lo),
+          lat(la),
+          alt(al),
+          x(px),
+          y(py),
+          z(pz),
+          visible(vis),
+          color(col) {}
+
     double lon, lat, alt;
+    double x, y, z;
     bool visible;
     QVector3D color;
   };
+
   UserPointSnapshot GetUserPointSnapshot(int index) const;
+
+  // ---- Coordinate Transformation ----
+  void RendererToLocalCoord(const QVector3D& rendererPos, double& lx,
+                            double& ly, double& lz) const;
+  bool LocalToWGS84(double lx, double ly, double lz, double& lon, double& lat,
+                    double& alt) const;
 
   // ---------- Highlighting ----------
   void HighlightElement(const QString& roadId, TreeNodeType type,
@@ -157,7 +184,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
                                   const QString& entity_name);
 
  signals:
-  void hoverInfoChanged(double lon, double lat, double alt,
+  void hoverInfoChanged(double x, double y, double z,
+                        double lon, double lat, double alt,
                         const QString& typeStr, const QString& idStr,
                         const QString& nameStr);
   void elementSelected(const QString& roadId, TreeNodeType type,
@@ -189,6 +217,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
                        const QString& elementId);
   void HighlightRoads(const QStringList& roadIds);
   void JumpToLocation(double lon, double lat, double alt = 0.0);
+  void JumpToLocalLocation(double x, double y, double z = 0.0);
+
 
   // ---------- Multi-routing Support ----------
   int AddRoutingPath(const std::vector<odr::LaneKey>& path,
@@ -238,6 +268,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
   std::unordered_set<std::string> hidden_elements_;
   bool right_hand_traffic_ = true;
+  CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
+  bool georeference_valid_ = false;
 
   std::vector<uint32_t> lane_outline_indices_;
 
@@ -321,11 +353,6 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void UpdateHoverInfo(int x, int y);
   float closestT = 0.0f;
 
-  // ---- Coordinate Transformation ----
-  void RendererToLocalCoord(const QVector3D& rendererPos, double& lx,
-                            double& ly, double& lz);
-  bool LocalToWGS84(double lx, double ly, double lz, double& lon, double& lat,
-                    double& alt);
   bool GetWorldPosAt(int x, int y, QVector3D& worldPos,
                      std::optional<PickResult>& pickedIdx);
   std::vector<uint32_t> CollectIndicesForCachedElements(
@@ -351,10 +378,13 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
   // ---- User Annotation Points ----
   struct UserPoint {
+    UserPoint(const QVector3D& pos, double lo, double la, double al)
+        : worldPos(pos), lon(lo), lat(la), alt(al), visible(true), color(1.0f, 0.3f, 0.3f) {}
+
     QVector3D worldPos;
     double lon, lat, alt;
-    bool visible = true;
-    QVector3D color{1.0f, 0.3f, 0.3f};  // Default: bright red
+    bool visible;
+    QVector3D color;
   };
   std::vector<UserPoint> user_points_;
   GLuint user_points_vao_ = 0;

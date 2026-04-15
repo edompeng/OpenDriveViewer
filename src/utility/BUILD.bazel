@@ -15,6 +15,7 @@ cc_library(
         "viewer_text_util.cpp",
     ],
     hdrs = [
+        "coordinate_mode_policy.h",
         "favorites_store.h",
         "input_parsing.h",
         "junction_grouping.h",
