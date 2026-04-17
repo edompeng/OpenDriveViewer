@@ -16,44 +16,44 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
   setMinimumSize(280, 50);
   resize(320, 380);
 
-  auto* mainLayout = new QVBoxLayout(this);
-  mainLayout->setContentsMargins(2, 2, 2, 2);
-  mainLayout->setSpacing(0);
+  auto* main_layout = new QVBoxLayout(this);
+  main_layout->setContentsMargins(2, 2, 2, 2);
+  main_layout->setSpacing(0);
 
   // Title Bar
-  auto* titleBar = new QWidget(this);
-  titleBar->setFixedHeight(30);
-  titleBar->setStyleSheet(
+  auto* title_bar = new QWidget(this);
+  title_bar->setFixedHeight(30);
+  title_bar->setStyleSheet(
       "background-color: #445544; border-top-left-radius: 8px; "
       "border-top-right-radius: 8px;");
-  auto* titleLayout = new QHBoxLayout(titleBar);
-  titleLayout->setContentsMargins(10, 5, 5, 5);
+  auto* title_layout = new QHBoxLayout(title_bar);
+  title_layout->setContentsMargins(10, 5, 5, 5);
 
-  title_label_ = new QLabel(tr("<b>Coordinate Points</b>"), titleBar);
+  title_label_ = new QLabel(tr("<b>Coordinate Points</b>"), title_bar);
   title_label_->setStyleSheet("color: white;");
   title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
-  titleLayout->addWidget(title_label_);
-  titleLayout->addStretch();
+  title_layout->addWidget(title_label_);
+  title_layout->addStretch();
 
-  collapse_button_ = new QToolButton(titleBar);
+  collapse_button_ = new QToolButton(title_bar);
   collapse_button_->setText("−");
   collapse_button_->setStyleSheet(
       "color: white; border: none; font-weight: bold;");
   connect(collapse_button_, &QToolButton::clicked, this,
           &CoordinatePointsWidget::ToggleCollapse);
-  titleLayout->addWidget(collapse_button_);
-  mainLayout->addWidget(titleBar);
+  title_layout->addWidget(collapse_button_);
+  main_layout->addWidget(title_bar);
 
   // Content
   content_area_ = new QWidget(this);
-  auto* contentLayout = new QVBoxLayout(content_area_);
-  contentLayout->setContentsMargins(5, 5, 5, 5);
-  contentLayout->setSpacing(4);
+  auto* content_layout = new QVBoxLayout(content_area_);
+  content_layout->setContentsMargins(5, 5, 5, 5);
+  content_layout->setSpacing(4);
 
   // Input area
   input_label_ = new QLabel(tr("(lon,lat[,alt]); ...:"), content_area_);
   input_label_->setStyleSheet("color: #ccc; font-size: 11px;");
-  contentLayout->addWidget(input_label_);
+  content_layout->addWidget(input_label_);
 
   input_points_edit_ = new QLineEdit(content_area_);
   input_points_edit_->setPlaceholderText(
@@ -61,10 +61,10 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
   input_points_edit_->setStyleSheet(
       "background: rgba(255,255,255,0.1); color: white; border: 1px solid "
       "rgba(255,255,255,0.2); border-radius: 4px; padding: 5px;");
-  contentLayout->addWidget(input_points_edit_);
+  content_layout->addWidget(input_points_edit_);
 
-  auto* btnLayout = new QHBoxLayout();
-  btnLayout->setSpacing(4);
+  auto* btn_layout = new QHBoxLayout();
+  btn_layout->setSpacing(4);
   add_btn_ = new QPushButton(tr("Add"), content_area_);
   add_btn_->setStyleSheet(
       "background-color: #007bff; color: white; border-radius: 4px; "
@@ -79,20 +79,20 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
   connect(clear_btn_, &QPushButton::clicked, this,
           &CoordinatePointsWidget::HandleClearPoints);
 
-  btnLayout->addWidget(add_btn_);
-  btnLayout->addWidget(clear_btn_);
-  contentLayout->addLayout(btnLayout);
+  btn_layout->addWidget(add_btn_);
+  btn_layout->addWidget(clear_btn_);
+  content_layout->addLayout(btn_layout);
 
   // Separator
   auto* sep = new QWidget(content_area_);
   sep->setFixedHeight(1);
   sep->setStyleSheet("background-color: rgba(255,255,255,0.15);");
-  contentLayout->addWidget(sep);
+  content_layout->addWidget(sep);
 
   // Points list
   list_label_ = new QLabel(tr("Added points:"), content_area_);
   list_label_->setStyleSheet("color: #aaa; font-size: 11px;");
-  contentLayout->addWidget(list_label_);
+  content_layout->addWidget(list_label_);
 
   points_list_ = new QListWidget(content_area_);
   points_list_->setUniformItemSizes(true);
@@ -106,21 +106,21 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
       "QListWidget::item:hover { background-color: rgba(255,255,255,0.08); } "
       "QListWidget::item:selected { background-color: rgba(255,255,255,0.15); "
       "}");
-  contentLayout->addWidget(points_list_, 1);
+  content_layout->addWidget(points_list_, 1);
 
   connect(points_list_, &QListWidget::itemDoubleClicked, this,
           &CoordinatePointsWidget::HandleItemDoubleClicked);
   connect(points_list_, &QListWidget::customContextMenuRequested, this,
           &CoordinatePointsWidget::HandleCustomContextMenu);
 
-  mainLayout->addWidget(content_area_);
+  main_layout->addWidget(content_area_);
 
   setStyleSheet(
       "CoordinatePointsWidget { background-color: rgba(50, 60, 50, 230); "
       "border-radius: 8px; border: 1px solid #556655; } ");
 
   // Listen for viewer point changes
-  connect(viewer_, &GeoViewerWidget::userPointsChanged, this,
+  connect(viewer_, &GeoViewerWidget::UserPointsChanged, this,
           &CoordinatePointsWidget::HandlePointsChanged);
 
   hide();  // Default hidden
@@ -131,7 +131,6 @@ void CoordinatePointsWidget::SetCoordinateMode(CoordinateMode mode) {
   coord_mode_ = mode;
   RetranslateUi();
 }
-
 
 void CoordinatePointsWidget::RetranslateUi() {
   title_label_->setText(tr("<b>Coordinate Points</b>"));
@@ -150,7 +149,6 @@ void CoordinatePointsWidget::RetranslateUi() {
   HandlePointsChanged();
 }
 
-
 void CoordinatePointsWidget::HandleAddPoint() {
   const auto points = CoordinateInputParser::ParseUserPoints(
       input_points_edit_->text().toStdString());
@@ -166,12 +164,12 @@ void CoordinatePointsWidget::HandleAddPoint() {
   }
   viewer_->EndUserPointsBatch();
 
-  // List is refreshed via the userPointsChanged signal
+  // List is refreshed via the UserPointsChanged signal
 }
 
 void CoordinatePointsWidget::HandleClearPoints() {
   viewer_->ClearUserPoints();
-  // List is refreshed via the userPointsChanged signal
+  // List is refreshed via the UserPointsChanged signal
 }
 
 void CoordinatePointsWidget::HandlePointsChanged() {
@@ -238,7 +236,7 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
     }
   } else if (selected == remove) {
     viewer_->RemoveUserPoint(index);
-    // List is refreshed via the userPointsChanged signal
+    // List is refreshed via the UserPointsChanged signal
   }
 }
 
@@ -268,15 +266,15 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
   layout->addWidget(checkbox);
 
   // Color swatch button
-  auto* colorBtn = new QToolButton(widget);
-  colorBtn->setFixedSize(16, 16);
+  auto* color_btn = new QToolButton(widget);
+  color_btn->setFixedSize(16, 16);
   QColor point_color =
       QColor::fromRgbF(snap.color.x(), snap.color.y(), snap.color.z());
-  colorBtn->setStyleSheet(
+  color_btn->setStyleSheet(
       QString("background-color: %1; border: 1px solid rgba(255,255,255,0.3); "
               "border-radius: 3px;")
           .arg(point_color.name()));
-  connect(colorBtn, &QToolButton::clicked, this, [this, index]() {
+  connect(color_btn, &QToolButton::clicked, this, [this, index]() {
     auto s = viewer_->GetUserPointSnapshot(index);
     QColor initial = QColor::fromRgbF(s.color.x(), s.color.y(), s.color.z());
     QColor chosen =
@@ -287,7 +285,7 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
       RefreshPointsList();
     }
   });
-  layout->addWidget(colorBtn);
+  layout->addWidget(color_btn);
 
   // Coordinate label
   QString coordText;
@@ -309,16 +307,16 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
   layout->addWidget(label, 1);
 
   // Delete button
-  auto* deleteBtn = new QToolButton(widget);
-  deleteBtn->setText("✕");
-  deleteBtn->setFixedSize(18, 18);
-  deleteBtn->setStyleSheet(
+  auto* delete_btn = new QToolButton(widget);
+  delete_btn->setText("✕");
+  delete_btn->setFixedSize(18, 18);
+  delete_btn->setStyleSheet(
       "color: #f66; border: none; font-weight: bold; font-size: 12px;");
-  connect(deleteBtn, &QToolButton::clicked, this, [this, index]() {
+  connect(delete_btn, &QToolButton::clicked, this, [this, index]() {
     viewer_->RemoveUserPoint(index);
-    // List is refreshed via the userPointsChanged signal
+    // List is refreshed via the UserPointsChanged signal
   });
-  layout->addWidget(deleteBtn);
+  layout->addWidget(delete_btn);
 
   return widget;
 }

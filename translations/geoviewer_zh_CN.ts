@@ -5,78 +5,78 @@
     <name>CoordinatePointsWidget</name>
     <message>
         <location filename="../src/app/coordinate_points_widget.cpp" line="32"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="137"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="136"/>
         <source>&lt;b&gt;Coordinate Points&lt;/b&gt;</source>
         <translation>&lt;b&gt;坐标点管理&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../src/app/coordinate_points_widget.cpp" line="54"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="139"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="138"/>
         <source>(lon,lat[,alt]); ...:</source>
         <translation>(经度,纬度[,高度]); ...:</translation>
     </message>
     <message>
         <location filename="../src/app/coordinate_points_widget.cpp" line="60"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="141"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="140"/>
         <source>(lon,lat) or (lon,lat,alt) semicolon separated</source>
         <translation>(经度,纬度) 或 (经度,纬度,高度) 用分号分隔</translation>
     </message>
     <message>
         <location filename="../src/app/coordinate_points_widget.cpp" line="68"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="147"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="146"/>
         <source>Add</source>
         <translation>添加</translation>
     </message>
     <message>
         <location filename="../src/app/coordinate_points_widget.cpp" line="75"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="148"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="147"/>
         <source>Clear All</source>
         <translation>清空所有</translation>
     </message>
     <message>
         <location filename="../src/app/coordinate_points_widget.cpp" line="93"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="149"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="148"/>
         <source>Added points:</source>
         <translation>已添加的点:</translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="143"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="142"/>
         <source>(x,y[,z]); ...:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="145"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="144"/>
         <source>(x,y) or (x,y,z) semicolon separated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="211"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="209"/>
         <source>👁 Hide point</source>
         <translation>👁 隐藏此点</translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="211"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="209"/>
         <source>👁 Show point</source>
         <translation>👁 显示此点</translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="212"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="210"/>
         <source>🎨 Change color</source>
         <translation>🎨 修改颜色</translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="213"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="211"/>
         <source>🎯 Jump to point</source>
         <translation>🎯 跳转到此点</translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="215"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="213"/>
         <source>❌ Delete point</source>
         <translation>❌ 删除此点</translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="227"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="283"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="225"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="281"/>
         <source>Select point color</source>
         <translation>选择点颜色</translation>
     </message>
@@ -103,37 +103,37 @@
 <context>
     <name>GeoViewerWidget</name>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1445"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1450"/>
         <source>📋 Copy coordinate: %1</source>
         <translation>📋 复制坐标: %1</translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1449"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1454"/>
         <source>🏷️ Copy info: %1</source>
         <translation>🏷️ 复制信息: %1</translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1450"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1455"/>
         <source>📋 Copy all</source>
         <translation>📋 复制全部</translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1453"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1458"/>
         <source>👁️ Hide current object</source>
         <translation>👁️ 隐藏当前物体</translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1454"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1459"/>
         <source>⭐ Add to favorites</source>
         <translation>⭐ 添加到收藏</translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1460"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1465"/>
         <source>🚩 Set as routing start</source>
         <translation>🚩 设置为起始routing</translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1461"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1466"/>
         <source>🏁 Set as routing end</source>
         <translation>🏁 设置为终点routing</translation>
     </message>
@@ -235,15 +235,24 @@
         <translation type="vanished">坐标: %1,%2,%3</translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="47"/>
-        <location filename="../src/app/main_window.cpp" line="52"/>
+        <location filename="../src/app/main_window.cpp" line="48"/>
+        <location filename="../src/app/main_window.cpp" line="53"/>
         <source>Coords: %1, %2, %3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="59"/>
         <source> | Type: %1 | ID: %2</source>
-        <translation> | 类型: %1 | ID: %2</translation>
+        <translation type="vanished"> | 类型: %1 | ID: %2</translation>
+    </message>
+    <message>
+        <location filename="../src/app/main_window.cpp" line="60"/>
+        <source>Obj: %1 (ID: %2)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/app/main_window.cpp" line="62"/>
+        <source> [%1]</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="74"/>
@@ -251,7 +260,7 @@
         <translation>请输入经度, 纬度 (可选高度), 用逗号或空格分隔</translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="77"/>
+        <location filename="../src/app/main_window.cpp" line="78"/>
         <source>Please enter x, y (optional z), separated by comma or space</source>
         <translation type="unfinished"></translation>
     </message>
@@ -283,13 +292,13 @@
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="133"/>
-        <location filename="../src/app/main_window.cpp" line="289"/>
+        <location filename="../src/app/main_window.cpp" line="290"/>
         <source>Jump to (lon,lat,alt):</source>
         <translation>跳转坐标 (lon,lat,alt):</translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="134"/>
-        <location filename="../src/app/main_window.cpp" line="292"/>
+        <location filename="../src/app/main_window.cpp" line="293"/>
         <source>lon,lat,alt</source>
         <translation>经度,纬度,高度</translation>
     </message>
@@ -377,23 +386,23 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="406"/>
+        <location filename="../src/app/main_window.cpp" line="407"/>
         <source>Map loaded successfully.</source>
         <translation>地图加载成功。</translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="409"/>
+        <location filename="../src/app/main_window.cpp" line="410"/>
         <source>Map loaded successfully. Invalid georeference: local coordinate mode only.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="424"/>
+        <location filename="../src/app/main_window.cpp" line="426"/>
         <source>Loading map and generating mesh...</source>
         <translation>正在加载地图并生成网格...</translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="85"/>
-        <location filename="../src/app/main_window.cpp" line="91"/>
+        <location filename="../src/app/main_window.cpp" line="86"/>
+        <location filename="../src/app/main_window.cpp" line="92"/>
         <source>Jumped to: %1, %2, %3</source>
         <translation>跳转至: %1, %2, %3</translation>
     </message>

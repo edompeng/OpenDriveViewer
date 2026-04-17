@@ -21,7 +21,7 @@ class MeasureToolController : public QObject {
   void SetActive(bool active);
 
   /// @brief 添加一个新的测量点，并在发生变化时发射信号
-  void AddPoint(const QVector3D& worldPos);
+  void AddPoint(const QVector3D& world_pos);
 
   /// @brief 清除所有已被选取的测量点
   void ClearPoints();
@@ -34,7 +34,7 @@ class MeasureToolController : public QObject {
 
  signals:
   void activeChanged(bool active);
-  void totalDistanceChanged(double distance);
+  void TotalDistanceChanged(double distance);
   void pointsChanged();
 
  private:

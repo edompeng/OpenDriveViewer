@@ -40,42 +40,43 @@ void MainWindow::HandleLoadMap() {
 }
 
 void MainWindow::HandleHoverInfo(double x, double y, double z, double lon,
-                                 double lat, double alt, const QString& typeStr,
-                                 const QString& idStr, const QString& nameStr) {
-  QString statusText;
+                                 double lat, double alt,
+                                 const QString& type_str, const QString& id_str,
+                                 const QString& name_str) {
+  QString status;
   if (coord_mode_ == CoordinateMode::kWGS84) {
-    statusText = tr("Coords: %1, %2, %3")
-                     .arg(lon, 0, 'f', 8)
-                     .arg(lat, 0, 'f', 8)
-                     .arg(alt, 0, 'f', 2);
+    status = tr("Coords: %1, %2, %3")
+                 .arg(lon, 0, 'f', 8)
+                 .arg(lat, 0, 'f', 8)
+                 .arg(alt, 0, 'f', 2);
   } else {
-    statusText = tr("Coords: %1, %2, %3")
-                     .arg(x, 0, 'f', 3)
-                     .arg(y, 0, 'f', 3)
-                     .arg(z, 0, 'f', 3);
+    status = tr("Coords: %1, %2, %3")
+                 .arg(x, 0, 'f', 3)
+                 .arg(y, 0, 'f', 3)
+                 .arg(z, 0, 'f', 3);
   }
 
-  if (!typeStr.isEmpty()) {
-    statusText += tr(" | Type: %1 | ID: %2").arg(typeStr).arg(idStr);
-    if (!nameStr.isEmpty()) {
-      statusText += QString(" | %1").arg(nameStr);
+  if (!type_str.isEmpty()) {
+    status += tr("Obj: %1 (ID: %2)").arg(type_str).arg(id_str);
+    if (!name_str.isEmpty()) {
+      status += tr(" [%1]").arg(name_str);
     }
   }
-
-  status_->showMessage(statusText);
+  status_->showMessage(status);
 }
-
 
 void MainWindow::HandleJumpToCoords() {
   const auto target = CoordinateInputParser::ParseJumpLocation(
       jump_to_coords_edit_->text().toStdString());
   if (!target.has_value()) {
     if (coord_mode_ == CoordinateMode::kWGS84) {
-      status_->showMessage(tr("Please enter longitude, latitude (optional "
-                              "altitude), separated by comma or space"));
+      status_->showMessage(
+          tr("Please enter longitude, latitude (optional "
+             "altitude), separated by comma or space"));
     } else {
-      status_->showMessage(tr("Please enter x, y (optional z), separated by "
-                              "comma or space"));
+      status_->showMessage(
+          tr("Please enter x, y (optional z), separated by "
+             "comma or space"));
     }
     return;
   }
@@ -94,7 +95,6 @@ void MainWindow::HandleJumpToCoords() {
                              .arg(target->z, 0, 'f', 3));
   }
 }
-
 
 void MainWindow::ChangeLanguage(const QString& locale) {
   qApp->removeTranslator(translator_);
@@ -269,8 +269,9 @@ QWidget* MainWindow::BuildCoordinateTools() {
   coord_mode_combo_->addItem(tr("WGS84 (lon, lat)"));
   coord_mode_combo_->addItem(tr("Local (x, y)"));
   coord_mode_combo_->setFixedWidth(140);
-  connect(coord_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, [this](int index) {
+  connect(coord_mode_combo_,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          [this](int index) {
             if (!wgs84_mode_allowed_ && index == 0) {
               const QSignalBlocker blocker(coord_mode_combo_);
               coord_mode_combo_->setCurrentIndex(1);
@@ -294,7 +295,6 @@ QWidget* MainWindow::BuildCoordinateTools() {
   connect(jump_to_coords_edit_, &QLineEdit::returnPressed, this,
           &MainWindow::HandleJumpToCoords);
   layout->addWidget(jump_to_coords_edit_);
-
 
   QWidget* layers_widget = new QWidget(container);
   QHBoxLayout* layers_layout = new QHBoxLayout(layers_widget);
@@ -334,23 +334,23 @@ QWidget* MainWindow::BuildCoordinateTools() {
 }
 
 void MainWindow::SetupConnections() {
-  connect(view_, &GeoViewerWidget::elementSelected, layer_control_,
+  connect(view_, &GeoViewerWidget::ElementSelected, layer_control_,
           &LayerControlWidget::SelectElement);
-  connect(layer_control_, &LayerControlWidget::itemHovered, view_,
+  connect(layer_control_, &LayerControlWidget::ItemHovered, view_,
           &GeoViewerWidget::HighlightElement);
-  connect(view_, &GeoViewerWidget::addFavoriteRequested, favorites_panel_,
+  connect(view_, &GeoViewerWidget::AddFavoriteRequested, favorites_panel_,
           &FavoritesWidget::AddFavorite);
-  connect(view_, &GeoViewerWidget::routingStartRequested, routing_panel_,
+  connect(view_, &GeoViewerWidget::RoutingStartRequested, routing_panel_,
           &RoutingWidget::SetStartLane);
-  connect(view_, &GeoViewerWidget::routingEndRequested, routing_panel_,
+  connect(view_, &GeoViewerWidget::RoutingEndRequested, routing_panel_,
           &RoutingWidget::SetEndLane);
-  connect(view_, &GeoViewerWidget::hoverInfoChanged, this,
+  connect(view_, &GeoViewerWidget::HoverInfoChanged, this,
           &MainWindow::HandleHoverInfo);
-  connect(view_, &GeoViewerWidget::measureModeChanged, measure_action_,
+  connect(view_, &GeoViewerWidget::MeasureModeChanged, measure_action_,
           &QAction::setChecked);
   connect(measure_action_, &QAction::toggled, view_,
           &GeoViewerWidget::SetMeasureMode);
-  connect(view_, &GeoViewerWidget::totalDistanceChanged, this,
+  connect(view_, &GeoViewerWidget::TotalDistanceChanged, this,
           [this](double dist) {
             statusBar()->showMessage(
                 tr("Total Distance: %1 m").arg(dist, 0, 'f', 2));
@@ -399,14 +399,16 @@ void MainWindow::SetupConnections() {
 
     status_->showMessage(data.IsWgs84ModeAvailable()
                              ? tr("Map ready. Building layer tree...")
-                             : tr("Map ready in local coordinates mode. Building layer tree..."));
+                             : tr("Map ready in local coordinates mode. "
+                                  "Building layer tree..."));
     QTimer::singleShot(0, this, [this]() {
       layer_control_->UpdateTree();
       if (wgs84_mode_allowed_) {
         status_->showMessage(tr("Map loaded successfully."));
       } else {
         status_->showMessage(
-            tr("Map loaded successfully. Invalid georeference: local coordinate mode only."));
+            tr("Map loaded successfully. Invalid georeference: local "
+               "coordinate mode only."));
       }
     });
   });
@@ -431,11 +433,11 @@ void MainWindow::ApplyCoordinateModePolicy(bool georeference_valid) {
 
   if (coord_mode_combo_) {
     const QSignalBlocker blocker(coord_mode_combo_);
-    coord_mode_combo_->setItemData(
-        0, wgs84_mode_allowed_ ? QVariant() : 0, Qt::UserRole - 1);
+    coord_mode_combo_->setItemData(0, wgs84_mode_allowed_ ? QVariant() : 0,
+                                   Qt::UserRole - 1);
     coord_mode_combo_->setEnabled(wgs84_mode_allowed_);
-    coord_mode_combo_->setCurrentIndex(coord_mode_ == CoordinateMode::kWGS84 ? 0
-                                                                              : 1);
+    coord_mode_combo_->setCurrentIndex(
+        coord_mode_ == CoordinateMode::kWGS84 ? 0 : 1);
   }
 
   coordinate_points_panel_->SetCoordinateMode(coord_mode_);

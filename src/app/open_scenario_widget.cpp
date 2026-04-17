@@ -90,7 +90,7 @@ OpenScenarioWidget::OpenScenarioWidget(GeoViewerWidget* viewer, QWidget* parent)
           &OpenScenarioWidget::HandleItemDoubleClicked);
   connect(tree_, &QTreeWidget::customContextMenuRequested, this,
           &OpenScenarioWidget::HandleCustomContextMenu);
-  connect(viewer_, &GeoViewerWidget::openScenarioDataChanged, this,
+  connect(viewer_, &GeoViewerWidget::OpenScenarioDataChanged, this,
           &OpenScenarioWidget::RebuildTree);
 
   setMinimumSize(280, 50);

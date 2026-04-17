@@ -14,9 +14,9 @@ void FloatingPanelWidget::changeEvent(QEvent* event) {
 }
 
 bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,
-                                         int draggableHeight) {
+                                         int draggable_height) {
   if (event->button() != Qt::LeftButton ||
-      event->position().y() >= draggableHeight) {
+      event->position().y() >= draggable_height) {
     return false;
   }
 
@@ -25,13 +25,13 @@ bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,
   return true;
 }
 
-bool FloatingPanelWidget::DragPanel(QMouseEvent* event, bool clampToParent) {
+bool FloatingPanelWidget::DragPanel(QMouseEvent* event, bool clamp_to_parent) {
   if (drag_origin_.isNull() || !(event->buttons() & Qt::LeftButton)) {
     return false;
   }
 
   QPoint new_pos = event->globalPosition().toPoint() - drag_origin_;
-  if (clampToParent && parentWidget()) {
+  if (clamp_to_parent && parentWidget()) {
     new_pos.setX(std::clamp(new_pos.x(), 0,
                             std::max(0, parentWidget()->width() - width())));
     new_pos.setY(std::clamp(new_pos.y(), 0,
@@ -45,8 +45,8 @@ bool FloatingPanelWidget::DragPanel(QMouseEvent* event, bool clampToParent) {
 
 void FloatingPanelWidget::TogglePanelCollapse(QWidget* content, bool& collapsed,
                                               QToolButton* button,
-                                              int collapsedHeight,
-                                              int expandedHeight) {
+                                              int collapsed_height,
+                                              int expanded_height) {
   collapsed = !collapsed;
   if (content) {
     content->setVisible(!collapsed);
@@ -56,14 +56,14 @@ void FloatingPanelWidget::TogglePanelCollapse(QWidget* content, bool& collapsed,
   }
 
   if (collapsed) {
-    setFixedHeight(collapsedHeight);
+    setFixedHeight(collapsed_height);
     return;
   }
 
-  if (expandedHeight > 0) {
-    setMinimumHeight(expandedHeight);
+  if (expanded_height > 0) {
+    setMinimumHeight(expanded_height);
     setMaximumHeight(QWIDGETSIZE_MAX);
-    resize(width(), expandedHeight);
+    resize(width(), expanded_height);
   } else {
     setFixedHeight(QWIDGETSIZE_MAX);
     adjustSize();
@@ -81,12 +81,12 @@ void FloatingPanelWidget::mousePressEvent(QMouseEvent* event) {
   // bar. Find the widget below this one at the same position.
   QWidget* parent = parentWidget();
   if (parent) {
-    QPoint posInParent = mapToParent(event->position().toPoint());
+    QPoint pos_in_parent = mapToParent(event->position().toPoint());
 
     // Temporarily make this widget transparent to mouse events to find what's
     // below
     this->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    QWidget* below = parent->childAt(posInParent);
+    QWidget* below = parent->childAt(pos_in_parent);
     this->setAttribute(Qt::WA_TransparentForMouseEvents, false);
 
     if (below && below != parent) {

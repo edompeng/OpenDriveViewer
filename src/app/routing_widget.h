@@ -22,8 +22,8 @@ class RoutingWidget : public FloatingPanelWidget {
   explicit RoutingWidget(GeoViewerWidget* viewer, QWidget* parent = nullptr);
 
  public slots:
-  void SetStartLane(const QString& lanePos);
-  void SetEndLane(const QString& lanePos);
+  void SetStartLane(const QString& lane_pos);
+  void SetEndLane(const QString& lane_pos);
 
  protected:
   void RetranslateUi() override;

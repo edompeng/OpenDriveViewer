@@ -1,6 +1,4 @@
-#ifndef GEO_VIEWER_H
-#define GEO_VIEWER_H
-
+#pragma once
 #ifdef __APPLE__
 #  define GL_SILENCE_DEPRECATION
 #endif
@@ -16,6 +14,7 @@
 #include <QMouseEvent>
 #include <QOpenGLExtraFunctions>
 #include <QOpenGLWidget>
+#include <QString>
 #include <QVector3D>
 #include <QWheelEvent>
 #include <array>
@@ -26,7 +25,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <QString>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -71,7 +69,7 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void SetMap(std::shared_ptr<odr::OpenDriveMap> map);
   void SetMapAndMesh(std::shared_ptr<odr::OpenDriveMap> map,
                      odr::RoadNetworkMesh mesh,
-                     const JunctionClusterResult* junctionGrouping = nullptr);
+                     const JunctionClusterResult* junction_grouping = nullptr);
 
   std::shared_ptr<odr::OpenDriveMap> GetMap() const { return map_; }
   const JunctionClusterResult& GetJunctionClusterResult() const {
@@ -100,7 +98,9 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   bool IsRightHandTraffic() const { return right_hand_traffic_; }
   void SetCoordinateMode(CoordinateMode mode) { coord_mode_ = mode; }
   CoordinateMode GetCoordinateMode() const { return coord_mode_; }
-  void SetGeoreferenceAvailable(bool available) { georeference_valid_ = available; }
+  void SetGeoreferenceAvailable(bool available) {
+    georeference_valid_ = available;
+  }
   bool IsGeoreferenceAvailable() const { return georeference_valid_; }
 
   // ---------- Batch Updates ----------
@@ -116,7 +116,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void AddUserPoint(double lon, double lat,
                     std::optional<double> alt = std::nullopt);
   // Add point using local coordinates (x, y, z)
-  void AddUserPointLocal(double x, double y, std::optional<double> z = std::nullopt);
+  void AddUserPointLocal(double x, double y,
+                         std::optional<double> z = std::nullopt);
   void BeginUserPointsBatch();
   void EndUserPointsBatch();
   void RemoveUserPoint(int index);
@@ -125,7 +126,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void ClearUserPoints();
   int UserPointCount() const;
   struct UserPointSnapshot {
-    UserPointSnapshot() : lon(0), lat(0), alt(0), x(0), y(0), z(0), visible(false) {}
+    UserPointSnapshot()
+        : lon(0), lat(0), alt(0), x(0), y(0), z(0), visible(false) {}
     UserPointSnapshot(double lo, double la, double al, double px, double py,
                       double pz, bool vis, const QVector3D& col)
         : lon(lo),
@@ -146,14 +148,14 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   UserPointSnapshot GetUserPointSnapshot(int index) const;
 
   // ---- Coordinate Transformation ----
-  void RendererToLocalCoord(const QVector3D& rendererPos, double& lx,
+  void RendererToLocalCoord(const QVector3D& renderer_pos, double& lx,
                             double& ly, double& lz) const;
   bool LocalToWGS84(double lx, double ly, double lz, double& lon, double& lat,
                     double& alt) const;
 
   // ---------- Highlighting ----------
-  void HighlightElement(const QString& roadId, TreeNodeType type,
-                        const QString& elementId);
+  void HighlightElement(const QString& road_id, TreeNodeType type,
+                        const QString& element_id);
   void ClearHighlight();
 
   // ---------- OpenScenario ----------
@@ -186,21 +188,20 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
                                   const QString& entity_name);
 
  signals:
-  void hoverInfoChanged(double x, double y, double z,
-                        double lon, double lat, double alt,
-                        const QString& typeStr, const QString& idStr,
-                        const QString& nameStr);
-  void elementSelected(const QString& roadId, TreeNodeType type,
-                       const QString& elementId);
-  void addFavoriteRequested(const QString& roadId, TreeNodeType type,
-                            const QString& elementId, const QString& name);
-  void routingStartRequested(const QString& lanePos);
-  void routingEndRequested(const QString& lanePos);
-  void elementVisibilityChanged(const QString& id, bool visible);
-  void totalDistanceChanged(double distance);
-  void measureModeChanged(bool active);
-  void openScenarioDataChanged();
-  void userPointsChanged();
+  void HoverInfoChanged(double x, double y, double z, double lon, double lat,
+                        double alt, const QString& type_str,
+                        const QString& id_str, const QString& name_str);
+  void ElementSelected(const QString& road_id, TreeNodeType type,
+                       const QString& element_id);
+  void AddFavoriteRequested(const QString& road_id, TreeNodeType type,
+                            const QString& element_id, const QString& name);
+  void RoutingStartRequested(const QString& lane_pos);
+  void RoutingEndRequested(const QString& lane_pos);
+  void ElementVisibilityChanged(const QString& id, bool visible);
+  void TotalDistanceChanged(double distance);
+  void MeasureModeChanged(bool active);
+  void OpenScenarioDataChanged();
+  void UserPointsChanged();
 
  protected:
   void initializeGL() override;
@@ -215,12 +216,11 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
  public slots:
   void SearchObject(LayerType type, const QString& id);
-  void CenterOnElement(const QString& roadId, TreeNodeType type,
-                       const QString& elementId);
-  void HighlightRoads(const QStringList& roadIds);
+  void CenterOnElement(const QString& road_id, TreeNodeType type,
+                       const QString& element_id);
+  void HighlightRoads(const QStringList& road_ids);
   void JumpToLocation(double lon, double lat, double alt = 0.0);
   void JumpToLocalLocation(double x, double y, double z = 0.0);
-
 
   // ---------- Multi-routing Support ----------
   int AddRoutingPath(const std::vector<odr::LaneKey>& path,
@@ -287,7 +287,7 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
 
   // ---- Scene Construction Private Methods ----
   void GenerateRefLinePoints(std::shared_ptr<odr::OpenDriveMap> map,
-                             std::vector<float>& allVertices,
+                             std::vector<float>& all_vertices,
                              std::map<std::string, VertRange>& ranges);
   void BuildJunctionPlanes();
   void ResetSceneData();
@@ -311,10 +311,11 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
       size_t vertex_index) const;
   QVector3D LocalToRendererPoint(const odr::Vec3D& point) const;
   QVector3D JunctionGroupCenter(const JunctionClusterGroup& group) const;
-  void RenderJunctionOverlay(QPainter& painter, const QMatrix4x4& viewProj);
-  void RenderOpenScenarioOverlay(QPainter& painter, const QMatrix4x4& viewProj);
-  bool IsJunctionVisible(const QString& groupId,
-                         const QString& junctionId = QString()) const;
+  void RenderJunctionOverlay(QPainter& painter, const QMatrix4x4& view_proj);
+  void RenderOpenScenarioOverlay(QPainter& painter,
+                                 const QMatrix4x4& view_proj);
+  bool IsJunctionVisible(const QString& group_id,
+                         const QString& junction_id = QString()) const;
   std::optional<QVector3D> ResolveOpenScenarioPosition(
       const OpenScenarioPosition& pos) const;
   QString DescribeOpenScenarioPosition(const OpenScenarioPosition& pos) const;
@@ -329,9 +330,9 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   QString selected_junction_group_id_;
   QString selected_junction_id_;
 
-  bool IsElementActuallyVisible(const std::string& roadId,
+  bool IsElementActuallyVisible(const std::string& road_id,
                                 const std::string& group,
-                                const std::string& elementId) const;
+                                const std::string& element_id) const;
 
   // ---- Spatial Grid Acceleration ----
   std::vector<SceneGridBox> grid_boxes_;
@@ -340,8 +341,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void StartSpatialGridBuild();
   std::vector<SceneGridBox> BuildSpatialGridData(
       std::shared_ptr<odr::OpenDriveMap> map,
-      const odr::RoadNetworkMesh& networkMesh, const odr::Mesh3D& junctionMesh,
-      int gridResolution) const;
+      const odr::RoadNetworkMesh& network_mesh,
+      const odr::Mesh3D& junction_mesh, int grid_resolution) const;
   QFutureWatcher<std::vector<SceneGridBox>>* spatial_grid_watcher_ = nullptr;
   std::uint64_t spatial_grid_generation_ = 0;
   bool spatial_grid_ready_ = false;
@@ -349,14 +350,14 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   // ---- Ray Detection ----
   struct PickResult {
     LayerType layer;
-    size_t vertexIndex;
+    size_t vertex_index;
   };
   std::optional<PickResult> GetPickedVertexIndex(int x, int y);
   void UpdateHoverInfo(int x, int y);
-  float closestT = 0.0f;
+  float closest_t_ = 0.0f;
 
-  bool GetWorldPosAt(int x, int y, QVector3D& worldPos,
-                     std::optional<PickResult>& pickedIdx);
+  bool GetWorldPosAt(int x, int y, QVector3D& world_pos,
+                     std::optional<PickResult>& picked_idx);
   std::vector<uint32_t> CollectIndicesForCachedElements(
       LayerType type, const std::vector<SceneCachedElement>& elements,
       const std::vector<uint32_t>& source_indices,
@@ -364,7 +365,7 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void SetHighlightIndices(const std::vector<uint32_t>& indices, LayerType type,
                            bool with_neighbors = false,
                            size_t reference_vertex = 0);
-  void UpdateHighlight(size_t vertIdx, LayerType type);
+  void UpdateHighlight(size_t vert_idx, LayerType type);
 
   // ---- Rendering Helpers ----
   void UploadMesh3D(const odr::Mesh3D& mesh, LayerType type);
@@ -381,9 +382,14 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   // ---- User Annotation Points ----
   struct UserPoint {
     UserPoint(const QVector3D& pos, double lo, double la, double al)
-        : worldPos(pos), lon(lo), lat(la), alt(al), visible(true), color(1.0f, 0.3f, 0.3f) {}
+        : world_pos(pos),
+          lon(lo),
+          lat(la),
+          alt(al),
+          visible(true),
+          color(1.0f, 0.3f, 0.3f) {}
 
-    QVector3D worldPos;
+    QVector3D world_pos;
     double lon, lat, alt;
     bool visible;
     QVector3D color;
@@ -416,5 +422,3 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   std::vector<OpenScenarioFileState> open_scenarios_;
   QString hovered_open_scenario_entity_key_;
 };
-
-#endif  // GEO_VIEWER_H

@@ -4,38 +4,38 @@
 
 FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {
-  auto* mainLayout = new QVBoxLayout(this);
-  mainLayout->setContentsMargins(2, 2, 2, 2);
-  mainLayout->setSpacing(0);
+  auto* main_layout = new QVBoxLayout(this);
+  main_layout->setContentsMargins(2, 2, 2, 2);
+  main_layout->setSpacing(0);
 
   // Title Bar
-  auto* titleBar = new QWidget(this);
-  titleBar->setStyleSheet(
+  auto* title_bar = new QWidget(this);
+  title_bar->setStyleSheet(
       "background-color: #544; border-top-left-radius: 8px; "
       "border-top-right-radius: 8px;");
-  auto* titleLayout = new QHBoxLayout(titleBar);
-  titleLayout->setContentsMargins(10, 5, 5, 5);
+  auto* title_layout = new QHBoxLayout(title_bar);
+  title_layout->setContentsMargins(10, 5, 5, 5);
 
-  title_label_ = new QLabel(tr("<b>Favorites</b>"), titleBar);
+  title_label_ = new QLabel(tr("<b>Favorites</b>"), title_bar);
   title_label_->setStyleSheet("color: white;");
   title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
-  titleLayout->addWidget(title_label_);
-  titleLayout->addStretch();
+  title_layout->addWidget(title_label_);
+  title_layout->addStretch();
 
-  collapse_button_ = new QToolButton(titleBar);
+  collapse_button_ = new QToolButton(title_bar);
   collapse_button_->setText("−");
   collapse_button_->setStyleSheet(
       "color: white; border: none; font-weight: bold;");
   connect(collapse_button_, &QToolButton::clicked, this,
           &FavoritesWidget::ToggleCollapse);
-  titleLayout->addWidget(collapse_button_);
+  title_layout->addWidget(collapse_button_);
 
-  mainLayout->addWidget(titleBar);
+  main_layout->addWidget(title_bar);
 
   // Content Area
   content_area_ = new QWidget(this);
-  auto* contentLayout = new QVBoxLayout(content_area_);
-  contentLayout->setContentsMargins(0, 0, 0, 0);
+  auto* content_layout = new QVBoxLayout(content_area_);
+  content_layout->setContentsMargins(0, 0, 0, 0);
 
   list_ = new QListWidget(content_area_);
   list_->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -56,8 +56,8 @@ FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)
   connect(list_, &QListWidget::itemDoubleClicked, this,
           &FavoritesWidget::HandleItemDoubleClicked);
 
-  contentLayout->addWidget(list_);
-  mainLayout->addWidget(content_area_);
+  content_layout->addWidget(list_);
+  main_layout->addWidget(content_area_);
 
   setStyleSheet(
       "FavoritesWidget { background-color: rgba(70, 60, 60, 230); "
@@ -90,13 +90,13 @@ void FavoritesWidget::ToggleCollapse() {
   TogglePanelCollapse(content_area_, is_collapsed_, collapse_button_, 30, 400);
 }
 
-void FavoritesWidget::AddFavorite(const QString& roadId, TreeNodeType type,
-                                  const QString& elementId,
+void FavoritesWidget::AddFavorite(const QString& road_id, TreeNodeType type,
+                                  const QString& element_id,
                                   const QString& name) {
   const std::string display_name_std = BuildFavoriteDisplayName(
-      roadId.toStdString(), type, elementId.toStdString(), name.toStdString());
+      road_id.toStdString(), type, element_id.toStdString(), name.toStdString());
   const QString display_name = QString::fromStdString(display_name_std);
-  if (!favorites_.Add(roadId.toStdString(), type, elementId.toStdString(),
+  if (!favorites_.Add(road_id.toStdString(), type, element_id.toStdString(),
                       display_name_std)) {
     return;
   }

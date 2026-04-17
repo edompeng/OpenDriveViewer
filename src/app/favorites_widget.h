@@ -26,8 +26,8 @@ class FavoritesWidget : public FloatingPanelWidget {
   void mouseReleaseEvent(QMouseEvent* event) override;
 
  public slots:
-  void AddFavorite(const QString& roadId, TreeNodeType type,
-                   const QString& elementId, const QString& name = "");
+  void AddFavorite(const QString& road_id, TreeNodeType type,
+                   const QString& element_id, const QString& name = "");
   void ToggleCollapse();
 
  private slots:

@@ -11,14 +11,14 @@ struct SceneIndexRange {
 };
 
 struct SceneCachedElement {
-  std::string roadKey;
-  std::string groupKey;
-  std::string elementKey;
+  std::string road_key;
+  std::string group_key;
+  std::string element_key;
   std::vector<SceneIndexRange> ranges;
 };
 
 struct SceneOutlineElement : SceneCachedElement {
-  bool isDashed = false;
+  bool is_dashed = false;
 };
 
 struct SceneMeshChunk {

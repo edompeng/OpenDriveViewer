@@ -152,7 +152,7 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
     const std::function<bool(uint32_t)>& is_layer_visible,
     const std::function<bool(uint32_t, uint32_t, size_t)>&
         is_triangle_visible) {
-  float closest_t = std::numeric_limits<float>::max();
+  float closest_t_ = std::numeric_limits<float>::max();
   std::optional<SpatialPickResult> result;
 
   for (const auto& box : grid_boxes) {
@@ -160,7 +160,7 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
     float box_hit = 0.0f;
     if (!RayIntersectsSceneAabb(ray_origin, ray_dir, box.min_bound,
                                 box.max_bound, box_hit) ||
-        box_hit > closest_t) {
+        box_hit > closest_t_) {
       continue;
     }
 
@@ -185,8 +185,8 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
       float t = 0.0f, u = 0.0f, v = 0.0f;
       if (RayIntersectsSceneTriangle(ray_origin, ray_dir, v0, v1, v2, t, u,
                                      v) &&
-          t < closest_t) {
-        closest_t = t;
+          t < closest_t_) {
+        closest_t_ = t;
         result = SpatialPickResult{layer_tag, idx0, t};
       }
     }

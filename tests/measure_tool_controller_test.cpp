@@ -57,7 +57,7 @@ TEST_CASE(
 
   int distanceEmitCount = 0;
   double lastDistance = -1.0;
-  QObject::connect(&ctrl, &MeasureToolController::totalDistanceChanged,
+  QObject::connect(&ctrl, &MeasureToolController::TotalDistanceChanged,
                    [&](double d) {
                      distanceEmitCount++;
                      lastDistance = d;
@@ -94,7 +94,7 @@ TEST_CASE("MeasureToolController - ClearPoints removes all and emits signals",
 
   int distanceEmitCount = 0;
   double lastDistance = -1.0;
-  QObject::connect(&ctrl, &MeasureToolController::totalDistanceChanged,
+  QObject::connect(&ctrl, &MeasureToolController::TotalDistanceChanged,
                    [&](double d) {
                      distanceEmitCount++;
                      lastDistance = d;

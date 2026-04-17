@@ -21,12 +21,12 @@ class LayerControlWidget : public FloatingPanelWidget {
   explicit LayerControlWidget(GeoViewerWidget* viewer,
                               QWidget* parent = nullptr);
   void UpdateTree();
-  void SelectElement(const QString& roadId, TreeNodeType type,
-                     const QString& elementId);
+  void SelectElement(const QString& road_id, TreeNodeType type,
+                     const QString& element_id);
 
  signals:
-  void itemHovered(const QString& roadId, TreeNodeType type,
-                   const QString& elementId);
+  void ItemHovered(const QString& road_id, TreeNodeType type,
+                   const QString& element_id);
 
  protected:
   void RetranslateUi() override;
@@ -66,17 +66,17 @@ class LayerControlWidget : public FloatingPanelWidget {
   void RequestSnapshotBuild();
   void PopulateTopLevelItems();
   void EnsureChildrenLoaded(QTreeWidgetItem* item);
-  void PopulateRoadChildren(QTreeWidgetItem* roadItem,
+  void PopulateRoadChildren(QTreeWidgetItem* road_item,
                             const RoadSnapshot& road);
-  void PopulateJunctionChildren(QTreeWidgetItem* groupItem,
+  void PopulateJunctionChildren(QTreeWidgetItem* group_item,
                                 const JunctionGroupSnapshot& group);
   Qt::CheckState ComputeRoadCheckState(const RoadSnapshot& road) const;
   Qt::CheckState ComputeJunctionGroupCheckState(
       const JunctionGroupSnapshot& group) const;
-  bool EnsureItemMaterialized(const QString& roadId, TreeNodeType type,
-                              const QString& elementId);
+  bool EnsureItemMaterialized(const QString& road_id, TreeNodeType type,
+                              const QString& element_id);
   QString GetFullId(QTreeWidgetItem* item);
-  QString BuildFullId(const QString& roadId, TreeNodeType type,
-                      const QString& elementId) const;
+  QString BuildFullId(const QString& road_id, TreeNodeType type,
+                      const QString& element_id) const;
   QString GetRoadId(QTreeWidgetItem* item);
 };

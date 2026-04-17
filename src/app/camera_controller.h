@@ -31,8 +31,8 @@ class CameraController {
   /// 处理右键旋转
   void OrbitByDelta(const QPoint& delta);
   /// 滚轮缩放，同时以 worldFocusPoint 为锚点
-  void ZoomToward(float wheelDelta, float maxDist,
-                  const QVector3D& worldFocusPoint, bool hasFocusPoint);
+  void ZoomToward(float wheel_delta, float max_dist,
+                  const QVector3D& world_focus_point, bool has_focus_point);
 
   // --- 定位 ---
   void SetTarget(const QVector3D& target) { target_ = target; }
@@ -41,7 +41,7 @@ class CameraController {
   void SetYaw(float y) { yaw_ = y; }
 
   /// 根据mesh包围盒计算初始相机位置
-  void FitToScene(const QVector3D& sceneMin, const QVector3D& sceneMax);
+  void FitToScene(const QVector3D& scene_min, const QVector3D& scene_max);
 
   /// 从 min/max 中计算 mesh_radius（供 paintGL 近远裁剪面使用）
   float MeshRadius() const { return mesh_radius_; }

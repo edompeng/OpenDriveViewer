@@ -30,38 +30,38 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   snapshot_watcher_ =
       new QFutureWatcher<std::shared_ptr<LayerTreeSnapshot>>(this);
   // UI Setup
-  auto* mainLayout = new QVBoxLayout(this);
-  mainLayout->setContentsMargins(2, 2, 2, 2);
-  mainLayout->setSpacing(0);
+  auto* main_layout = new QVBoxLayout(this);
+  main_layout->setContentsMargins(2, 2, 2, 2);
+  main_layout->setSpacing(0);
 
   // Title Bar (Handle for dragging)
-  auto* titleBar = new QWidget(this);
-  titleBar->setStyleSheet(
+  auto* title_bar = new QWidget(this);
+  title_bar->setStyleSheet(
       "background-color: #333; border-top-left-radius: 8px; "
       "border-top-right-radius: 8px;");
-  auto* titleLayout = new QHBoxLayout(titleBar);
-  titleLayout->setContentsMargins(10, 5, 5, 5);
+  auto* title_layout = new QHBoxLayout(title_bar);
+  title_layout->setContentsMargins(10, 5, 5, 5);
 
-  title_label_ = new QLabel(tr("<b>Layer Control</b>"), titleBar);
+  title_label_ = new QLabel(tr("<b>Layer Control</b>"), title_bar);
   title_label_->setStyleSheet("color: white;");
   title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
-  titleLayout->addWidget(title_label_);
-  titleLayout->addStretch();
+  title_layout->addWidget(title_label_);
+  title_layout->addStretch();
 
-  collapse_button_ = new QToolButton(titleBar);
+  collapse_button_ = new QToolButton(title_bar);
   collapse_button_->setText("−");
   collapse_button_->setStyleSheet(
       "color: white; border: none; font-weight: bold;");
   connect(collapse_button_, &QToolButton::clicked, this,
           &LayerControlWidget::ToggleCollapse);
-  titleLayout->addWidget(collapse_button_);
+  title_layout->addWidget(collapse_button_);
 
-  mainLayout->addWidget(titleBar);
+  main_layout->addWidget(title_bar);
 
   // Content Area
   content_area_ = new QWidget(this);
-  auto* contentLayout = new QVBoxLayout(content_area_);
-  contentLayout->setContentsMargins(5, 5, 5, 5);
+  auto* content_layout = new QVBoxLayout(content_area_);
+  content_layout->setContentsMargins(5, 5, 5, 5);
 
   search_edit_ = new QLineEdit(content_area_);
   search_edit_->setPlaceholderText(tr("Search ID..."));
@@ -69,16 +69,16 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
       "background: rgba(255,255,255,0.1); color: white; border: 1px solid "
       "rgba(255,255,255,0.2); border-radius: 4px; padding: 2px 5px; "
       "margin-bottom: 5px;");
-  contentLayout->addWidget(search_edit_);
+  content_layout->addWidget(search_edit_);
   connect(search_edit_, &QLineEdit::returnPressed, this,
           &LayerControlWidget::HandleSearch);
 
   tree_ = new QTreeWidget(content_area_);
   tree_->setHeaderHidden(true);
   tree_->setContextMenuPolicy(Qt::CustomContextMenu);
-  contentLayout->addWidget(tree_);
+  content_layout->addWidget(tree_);
 
-  mainLayout->addWidget(content_area_);
+  main_layout->addWidget(content_area_);
 
   setStyleSheet(
       "LayerControlWidget { background-color: rgba(50, 50, 55, 230); "
@@ -101,7 +101,7 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
 
   tree_->setMouseTracking(true);
 
-  connect(viewer_, &GeoViewerWidget::elementVisibilityChanged, this,
+  connect(viewer_, &GeoViewerWidget::ElementVisibilityChanged, this,
           &LayerControlWidget::HandleElementVisibilityChanged);
 
   setMinimumSize(250, 50);
@@ -118,14 +118,14 @@ void LayerControlWidget::RequestSnapshotBuild() {
   if (!map) return;
 
   const auto generation = ++snapshot_generation_;
-  const JunctionClusterResult junctionResult =
+  const JunctionClusterResult junction_result =
       viewer_->GetJunctionClusterResult();
 
   tree_->setUpdatesEnabled(false);
   tree_->clear();
   items_by_full_id_.clear();
-  auto* loadingItem = CreateRootItem(tree_);
-  loadingItem->setText(0, "Building layer tree...");
+  auto* loading_item = CreateRootItem(tree_);
+  loading_item->setText(0, "Building layer tree...");
   tree_->setUpdatesEnabled(true);
 
   connect(
@@ -138,8 +138,8 @@ void LayerControlWidget::RequestSnapshotBuild() {
       },
       Qt::SingleShotConnection);
 
-  snapshot_watcher_->setFuture(QtConcurrent::run([map, junctionResult]() {
-    return BuildLayerTreeSnapshot(map, junctionResult);
+  snapshot_watcher_->setFuture(QtConcurrent::run([map, junction_result]() {
+    return BuildLayerTreeSnapshot(map, junction_result);
   }));
 }
 
@@ -173,50 +173,50 @@ void LayerControlWidget::PopulateTopLevelItems() {
   road_snapshot_index_by_id_.clear();
   junction_snapshot_index_by_id_.clear();
 
-  auto registerItem = [&](QTreeWidgetItem* item, const QString& fullId) {
-    if (!fullId.isEmpty()) items_by_full_id_.insert(fullId, item);
+  auto registerItem = [&](QTreeWidgetItem* item, const QString& full_id) {
+    if (!full_id.isEmpty()) items_by_full_id_.insert(full_id, item);
   };
 
-  auto* junctionRoot = CreateRootItem(tree_);
-  junctionRoot->setText(0, tr("Junctions (%1 groups / %2 junctions)")
+  auto* junction_root = CreateRootItem(tree_);
+  junction_root->setText(0, tr("Junctions (%1 groups / %2 junctions)")
                                .arg((int)tree_snapshot_->junction_groups.size())
                                .arg(tree_snapshot_->junction_count));
-  junctionRoot->setData(0, Qt::UserRole, (int)TreeNodeType::kJunctionGroup);
-  junctionRoot->setData(0, Qt::UserRole + 1, "__junction_root__");
+  junction_root->setData(0, Qt::UserRole, (int)TreeNodeType::kJunctionGroup);
+  junction_root->setData(0, Qt::UserRole + 1, "__junction_root__");
   // The state will be computed from children via UpdateParentCheckState below
 
   for (int index = 0; index < (int)tree_snapshot_->junction_groups.size();
        ++index) {
     const auto& group = tree_snapshot_->junction_groups[index];
-    auto* groupItem = CreateChildItem(junctionRoot);
-    groupItem->setText(0, group.label);
-    groupItem->setData(0, Qt::UserRole, (int)TreeNodeType::kJunctionGroup);
-    groupItem->setData(0, Qt::UserRole + 1, group.group_id);
-    groupItem->setData(0, Qt::UserRole + 3, false);
-    groupItem->setCheckState(0, ComputeJunctionGroupCheckState(group));
+    auto* group_item = CreateChildItem(junction_root);
+    group_item->setText(0, group.label);
+    group_item->setData(0, Qt::UserRole, (int)TreeNodeType::kJunctionGroup);
+    group_item->setData(0, Qt::UserRole + 1, group.group_id);
+    group_item->setData(0, Qt::UserRole + 3, false);
+    group_item->setCheckState(0, ComputeJunctionGroupCheckState(group));
     if (!group.junction_ids.empty()) {
-      groupItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+      group_item->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
     }
-    registerItem(groupItem, "JG:" + group.group_id);
+    registerItem(group_item, "JG:" + group.group_id);
     junction_snapshot_index_by_id_.insert(group.group_id, index);
   }
-  if (junctionRoot->childCount() == 0) {
-    junctionRoot->setCheckState(
+  if (junction_root->childCount() == 0) {
+    junction_root->setCheckState(
         0, viewer_->IsLayerVisible(LayerType::kJunctions) ? Qt::Checked
                                                           : Qt::Unchecked);
   }
-  registerItem(junctionRoot, "L:kJunctions");
+  registerItem(junction_root, "L:kJunctions");
 
   for (int index = 0; index < (int)tree_snapshot_->roads.size(); ++index) {
     const auto& road = tree_snapshot_->roads[index];
-    auto* roadItem = CreateRootItem(tree_);
-    roadItem->setText(0, tr("Road %1").arg(road.road_id));
-    roadItem->setData(0, Qt::UserRole, (int)TreeNodeType::kRoad);
-    roadItem->setData(0, Qt::UserRole + 1, road.road_id);
-    roadItem->setData(0, Qt::UserRole + 3, false);
-    roadItem->setCheckState(0, ComputeRoadCheckState(road));
-    roadItem->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
-    registerItem(roadItem, "R:" + road.road_id);
+    auto* road_item = CreateRootItem(tree_);
+    road_item->setText(0, tr("Road %1").arg(road.road_id));
+    road_item->setData(0, Qt::UserRole, (int)TreeNodeType::kRoad);
+    road_item->setData(0, Qt::UserRole + 1, road.road_id);
+    road_item->setData(0, Qt::UserRole + 3, false);
+    road_item->setCheckState(0, ComputeRoadCheckState(road));
+    road_item->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+    registerItem(road_item, "R:" + road.road_id);
     road_snapshot_index_by_id_.insert(road.road_id, index);
   }
 
@@ -226,74 +226,74 @@ void LayerControlWidget::PopulateTopLevelItems() {
 }
 
 void LayerControlWidget::PopulateJunctionChildren(
-    QTreeWidgetItem* groupItem, const JunctionGroupSnapshot& group) {
+    QTreeWidgetItem* group_item, const JunctionGroupSnapshot& group) {
   const auto& hidden = viewer_->HiddenElements();
-  const bool parentVisible = groupItem->checkState(0) != Qt::Unchecked;
-  for (const auto& junctionId : group.junction_ids) {
-    const QString fullId = "J:" + group.group_id + ":" + junctionId;
-    auto* junctionItem = CreateChildItem(groupItem);
-    junctionItem->setText(0, tr("Junction %1").arg(junctionId));
-    junctionItem->setData(0, Qt::UserRole, (int)TreeNodeType::kJunction);
-    junctionItem->setData(0, Qt::UserRole + 1, junctionId);
-    junctionItem->setData(0, Qt::UserRole + 2, group.group_id);
+  const bool parentVisible = group_item->checkState(0) != Qt::Unchecked;
+  for (const auto& junction_id : group.junction_ids) {
+    const QString full_id = "J:" + group.group_id + ":" + junction_id;
+    auto* junction_item = CreateChildItem(group_item);
+    junction_item->setText(0, tr("Junction %1").arg(junction_id));
+    junction_item->setData(0, Qt::UserRole, (int)TreeNodeType::kJunction);
+    junction_item->setData(0, Qt::UserRole + 1, junction_id);
+    junction_item->setData(0, Qt::UserRole + 2, group.group_id);
     const bool visible =
-        parentVisible && hidden.find(fullId.toStdString()) == hidden.end();
-    junctionItem->setCheckState(0, visible ? Qt::Checked : Qt::Unchecked);
-    items_by_full_id_.insert(fullId, junctionItem);
+        parentVisible && hidden.find(full_id.toStdString()) == hidden.end();
+    junction_item->setCheckState(0, visible ? Qt::Checked : Qt::Unchecked);
+    items_by_full_id_.insert(full_id, junction_item);
   }
 }
 
-void LayerControlWidget::PopulateRoadChildren(QTreeWidgetItem* roadItem,
+void LayerControlWidget::PopulateRoadChildren(QTreeWidgetItem* road_item,
                                               const RoadSnapshot& road) {
-  const QString roadId = road.road_id;
+  const QString road_id = road.road_id;
   const auto& hidden = viewer_->HiddenElements();
-  const bool roadVisible = roadItem->checkState(0) != Qt::Unchecked;
-  auto childState = [&](const QString& fullId) {
-    return (roadVisible && hidden.find(fullId.toStdString()) == hidden.end())
+  const bool road_visible = road_item->checkState(0) != Qt::Unchecked;
+  auto childState = [&](const QString& full_id) {
+    return (road_visible && hidden.find(full_id.toStdString()) == hidden.end())
                ? Qt::Checked
                : Qt::Unchecked;
   };
 
-  auto* refLineItem = CreateChildItem(roadItem);
-  refLineItem->setText(0, tr("Reference Line"));
-  refLineItem->setData(0, Qt::UserRole, (int)TreeNodeType::kRefLine);
-  refLineItem->setData(0, Qt::UserRole + 1, "refline");
-  refLineItem->setCheckState(0, childState("E:" + roadId + ":refline"));
-  items_by_full_id_.insert("E:" + roadId + ":refline", refLineItem);
+  auto* ref_line_item = CreateChildItem(road_item);
+  ref_line_item->setText(0, tr("Reference Line"));
+  ref_line_item->setData(0, Qt::UserRole, (int)TreeNodeType::kRefLine);
+  ref_line_item->setData(0, Qt::UserRole + 1, "refline");
+  ref_line_item->setCheckState(0, childState("E:" + road_id + ":refline"));
+  items_by_full_id_.insert("E:" + road_id + ":refline", ref_line_item);
 
   for (const auto& lane : road.lanes) {
-    const QString fullId = "E:" + roadId + ":lane:" + lane.element_id;
-    auto* laneItem = CreateChildItem(roadItem);
-    laneItem->setText(0, lane.label);
-    laneItem->setData(0, Qt::UserRole, (int)TreeNodeType::kLane);
-    laneItem->setData(0, Qt::UserRole + 1, lane.element_id);
-    laneItem->setCheckState(0, childState(fullId));
-    items_by_full_id_.insert(fullId, laneItem);
+    const QString full_id = "E:" + road_id + ":lane:" + lane.element_id;
+    auto* lane_item = CreateChildItem(road_item);
+    lane_item->setText(0, lane.label);
+    lane_item->setData(0, Qt::UserRole, (int)TreeNodeType::kLane);
+    lane_item->setData(0, Qt::UserRole + 1, lane.element_id);
+    lane_item->setCheckState(0, childState(full_id));
+    items_by_full_id_.insert(full_id, lane_item);
   }
 
   auto addGroup = [&](const char* label, TreeNodeType groupType,
-                      const QString& groupName,
+                      const QString& group_name,
                       const std::vector<RoadChildSnapshot>& entries) {
     if (entries.empty()) return;
-    const QString groupFullId = "G:" + roadId + ":" + groupName;
-    auto* groupItem = CreateChildItem(roadItem);
-    groupItem->setText(0, label);
-    groupItem->setData(0, Qt::UserRole, (int)groupType);
-    groupItem->setData(0, Qt::UserRole + 1, groupName);
+    const QString groupFullId = "G:" + road_id + ":" + group_name;
+    auto* group_item = CreateChildItem(road_item);
+    group_item->setText(0, label);
+    group_item->setData(0, Qt::UserRole, (int)groupType);
+    group_item->setData(0, Qt::UserRole + 1, group_name);
     const bool groupVisible =
-        roadVisible && hidden.find(groupFullId.toStdString()) == hidden.end();
-    groupItem->setCheckState(0, groupVisible ? Qt::Checked : Qt::Unchecked);
-    items_by_full_id_.insert(groupFullId, groupItem);
+        road_visible && hidden.find(groupFullId.toStdString()) == hidden.end();
+    group_item->setCheckState(0, groupVisible ? Qt::Checked : Qt::Unchecked);
+    items_by_full_id_.insert(groupFullId, group_item);
     for (const auto& entry : entries) {
-      const QString fullId = BuildFullId(roadId, entry.type, entry.element_id);
-      auto* child = CreateChildItem(groupItem);
+      const QString full_id = BuildFullId(road_id, entry.type, entry.element_id);
+      auto* child = CreateChildItem(group_item);
       child->setText(0, entry.label);
       child->setData(0, Qt::UserRole, (int)entry.type);
       child->setData(0, Qt::UserRole + 1, entry.element_id);
       const bool visible =
-          groupVisible && hidden.find(fullId.toStdString()) == hidden.end();
+          groupVisible && hidden.find(full_id.toStdString()) == hidden.end();
       child->setCheckState(0, visible ? Qt::Checked : Qt::Unchecked);
-      items_by_full_id_.insert(fullId, child);
+      items_by_full_id_.insert(full_id, child);
     }
   };
 
@@ -310,20 +310,20 @@ void LayerControlWidget::EnsureChildrenLoaded(QTreeWidgetItem* item) {
   if (item->data(0, Qt::UserRole + 3).toBool()) return;
 
   QSignalBlocker blocker(tree_);
-  const bool prevPopulating = is_populating_;
+  const bool prev_populating = is_populating_;
   is_populating_ = true;
   const TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
   if (type == TreeNodeType::kRoad) {
-    const QString roadId = item->data(0, Qt::UserRole + 1).toString();
-    auto it = road_snapshot_index_by_id_.find(roadId);
+    const QString road_id = item->data(0, Qt::UserRole + 1).toString();
+    auto it = road_snapshot_index_by_id_.find(road_id);
     if (it != road_snapshot_index_by_id_.end()) {
       PopulateRoadChildren(item, tree_snapshot_->roads[it.value()]);
       item->setData(0, Qt::UserRole + 3, true);
     }
   } else if (type == TreeNodeType::kJunctionGroup) {
-    const QString groupId = item->data(0, Qt::UserRole + 1).toString();
-    if (groupId != "__junction_root__") {
-      auto it = junction_snapshot_index_by_id_.find(groupId);
+    const QString group_id = item->data(0, Qt::UserRole + 1).toString();
+    if (group_id != "__junction_root__") {
+      auto it = junction_snapshot_index_by_id_.find(group_id);
       if (it != junction_snapshot_index_by_id_.end()) {
         PopulateJunctionChildren(item,
                                  tree_snapshot_->junction_groups[it.value()]);
@@ -331,28 +331,28 @@ void LayerControlWidget::EnsureChildrenLoaded(QTreeWidgetItem* item) {
       }
     }
   }
-  is_populating_ = prevPopulating;
+  is_populating_ = prev_populating;
 }
 
-bool LayerControlWidget::EnsureItemMaterialized(const QString& roadId,
+bool LayerControlWidget::EnsureItemMaterialized(const QString& road_id,
                                                 TreeNodeType type,
-                                                const QString& elementId) {
-  const QString fullId = BuildFullId(roadId, type, elementId);
-  if (items_by_full_id_.contains(fullId)) return true;
+                                                const QString& element_id) {
+  const QString full_id = BuildFullId(road_id, type, element_id);
+  if (items_by_full_id_.contains(full_id)) return true;
 
   if (type == TreeNodeType::kJunction) {
-    auto groupIt = items_by_full_id_.find("JG:" + roadId);
+    auto groupIt = items_by_full_id_.find("JG:" + road_id);
     if (groupIt != items_by_full_id_.end()) {
       EnsureChildrenLoaded(groupIt.value());
     }
   } else if (type != TreeNodeType::kRoad &&
              type != TreeNodeType::kJunctionGroup) {
-    auto roadIt = items_by_full_id_.find("R:" + roadId);
+    auto roadIt = items_by_full_id_.find("R:" + road_id);
     if (roadIt != items_by_full_id_.end()) {
       EnsureChildrenLoaded(roadIt.value());
     }
   }
-  return items_by_full_id_.contains(fullId);
+  return items_by_full_id_.contains(full_id);
 }
 
 void LayerControlWidget::HandleItemExpanded(QTreeWidgetItem* item) {
@@ -362,12 +362,12 @@ void LayerControlWidget::HandleItemExpanded(QTreeWidgetItem* item) {
 
 void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item, int column) {
   if (!item) {
-    emit itemHovered("", TreeNodeType::kRoad, "");
+    emit ItemHovered("", TreeNodeType::kRoad, "");
     return;
   }
 
   TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
-  QString roadId, elementId;
+  QString road_id, element_id;
 
   if (type == TreeNodeType::kRoad || type == TreeNodeType::kSection ||
       type == TreeNodeType::kLane || type == TreeNodeType::kObject ||
@@ -375,15 +375,15 @@ void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item, int column) {
       type == TreeNodeType::kJunction || type == TreeNodeType::kJunctionGroup ||
       type == TreeNodeType::kObjectGroup || type == TreeNodeType::kLightGroup ||
       type == TreeNodeType::kSignGroup) {
-    roadId = GetRoadId(item);
-    elementId = item->data(0, Qt::UserRole + 1).toString();
+    road_id = GetRoadId(item);
+    element_id = item->data(0, Qt::UserRole + 1).toString();
   } else {
     // Groups or other non-mappable items
-    emit itemHovered("", TreeNodeType::kRoad, "");
+    emit ItemHovered("", TreeNodeType::kRoad, "");
     return;
   }
 
-  emit itemHovered(roadId, type, elementId);
+  emit ItemHovered(road_id, type, element_id);
 }
 
 void LayerControlWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
@@ -391,7 +391,7 @@ void LayerControlWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
   if (!item) return;
 
   TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
-  QString roadId, elementId;
+  QString road_id, element_id;
 
   if (type == TreeNodeType::kRoad || type == TreeNodeType::kSection ||
       type == TreeNodeType::kLane || type == TreeNodeType::kObject ||
@@ -399,30 +399,30 @@ void LayerControlWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
       type == TreeNodeType::kJunction || type == TreeNodeType::kJunctionGroup ||
       type == TreeNodeType::kObjectGroup || type == TreeNodeType::kLightGroup ||
       type == TreeNodeType::kSignGroup) {
-    roadId = GetRoadId(item);
-    elementId = item->data(0, Qt::UserRole + 1).toString();
+    road_id = GetRoadId(item);
+    element_id = item->data(0, Qt::UserRole + 1).toString();
   } else {
     // Groups or other non-mappable items
     return;
   }
 
-  viewer_->CenterOnElement(roadId, type, elementId);
+  viewer_->CenterOnElement(road_id, type, element_id);
 }
 
 void LayerControlWidget::leaveEvent(QEvent* event) {
-  emit itemHovered("", TreeNodeType::kRoad, "");
+  emit ItemHovered("", TreeNodeType::kRoad, "");
   QWidget::leaveEvent(event);
 }
 
 void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int column) {
   if (is_populating_) return;
 
-  const TreeNodeType changedType =
+  const TreeNodeType changed_type =
       (TreeNodeType)item->data(0, Qt::UserRole).toInt();
-  const QString changedId = item->data(0, Qt::UserRole + 1).toString();
+  const QString changed_id = item->data(0, Qt::UserRole + 1).toString();
 
-  if (changedType == TreeNodeType::kJunctionGroup &&
-      changedId == "__junction_root__") {
+  if (changed_type == TreeNodeType::kJunctionGroup &&
+      changed_id == "__junction_root__") {
     // If user interacts with junction root, populate all children
     bool was_populating = is_populating_;
     is_populating_ = true;
@@ -432,8 +432,8 @@ void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int column) {
       }
     }
     is_populating_ = was_populating;
-  } else if (changedType == TreeNodeType::kJunctionGroup ||
-             changedType == TreeNodeType::kRoad) {
+  } else if (changed_type == TreeNodeType::kJunctionGroup ||
+             changed_type == TreeNodeType::kRoad) {
     // If user interacts with an unpopulated group/road, populate it
     if (!item->data(0, Qt::UserRole + 3).toBool()) {
       bool was_populating = is_populating_;
@@ -444,15 +444,15 @@ void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int column) {
   }
 
   auto ApplyVisibility = [&](QTreeWidgetItem* current) {
-    const QString fullId = GetFullId(current);
-    if (!fullId.isEmpty()) {
+    const QString full_id = GetFullId(current);
+    if (!full_id.isEmpty()) {
       const bool visible = (current->checkState(0) != Qt::Unchecked);
-      if (fullId.startsWith("L:")) {
-        if (fullId == "L:kJunctions") {
+      if (full_id.startsWith("L:")) {
+        if (full_id == "L:kJunctions") {
           viewer_->SetLayerVisible(LayerType::kJunctions, visible);
         }
       } else {
-        viewer_->SetElementVisible(fullId, visible);
+        viewer_->SetElementVisible(full_id, visible);
       }
     }
   };
@@ -486,50 +486,50 @@ void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int column) {
 
 QString LayerControlWidget::GetFullId(QTreeWidgetItem* item) {
   TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
-  QString elementId = item->data(0, Qt::UserRole + 1).toString();
+  QString element_id = item->data(0, Qt::UserRole + 1).toString();
 
-  if (type == TreeNodeType::kRoad) return "R:" + elementId;
+  if (type == TreeNodeType::kRoad) return "R:" + element_id;
   if (type == TreeNodeType::kJunctionGroup) {
-    if (elementId == "__junction_root__") return "L:kJunctions";
-    return "JG:" + elementId;
+    if (element_id == "__junction_root__") return "L:kJunctions";
+    return "JG:" + element_id;
   }
   if (type == TreeNodeType::kJunction) {
-    const QString groupId = item->data(0, Qt::UserRole + 2).toString();
-    return "J:" + groupId + ":" + elementId;
+    const QString group_id = item->data(0, Qt::UserRole + 2).toString();
+    return "J:" + group_id + ":" + element_id;
   }
 
   QTreeWidgetItem* parent = item->parent();
   if (!parent) return "";
 
   if (type == TreeNodeType::kLane) {
-    QString roadId = GetRoadId(item);
-    const QStringList parts = elementId.split(':');
+    QString road_id = GetRoadId(item);
+    const QStringList parts = element_id.split(':');
     if (parts.size() != 2) return "";
-    return "E:" + roadId + ":lane:" + parts[0] + ":" + parts[1];
+    return "E:" + road_id + ":lane:" + parts[0] + ":" + parts[1];
   }
 
   if (type == TreeNodeType::kRefLine) {
-    QString roadId = GetRoadId(item);
-    return "E:" + roadId + ":refline";
+    QString road_id = GetRoadId(item);
+    return "E:" + road_id + ":refline";
   }
 
   if (type == TreeNodeType::kSectionGroup ||
       type == TreeNodeType::kObjectGroup || type == TreeNodeType::kLightGroup ||
       type == TreeNodeType::kSignGroup) {
-    QString roadId = GetRoadId(item);
-    return "G:" + roadId + ":" + elementId;
+    QString road_id = GetRoadId(item);
+    return "G:" + road_id + ":" + element_id;
   }
 
-  QString roadId = GetRoadId(item);
-  QString groupName = parent->data(0, Qt::UserRole + 1).toString();
+  QString road_id = GetRoadId(item);
+  QString group_name = parent->data(0, Qt::UserRole + 1).toString();
 
-  return "E:" + roadId + ":" + groupName + ":" + elementId;
+  return "E:" + road_id + ":" + group_name + ":" + element_id;
 }
 
-QString LayerControlWidget::BuildFullId(const QString& roadId,
+QString LayerControlWidget::BuildFullId(const QString& road_id,
                                         TreeNodeType type,
-                                        const QString& elementId) const {
-  return BuildLayerTreeFullId(roadId, type, elementId);
+                                        const QString& element_id) const {
+  return BuildLayerTreeFullId(road_id, type, element_id);
 }
 
 void LayerControlWidget::HandleElementVisibilityChanged(const QString& id,
@@ -569,8 +569,8 @@ void LayerControlWidget::HandleSearch() {
                                group.group_id);
         break;
       }
-      for (const auto& junctionId : group.junction_ids) {
-        if (junctionId == query) {
+      for (const auto& junction_id : group.junction_ids) {
+        if (junction_id == query) {
           EnsureItemMaterialized(group.group_id, TreeNodeType::kJunction,
                                  query);
           break;
@@ -617,20 +617,20 @@ void LayerControlWidget::HandleSearch() {
 
       // Trigger camera jump
       TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
-      QString roadId;
+      QString road_id;
       if (type == TreeNodeType::kRoad || type == TreeNodeType::kJunctionGroup) {
-        roadId = id;
+        road_id = id;
       } else {
-        QTreeWidgetItem* roadItem = item->parent();
-        while (roadItem &&
-               (TreeNodeType)roadItem->data(0, Qt::UserRole).toInt() !=
+        QTreeWidgetItem* road_item = item->parent();
+        while (road_item &&
+               (TreeNodeType)road_item->data(0, Qt::UserRole).toInt() !=
                    TreeNodeType::kRoad) {
-          roadItem = roadItem->parent();
+          road_item = road_item->parent();
         }
-        if (roadItem) roadId = roadItem->data(0, Qt::UserRole + 1).toString();
+        if (road_item) road_id = road_item->data(0, Qt::UserRole + 1).toString();
       }
-      if (!roadId.isEmpty()) {
-        viewer_->CenterOnElement(roadId, type, id);
+      if (!road_id.isEmpty()) {
+        viewer_->CenterOnElement(road_id, type, id);
       }
       return;
     }
@@ -646,7 +646,7 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   if (!item) return;
 
   QMenu menu(this);
-  QAction* toggleVisible = menu.addAction(
+  QAction* toggle_visible = menu.addAction(
       item->checkState(0) == Qt::Checked ? tr("Hide") : tr("Show"));
 
   TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
@@ -671,30 +671,30 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   }
 
   QAction* selected = menu.exec(tree_->viewport()->mapToGlobal(pos));
-  if (selected == toggleVisible) {
+  if (selected == toggle_visible) {
     item->setCheckState(
         0, item->checkState(0) == Qt::Checked ? Qt::Unchecked : Qt::Checked);
   } else if (selected == goTo) {
-    QString roadId = GetRoadId(item);
-    QString elementId = item->data(0, Qt::UserRole + 1).toString();
-    viewer_->CenterOnElement(roadId, type, elementId);
+    QString road_id = GetRoadId(item);
+    QString element_id = item->data(0, Qt::UserRole + 1).toString();
+    viewer_->CenterOnElement(road_id, type, element_id);
   } else if (selected == addFav) {
-    QString roadId = GetRoadId(item);
-    QString elementId = item->data(0, Qt::UserRole + 1).toString();
-    emit viewer_->addFavoriteRequested(roadId, type, elementId, item->text(0));
+    QString road_id = GetRoadId(item);
+    QString element_id = item->data(0, Qt::UserRole + 1).toString();
+    emit viewer_->AddFavoriteRequested(road_id, type, element_id, item->text(0));
   } else if (selected == setStart || selected == setEnd) {
-    QString roadId = GetRoadId(item);
-    QString dataStr = item->data(0, Qt::UserRole + 1).toString();
-    const QStringList parts = dataStr.split(':', Qt::SkipEmptyParts);
+    QString road_id = GetRoadId(item);
+    QString data_str = item->data(0, Qt::UserRole + 1).toString();
+    const QStringList parts = data_str.split(':', Qt::SkipEmptyParts);
     const QString s0 = parts.value(0);
     const QString laneId = parts.value(1);
 
-    if (!roadId.isEmpty() && !s0.isEmpty() && !laneId.isEmpty()) {
-      QString lanePos = QString("%1/%2/%3").arg(roadId).arg(s0).arg(laneId);
+    if (!road_id.isEmpty() && !s0.isEmpty() && !laneId.isEmpty()) {
+      QString lane_pos = QString("%1/%2/%3").arg(road_id).arg(s0).arg(laneId);
       if (selected == setStart)
-        emit viewer_->routingStartRequested(lanePos.trimmed());
+        emit viewer_->RoutingStartRequested(lane_pos.trimmed());
       else
-        emit viewer_->routingEndRequested(lanePos.trimmed());
+        emit viewer_->RoutingEndRequested(lane_pos.trimmed());
     }
   }
 }
@@ -715,11 +715,11 @@ void LayerControlWidget::mouseReleaseEvent(QMouseEvent* event) {
   FloatingPanelWidget::mouseReleaseEvent(event);
 }
 
-void LayerControlWidget::SelectElement(const QString& roadId, TreeNodeType type,
-                                       const QString& elementId) {
-  EnsureItemMaterialized(roadId, type, elementId);
-  const QString fullId = BuildFullId(roadId, type, elementId);
-  auto it = items_by_full_id_.find(fullId);
+void LayerControlWidget::SelectElement(const QString& road_id, TreeNodeType type,
+                                       const QString& element_id) {
+  EnsureItemMaterialized(road_id, type, element_id);
+  const QString full_id = BuildFullId(road_id, type, element_id);
+  auto it = items_by_full_id_.find(full_id);
   if (it == items_by_full_id_.end()) return;
 
   QTreeWidgetItem* item = it.value();

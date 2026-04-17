@@ -29,8 +29,8 @@ class MainWindow : public QMainWindow {
  private slots:
   void HandleLoadMap();
   void HandleHoverInfo(double x, double y, double z, double lon, double lat,
-                       double alt, const QString &typeStr,
-                       const QString &idStr, const QString &nameStr);
+                       double alt, const QString &type_str,
+                       const QString &id_str, const QString &name_str);
 
   void HandleJumpToCoords();
   void ToggleWidgetVisibility(QWidget *widget, bool visible);

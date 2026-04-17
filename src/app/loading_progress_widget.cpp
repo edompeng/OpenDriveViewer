@@ -6,33 +6,33 @@ LoadingProgressWidget::LoadingProgressWidget(QWidget* parent)
     : FloatingPanelWidget(parent) {
   setFixedSize(300, 100);
 
-  auto* mainLayout = new QVBoxLayout(this);
-  mainLayout->setContentsMargins(2, 2, 2, 2);
-  mainLayout->setSpacing(0);
+  auto* main_layout = new QVBoxLayout(this);
+  main_layout->setContentsMargins(2, 2, 2, 2);
+  main_layout->setSpacing(0);
 
   // Title Bar (Handle for dragging)
-  auto* titleBar = new QWidget(this);
-  titleBar->setFixedHeight(30);
-  titleBar->setStyleSheet(
+  auto* title_bar = new QWidget(this);
+  title_bar->setFixedHeight(30);
+  title_bar->setStyleSheet(
       "background-color: #556; border-top-left-radius: 8px; "
       "border-top-right-radius: 8px;");
-  auto* titleLayout = new QHBoxLayout(titleBar);
-  titleLayout->setContentsMargins(10, 5, 10, 5);
+  auto* title_layout = new QHBoxLayout(title_bar);
+  title_layout->setContentsMargins(10, 5, 10, 5);
 
-  auto* title = new QLabel("<b>Loading Project...</b>", titleBar);
+  auto* title = new QLabel("<b>Loading Project...</b>", title_bar);
   title->setStyleSheet("color: white;");
   title->setAttribute(Qt::WA_TransparentForMouseEvents);
-  titleLayout->addWidget(title);
-  titleLayout->addStretch();
-  mainLayout->addWidget(titleBar);
+  title_layout->addWidget(title);
+  title_layout->addStretch();
+  main_layout->addWidget(title_bar);
 
   content_area_ = new QWidget(this);
-  auto* contentLayout = new QVBoxLayout(content_area_);
-  contentLayout->setContentsMargins(10, 5, 10, 10);
+  auto* content_layout = new QVBoxLayout(content_area_);
+  content_layout->setContentsMargins(10, 5, 10, 10);
 
   label_ = new QLabel("Initializing...", content_area_);
   label_->setStyleSheet("color: #eee;");
-  contentLayout->addWidget(label_);
+  content_layout->addWidget(label_);
 
   progress_bar_ = new QProgressBar(content_area_);
   progress_bar_->setRange(0, 0);  // Indeterminate by default
@@ -42,9 +42,9 @@ LoadingProgressWidget::LoadingProgressWidget(QWidget* parent)
       "QProgressBar { background: rgba(0,0,0,0.3); border: 1px solid #444; "
       "border-radius: 4px; } "
       "QProgressBar::chunk { background-color: #007bff; border-radius: 3px; }");
-  contentLayout->addWidget(progress_bar_);
+  content_layout->addWidget(progress_bar_);
 
-  mainLayout->addWidget(content_area_);
+  main_layout->addWidget(content_area_);
 
   setStyleSheet(
       "LoadingProgressWidget { background-color: rgba(55, 55, 65, 230); "

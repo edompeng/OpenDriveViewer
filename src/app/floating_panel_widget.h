@@ -15,11 +15,11 @@ class FloatingPanelWidget : public QWidget {
   virtual void RetranslateUi() {}
   void changeEvent(QEvent* event) override;
 
-  bool BeginPanelDrag(QMouseEvent* event, int draggableHeight = 30);
-  bool DragPanel(QMouseEvent* event, bool clampToParent);
+  bool BeginPanelDrag(QMouseEvent* event, int draggable_height = 30);
+  bool DragPanel(QMouseEvent* event, bool clamp_to_parent);
   void TogglePanelCollapse(QWidget* content, bool& collapsed,
-                           QToolButton* button, int collapsedHeight,
-                           int expandedHeight);
+                           QToolButton* button, int collapsed_height,
+                           int expanded_height);
 
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;

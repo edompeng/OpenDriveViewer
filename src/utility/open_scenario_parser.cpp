@@ -54,7 +54,7 @@ std::optional<OpenScenarioPosition> ParsePositionNode(
     if (const auto child = node.child("RoadPosition")) {
       OpenScenarioPosition p;
       p.type = OpenScenarioPositionType::kRoad;
-      p.road_id = AttrString(child, "roadId");
+      p.road_id = AttrString(child, "road_id");
       p.s = AttrDouble(child, "s");
       p.t = AttrDouble(child, "t");
       return p;
@@ -62,7 +62,7 @@ std::optional<OpenScenarioPosition> ParsePositionNode(
     if (const auto child = node.child("LanePosition")) {
       OpenScenarioPosition p;
       p.type = OpenScenarioPositionType::kLane;
-      p.road_id = AttrString(child, "roadId");
+      p.road_id = AttrString(child, "road_id");
       p.s = AttrDouble(child, "s");
       p.offset = AttrDouble(child, "offset");
       p.lane_id = AttrInt(child, "laneId");
@@ -83,7 +83,7 @@ std::optional<OpenScenarioPosition> ParsePositionNode(
   if (IsName(node, "RoadPosition")) {
     OpenScenarioPosition p;
     p.type = OpenScenarioPositionType::kRoad;
-    p.road_id = AttrString(node, "roadId");
+    p.road_id = AttrString(node, "road_id");
     p.s = AttrDouble(node, "s");
     p.t = AttrDouble(node, "t");
     return p;
@@ -91,7 +91,7 @@ std::optional<OpenScenarioPosition> ParsePositionNode(
   if (IsName(node, "LanePosition")) {
     OpenScenarioPosition p;
     p.type = OpenScenarioPositionType::kLane;
-    p.road_id = AttrString(node, "roadId");
+    p.road_id = AttrString(node, "road_id");
     p.s = AttrDouble(node, "s");
     p.offset = AttrDouble(node, "offset");
     p.lane_id = AttrInt(node, "laneId");

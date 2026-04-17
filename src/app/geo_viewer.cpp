@@ -72,7 +72,7 @@ void GeoViewerWidget::CommitUserPointsChange(bool buffer_dirty) {
     UpdateUserPointsBuffers();
   }
   update();
-  emit userPointsChanged();
+  emit UserPointsChanged();
 }
 
 void GeoViewerWidget::BeginUserPointsBatch() { ++user_points_batch_depth_; }
@@ -88,7 +88,7 @@ void GeoViewerWidget::EndUserPointsBatch() {
   user_points_batch_dirty_ = false;
   user_points_batch_buffer_dirty_ = false;
   update();
-  emit userPointsChanged();
+  emit UserPointsChanged();
 }
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
@@ -120,7 +120,7 @@ void GeoViewerWidget::SetElementVisible(const QString& id, bool visible) {
   if (batch_update_count_ == 0) {
     UpdateMeshIndices();
   }
-  emit elementVisibilityChanged(id, visible);
+  emit ElementVisibilityChanged(id, visible);
 }
 
 bool GeoViewerWidget::IsElementVisible(const QString& id) const {
@@ -128,14 +128,14 @@ bool GeoViewerWidget::IsElementVisible(const QString& id) const {
 }
 
 bool GeoViewerWidget::IsElementActuallyVisible(
-    const std::string& roadId, const std::string& group,
-    const std::string& elementId) const {
-  if (hidden_elements_.count("R:" + roadId)) return false;
+    const std::string& road_id, const std::string& group,
+    const std::string& element_id) const {
+  if (hidden_elements_.count("R:" + road_id)) return false;
   if (!group.empty()) {
-    if (hidden_elements_.count("G:" + roadId + ":" + group)) return false;
-    std::string fullId = "E:" + roadId + ":" + group;
-    if (!elementId.empty()) fullId += ":" + elementId;
-    if (hidden_elements_.count(fullId)) return false;
+    if (hidden_elements_.count("G:" + road_id + ":" + group)) return false;
+    std::string full_id = "E:" + road_id + ":" + group;
+    if (!element_id.empty()) full_id += ":" + element_id;
+    if (hidden_elements_.count(full_id)) return false;
   }
   return true;
 }
@@ -161,9 +161,9 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
     // Renderer coords: X -> lx, Y -> lz, Z -> ly (mirrored if RHT)
     double ry = ly;
     if (right_hand_traffic_) ry = -ry;
-    QVector3D worldPos(static_cast<float>(lx), static_cast<float>(lz),
-                       static_cast<float>(ry));
-    user_points_.push_back(UserPoint(worldPos, lon, lat, *alt));
+    QVector3D world_pos(static_cast<float>(lx), static_cast<float>(lz),
+                        static_cast<float>(ry));
+    user_points_.push_back(UserPoint(world_pos, lon, lat, *alt));
   } else {
     // Raycast mode: cast a vertical ray downward at the (lx, ly) position
     // to find all lane surface intersections.
@@ -207,8 +207,8 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
 
     if (user_points_.size() == points_before) {
       // Fallback: place at ground level (Y=0) if no hit or grid not ready
-      QVector3D worldPos(static_cast<float>(lx), 0.0f, static_cast<float>(ry));
-      user_points_.push_back(UserPoint(worldPos, lon, lat, 0.0));
+      QVector3D world_pos(static_cast<float>(lx), 0.0f, static_cast<float>(ry));
+      user_points_.push_back(UserPoint(world_pos, lon, lat, 0.0));
     }
   }
 
@@ -221,15 +221,15 @@ void GeoViewerWidget::RemoveUserPoint(int index) {
   CommitUserPointsChange(true);
 }
 
-void GeoViewerWidget::AddUserPointLocal(double x, double y, std::optional<double> z) {
+void GeoViewerWidget::AddUserPointLocal(double x, double y,
+                                        std::optional<double> z) {
   if (!map_) return;
   const double local_z = z.value_or(0.0);
   double ry = y;
   if (right_hand_traffic_) ry = -ry;
 
   auto resolve_lonlat = [&](double local_x, double local_y, double local_alt,
-                            double& out_lon, double& out_lat,
-                            double& out_alt) {
+                            double& out_lon, double& out_lat, double& out_alt) {
     out_lon = local_x;
     out_lat = local_y;
     out_alt = local_alt;
@@ -310,13 +310,13 @@ int GeoViewerWidget::UserPointCount() const {
 
 GeoViewerWidget::UserPointSnapshot GeoViewerWidget::GetUserPointSnapshot(
     int index) const {
-  if (index < 0 || index >= (int)user_points_.size()) return UserPointSnapshot();
+  if (index < 0 || index >= (int)user_points_.size())
+    return UserPointSnapshot();
   const auto& p = user_points_[index];
   double lx, ly, lz;
-  RendererToLocalCoord(p.worldPos, lx, ly, lz);
+  RendererToLocalCoord(p.world_pos, lx, ly, lz);
   return UserPointSnapshot(p.lon, p.lat, p.alt, lx, ly, lz, p.visible, p.color);
 }
-
 
 void GeoViewerWidget::UpdateUserPointsBuffers() {
   makeCurrent();
@@ -330,9 +330,9 @@ void GeoViewerWidget::UpdateUserPointsBuffers() {
   std::vector<float> data;
   data.reserve(user_points_.size() * 3);
   for (const auto& p : user_points_) {
-    data.push_back(p.worldPos.x());
-    data.push_back(p.worldPos.y());
-    data.push_back(p.worldPos.z());
+    data.push_back(p.world_pos.x());
+    data.push_back(p.world_pos.y());
+    data.push_back(p.world_pos.z());
   }
 
   glBindVertexArray(user_points_vao_);
@@ -389,19 +389,19 @@ void GeoViewerWidget::UpdateMeshIndices() {
 
   auto collectLayerData = [&](LayerType type,
                               const std::vector<SceneCachedElement>& elements,
-                              const std::vector<uint32_t>& originalIndices,
-                              const odr::Mesh3D* baseMesh) {
-    if (!baseMesh) return;
+                              const std::vector<uint32_t>& original_indices,
+                              const odr::Mesh3D* base_mesh) {
+    if (!base_mesh) return;
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
-        elements, originalIndices, layers_[(int)type].vertex_offset, *baseMesh,
-        [this](const SceneCachedElement& element) {
-          if (hidden_elements_.count(element.roadKey)) return false;
-          if (!element.groupKey.empty() &&
-              hidden_elements_.count(element.groupKey)) {
+        elements, original_indices, layers_[(int)type].vertex_offset,
+        *base_mesh, [this](const SceneCachedElement& element) {
+          if (hidden_elements_.count(element.road_key)) return false;
+          if (!element.group_key.empty() &&
+              hidden_elements_.count(element.group_key)) {
             return false;
           }
-          if (!element.elementKey.empty() &&
-              hidden_elements_.count(element.elementKey)) {
+          if (!element.element_key.empty() &&
+              hidden_elements_.count(element.element_key)) {
             return false;
           }
           return true;
@@ -427,29 +427,29 @@ void GeoViewerWidget::UpdateMeshIndices() {
   }));
   futures.push_back(QtConcurrent::run([&]() {
     // Junction groups need a specialized predicate: individual junctions use
-    // "J:groupId:junctionId" keys which the generic predicate doesn't check.
+    // "J:group_id:junction_id" keys which the generic predicate doesn't check.
     // We only hide a group's mesh if the group itself is hidden OR ALL its
     // individual junctions are hidden.
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
         junction_element_items_, junction_mesh_.indices,
         layers_[(int)LayerType::kJunctions].vertex_offset, junction_mesh_,
         [this](const SceneCachedElement& element) {
-          // Check group-level visibility (JG:groupId)
-          if (hidden_elements_.count(element.roadKey)) return false;
+          // Check group-level visibility (JG:group_id)
+          if (hidden_elements_.count(element.road_key)) return false;
 
-          // Extract groupId from roadKey "JG:xxx"
-          if (element.roadKey.size() <= 3) return true;
-          std::string groupId = element.roadKey.substr(3);
+          // Extract group_id from road_key "JG:xxx"
+          if (element.road_key.size() <= 3) return true;
+          std::string group_id = element.road_key.substr(3);
 
-          auto groupIt = junction_group_index_by_id_.find(groupId);
-          if (groupIt != junction_group_index_by_id_.end()) {
+          auto group_itr = junction_group_index_by_id_.find(group_id);
+          if (group_itr != junction_group_index_by_id_.end()) {
             const auto& group =
-                junction_cluster_result_.groups[groupIt->second];
+                junction_cluster_result_.groups[group_itr->second];
             if (!group.junction_ids.empty()) {
               bool all_children_hidden = true;
               for (const auto& jid : group.junction_ids) {
-                std::string jKey = "J:" + groupId + ":" + jid;
-                if (hidden_elements_.count(jKey) == 0) {
+                std::string junction_key = "J:" + group_id + ":" + jid;
+                if (hidden_elements_.count(junction_key) == 0) {
                   all_children_hidden = false;
                   break;
                 }
@@ -465,18 +465,18 @@ void GeoViewerWidget::UpdateMeshIndices() {
   }));
   futures.push_back(QtConcurrent::run([&]() {
     std::vector<uint32_t> indices;
-    size_t vOffset = layers_[(int)LayerType::kSignalLights].vertex_offset;
+    size_t v_offset = layers_[(int)LayerType::kSignalLights].vertex_offset;
     for (const auto& el : signal_element_items_) {
-      if (el.groupKey.find(":light") == std::string::npos) continue;
-      if (hidden_elements_.count(el.roadKey) ||
-          hidden_elements_.count(el.groupKey) ||
-          hidden_elements_.count(el.elementKey))
+      if (el.group_key.find(":light") == std::string::npos) continue;
+      if (hidden_elements_.count(el.road_key) ||
+          hidden_elements_.count(el.group_key) ||
+          hidden_elements_.count(el.element_key))
         continue;
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
               network_mesh_.road_signals_mesh.indices[range.start * 3 + k] +
-              (uint32_t)vOffset);
+              (uint32_t)v_offset);
         }
       }
     }
@@ -484,18 +484,18 @@ void GeoViewerWidget::UpdateMeshIndices() {
   }));
   futures.push_back(QtConcurrent::run([&]() {
     std::vector<uint32_t> indices;
-    size_t vOffset = layers_[(int)LayerType::kSignalSigns].vertex_offset;
+    size_t v_offset = layers_[(int)LayerType::kSignalSigns].vertex_offset;
     for (const auto& el : signal_element_items_) {
-      if (el.groupKey.find(":sign") == std::string::npos) continue;
-      if (hidden_elements_.count(el.roadKey) ||
-          hidden_elements_.count(el.groupKey) ||
-          hidden_elements_.count(el.elementKey))
+      if (el.group_key.find(":sign") == std::string::npos) continue;
+      if (hidden_elements_.count(el.road_key) ||
+          hidden_elements_.count(el.group_key) ||
+          hidden_elements_.count(el.element_key))
         continue;
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
               network_mesh_.road_signals_mesh.indices[range.start * 3 + k] +
-              (uint32_t)vOffset);
+              (uint32_t)v_offset);
         }
       }
     }
@@ -505,22 +505,22 @@ void GeoViewerWidget::UpdateMeshIndices() {
   for (auto& f : futures) f.waitForFinished();
 
   makeCurrent();
-  for (int typeIndex = 0; typeIndex < kLayerCount; ++typeIndex) {
-    auto& data = layerData[typeIndex];
-    LayerType type = static_cast<LayerType>(typeIndex);
+  for (int type_index = 0; type_index < kLayerCount; ++type_index) {
+    auto& data = layerData[type_index];
+    LayerType type = static_cast<LayerType>(type_index);
 
     // Fix EBO update bug: allow update for layers that can be cleared
     // Fix EBO update bug: allow data upload even for empty indices for major
     // layers so they are cleared from the screen when unchecked.
     if (data.indices.empty() && data.chunks.empty()) {
-      const bool isMajorLayer =
+      const bool is_major_layer =
           (type == LayerType::kLanes || type == LayerType::kRoadmarks ||
            type == LayerType::kObjects || type == LayerType::kJunctions ||
            type == LayerType::kSignalLights ||
            type == LayerType::kSignalSigns || type == LayerType::kLaneLines ||
            type == LayerType::kLaneLinesDashed ||
            type == LayerType::kReferenceLines);
-      if (!isMajorLayer) continue;
+      if (!is_major_layer) continue;
     }
 
     if (!layers_[(int)type].ebo) glGenBuffers(1, &layers_[(int)type].ebo);
@@ -534,26 +534,26 @@ void GeoViewerWidget::UpdateMeshIndices() {
 
   // kLaneLines
   {
-    std::vector<uint32_t> solidIndices;
-    std::vector<uint32_t> dashedIndices;
-    size_t vOffset = layers_[(int)LayerType::kLanes].vertex_offset;
+    std::vector<uint32_t> solid_indices;
+    std::vector<uint32_t> dashed_indices;
+    size_t v_offset = layers_[(int)LayerType::kLanes].vertex_offset;
 
     for (const auto& el : outline_element_items_) {
-      if (hidden_elements_.count(el.roadKey)) continue;
-      if (hidden_elements_.count(el.groupKey)) continue;
-      if (hidden_elements_.count(el.elementKey)) continue;
+      if (hidden_elements_.count(el.road_key)) continue;
+      if (hidden_elements_.count(el.group_key)) continue;
+      if (hidden_elements_.count(el.element_key)) continue;
 
-      auto& target = el.isDashed ? dashedIndices : solidIndices;
+      auto& target = el.is_dashed ? dashed_indices : solid_indices;
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 2; ++k) {
           target.push_back(
               (uint32_t)lane_outline_indices_[range.start * 2 + k] +
-              (uint32_t)vOffset);
+              (uint32_t)v_offset);
         }
       }
     }
 
-    auto setupLineLayer = [&](LayerType t,
+    auto SetupLineLayer = [&](LayerType t,
                               const std::vector<uint32_t>& indices) {
       layers_[(int)t].chunks = BuildSceneMeshChunks(
           indices, layers_[(int)t].vertex_offset, network_mesh_.lanes_mesh);
@@ -564,26 +564,26 @@ void GeoViewerWidget::UpdateMeshIndices() {
                    indices.data(), GL_STATIC_DRAW);
       layers_[ltype].index_count = indices.size();
     };
-    setupLineLayer(LayerType::kLaneLines, solidIndices);
-    setupLineLayer(LayerType::kLaneLinesDashed, dashedIndices);
+    SetupLineLayer(LayerType::kLaneLines, solid_indices);
+    SetupLineLayer(LayerType::kLaneLinesDashed, dashed_indices);
   }
 
   // Reference Lines
   {
-    std::vector<uint32_t> refLineIndices;
-    bool layerVisible = layers_[(int)LayerType::kReferenceLines].visible;
-    for (const auto& [roadId, road] : map_->id_to_road) {
-      if (layerVisible && IsElementActuallyVisible(roadId, "refline", "")) {
-        if (road_ref_line_vert_ranges_.count(roadId)) {
-          const auto& range = road_ref_line_vert_ranges_.at(roadId);
+    std::vector<uint32_t> ref_line_indices;
+    bool layer_visible = layers_[(int)LayerType::kReferenceLines].visible;
+    for (const auto& [road_id, road] : map_->id_to_road) {
+      if (layer_visible && IsElementActuallyVisible(road_id, "refline", "")) {
+        if (road_ref_line_vert_ranges_.count(road_id)) {
+          const auto& range = road_ref_line_vert_ranges_.at(road_id);
           for (size_t i = 0; i < range.count; ++i) {
-            refLineIndices.push_back((uint32_t)(range.start + i));
+            ref_line_indices.push_back((uint32_t)(range.start + i));
           }
         }
       }
     }
 
-    auto setupRefLineLayer = [&](LayerType t,
+    auto SetupRefLineLayer = [&](LayerType t,
                                  const std::vector<uint32_t>& indices) {
       int ltype = (int)t;
       if (!layers_[ltype].ebo) glGenBuffers(1, &layers_[ltype].ebo);
@@ -593,7 +593,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
       layers_[ltype].index_count = indices.size();
       layers_[ltype].chunks.clear();
     };
-    setupRefLineLayer(LayerType::kReferenceLines, refLineIndices);
+    SetupRefLineLayer(LayerType::kReferenceLines, ref_line_indices);
   }
 
   doneCurrent();
@@ -638,40 +638,40 @@ void GeoViewerWidget::paintGL() {
   float aspect = (float)viewport_size_.width() / (float)viewport_size_.height();
 
   const float distance = camera_.GetDistance();
-  const float meshRadius = camera_.MeshRadius();
+  const float mesh_radius = camera_.MeshRadius();
 
   // 1. Ensure the near plane is always smaller than the viewing distance to
   // prevent clipping the current view. Also set a minimum near plane to prevent
   // large ratios with the far plane which leads to float precision issues.
-  float nearPlane = qMax(0.1f, distance * 0.01f);
+  float near_plane = qMax(0.1f, distance * 0.01f);
 
   // 2. Calculate the ideal far plane (including the whole model)
-  float farPlane = distance + meshRadius * 2.0f + 1000.0f;
+  float far_plane = distance + mesh_radius * 2.0f + 1000.0f;
 
   // 3. Depth buffer precision limit: if the ratio exceeds one million times,
   // increase the near plane instead of shrinking the far plane. This ensures
   // distant objects won't be clipped (producing black shadows) due to ratio
   // limits.
-  const float maxRatio = 1000000.0f;
-  if (farPlane / nearPlane > maxRatio) {
-    nearPlane = farPlane / maxRatio;
+  const float max_ratio = 1000000.0f;
+  if (far_plane / near_plane > max_ratio) {
+    near_plane = far_plane / max_ratio;
   }
 
   // Ensure the near plane is not pushed too far, causing clipping of the
   // target.
-  if (nearPlane > distance * 0.5f) {
-    nearPlane = distance * 0.5f;
-    farPlane = nearPlane * maxRatio;
+  if (near_plane > distance * 0.5f) {
+    near_plane = distance * 0.5f;
+    far_plane = near_plane * max_ratio;
   }
 
   proj_.setToIdentity();
-  proj_.perspective(45.0f, aspect, nearPlane, farPlane);
+  proj_.perspective(45.0f, aspect, near_plane, far_plane);
   glUniformMatrix4fv(glGetUniformLocation(shader_program_, "projection"), 1,
                      GL_FALSE, proj_.data());
 
-  GLint colorLoc = glGetUniformLocation(shader_program_, "objectColor");
-  GLint alphaLoc = glGetUniformLocation(shader_program_, "alpha");
-  GLint dashedLoc = glGetUniformLocation(shader_program_, "isDashed");
+  GLint color_loc = glGetUniformLocation(shader_program_, "objectColor");
+  GLint alpha_loc = glGetUniformLocation(shader_program_, "alpha");
+  GLint dashed_loc = glGetUniformLocation(shader_program_, "is_dashed");
 
   glBindVertexArray(vao_);
 
@@ -692,10 +692,10 @@ void GeoViewerWidget::paintGL() {
                       layers_[i].polygon_offset_units);
     }
 
-    glUniform3f(colorLoc, layers_[i].color.x(), layers_[i].color.y(),
+    glUniform3f(color_loc, layers_[i].color.x(), layers_[i].color.y(),
                 layers_[i].color.z());
-    glUniform1f(alphaLoc, layers_[i].alpha);
-    glUniform1i(dashedLoc, (i == (int)LayerType::kLaneLinesDashed) ? 1 : 0);
+    glUniform1f(alpha_loc, layers_[i].alpha);
+    glUniform1i(dashed_loc, (i == (int)LayerType::kLaneLinesDashed) ? 1 : 0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[i].ebo);
 
@@ -704,26 +704,29 @@ void GeoViewerWidget::paintGL() {
                      GL_UNSIGNED_INT, 0);
     } else {
       QMatrix4x4 vp = proj_ * view;
-      auto isAABBVisible = [&](const QVector3D& minB, const QVector3D& maxB) {
-        QVector3D corners[8] = {
-            {minB.x(), minB.y(), minB.z()}, {maxB.x(), minB.y(), minB.z()},
-            {minB.x(), maxB.y(), minB.z()}, {maxB.x(), maxB.y(), minB.z()},
-            {minB.x(), minB.y(), maxB.z()}, {maxB.x(), minB.y(), maxB.z()},
-            {minB.x(), maxB.y(), maxB.z()}, {maxB.x(), maxB.y(), maxB.z()}};
+      auto IsAabbVisible = [&](const QVector3D& min_b, const QVector3D& max_b) {
+        QVector3D corners[8] = {{min_b.x(), min_b.y(), min_b.z()},
+                                {max_b.x(), min_b.y(), min_b.z()},
+                                {min_b.x(), max_b.y(), min_b.z()},
+                                {max_b.x(), max_b.y(), min_b.z()},
+                                {min_b.x(), min_b.y(), max_b.z()},
+                                {max_b.x(), min_b.y(), max_b.z()},
+                                {min_b.x(), max_b.y(), max_b.z()},
+                                {max_b.x(), max_b.y(), max_b.z()}};
 
-        bool allOut[6] = {true, true, true, true, true, true};
+        bool all_out[6] = {true, true, true, true, true, true};
         for (int c = 0; c < 8; ++c) {
           QVector4D pt(corners[c], 1.0f);
           pt = vp * pt;
 
           if (pt.w() >
               0) {  // Only judge if the point is in front of the camera
-            if (pt.x() >= -pt.w()) allOut[0] = false;
-            if (pt.x() <= pt.w()) allOut[1] = false;
-            if (pt.y() >= -pt.w()) allOut[2] = false;
-            if (pt.y() <= pt.w()) allOut[3] = false;
-            if (pt.z() >= -pt.w()) allOut[4] = false;
-            if (pt.z() <= pt.w()) allOut[5] = false;
+            if (pt.x() >= -pt.w()) all_out[0] = false;
+            if (pt.x() <= pt.w()) all_out[1] = false;
+            if (pt.y() >= -pt.w()) all_out[2] = false;
+            if (pt.y() <= pt.w()) all_out[3] = false;
+            if (pt.z() >= -pt.w()) all_out[4] = false;
+            if (pt.z() <= pt.w()) all_out[5] = false;
           } else {
             // If the point is behind the camera, we cannot simply assume it's
             // outside. For safety, if the AABB spans the w=0 plane, we skip
@@ -732,13 +735,13 @@ void GeoViewerWidget::paintGL() {
           }
         }
         for (int i = 0; i < 6; ++i) {
-          if (allOut[i]) return false;
+          if (all_out[i]) return false;
         }
         return true;
       };
 
       for (const auto& chunk : layers_[i].chunks) {
-        if (isAABBVisible(chunk.min_bound, chunk.max_bound)) {
+        if (IsAabbVisible(chunk.min_bound, chunk.max_bound)) {
           glDrawElements(
               layers_[i].draw_mode, chunk.index_count, GL_UNSIGNED_INT,
               (void*)(intptr_t)(chunk.index_offset * sizeof(uint32_t)));
@@ -757,9 +760,9 @@ void GeoViewerWidget::paintGL() {
   if (highlight_mgr_ && highlight_mgr_->HasHighlight()) {
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-2.0f, -2.0f);  // Higher than roadmarks
-    glUniform3f(colorLoc, 0.2f, 0.85f, 0.4f);
-    glUniform1f(alphaLoc, 1.0f);
-    glUniform1i(dashedLoc, 0);
+    glUniform3f(color_loc, 0.2f, 0.85f, 0.4f);
+    glUniform1f(alpha_loc, 1.0f);
+    glUniform1i(dashed_loc, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Primary().ebo);
     glDrawElements(GL_TRIANGLES,
                    static_cast<GLsizei>(highlight_mgr_->Primary().count),
@@ -771,9 +774,9 @@ void GeoViewerWidget::paintGL() {
   if (highlight_mgr_ && highlight_mgr_->HasNeighborHighlight()) {
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-1.8f, -1.8f);  // Slightly lower than primary highlight
-    glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f);  // Orange
-    glUniform1f(alphaLoc, 0.8f);
-    glUniform1i(dashedLoc, 0);
+    glUniform3f(color_loc, 1.0f, 0.5f, 0.0f);  // Orange
+    glUniform1f(alpha_loc, 0.8f);
+    glUniform1i(dashed_loc, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Neighbor().ebo);
     glDrawElements(GL_TRIANGLES,
                    static_cast<GLsizei>(highlight_mgr_->Neighbor().count),
@@ -786,13 +789,13 @@ void GeoViewerWidget::paintGL() {
   if (!user_points_.empty() && user_points_vao_) {
     glDisable(GL_DEPTH_TEST);
     glPointSize(10.0f);
-    glUniform1f(alphaLoc, 1.0f);
-    glUniform1i(dashedLoc, 0);
+    glUniform1f(alpha_loc, 1.0f);
+    glUniform1i(dashed_loc, 0);
     glBindVertexArray(user_points_vao_);
     for (int i = 0; i < static_cast<int>(user_points_.size()); ++i) {
       if (!user_points_[i].visible) continue;
       const auto& c = user_points_[i].color;
-      glUniform3f(colorLoc, c.x(), c.y(), c.z());
+      glUniform3f(color_loc, c.x(), c.y(), c.z());
       glDrawArrays(GL_POINTS, i, 1);
     }
     glEnable(GL_DEPTH_TEST);
@@ -804,11 +807,11 @@ void GeoViewerWidget::paintGL() {
       if (route.visible && route.index_count > 0 && route.vao) {
         glEnable(GL_POLYGON_OFFSET_FILL);
         glPolygonOffset(-3.0f, -3.0f);  // Higher than highlights
-        glUniform3f(colorLoc, layers_[(int)LayerType::kRouting].color.x(),
+        glUniform3f(color_loc, layers_[(int)LayerType::kRouting].color.x(),
                     layers_[(int)LayerType::kRouting].color.y(),
                     layers_[(int)LayerType::kRouting].color.z());
-        glUniform1f(alphaLoc, layers_[(int)LayerType::kRouting].alpha);
-        glUniform1i(dashedLoc, 0);
+        glUniform1f(alpha_loc, layers_[(int)LayerType::kRouting].alpha);
+        glUniform1i(dashed_loc, 0);
         glBindVertexArray(route.vao);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(route.index_count),
                        GL_UNSIGNED_INT, nullptr);
@@ -822,9 +825,9 @@ void GeoViewerWidget::paintGL() {
     glDisable(GL_DEPTH_TEST);
     glLineWidth(3.0f);
     glPointSize(8.0f);
-    glUniform3f(colorLoc, 1.0f, 1.0f, 0.2f);  // Yellow
-    glUniform1f(alphaLoc, 1.0f);
-    glUniform1i(dashedLoc, 0);
+    glUniform3f(color_loc, 1.0f, 1.0f, 0.2f);  // Yellow
+    glUniform1f(alpha_loc, 1.0f);
+    glUniform1i(dashed_loc, 0);
     glBindVertexArray(measure_vao_);
     if (measure_ctrl_->Points().size() >= 2) {
       glDrawArrays(GL_LINE_STRIP, 0,
@@ -849,7 +852,7 @@ void GeoViewerWidget::paintGL() {
     font.setPointSize(10);
     painter.setFont(font);
 
-    const QMatrix4x4 viewProj = proj_ * view;
+    const QMatrix4x4 view_proj = proj_ * view;
     const auto& pts = measure_ctrl_->Points();
 
     for (size_t i = 1; i < pts.size(); ++i) {
@@ -858,12 +861,12 @@ void GeoViewerWidget::paintGL() {
       const float dist = p1.distanceToPoint(p2);
       const QVector3D mid = (p1 + p2) * 0.5f;
 
-      const QVector4D clipPos = viewProj * QVector4D(mid, 1.0f);
-      if (clipPos.w() > 0) {
-        const float ndcX = clipPos.x() / clipPos.w();
-        const float ndcY = clipPos.y() / clipPos.w();
-        const int sx = (int)((ndcX + 1.0f) * width() * 0.5f);
-        const int sy = (int)((1.0f - ndcY) * height() * 0.5f);
+      const QVector4D clip_pos = view_proj * QVector4D(mid, 1.0f);
+      if (clip_pos.w() > 0) {
+        const float ndc_x = clip_pos.x() / clip_pos.w();
+        const float ndc_y = clip_pos.y() / clip_pos.w();
+        const int sx = (int)((ndc_x + 1.0f) * width() * 0.5f);
+        const int sy = (int)((1.0f - ndc_y) * height() * 0.5f);
         painter.drawText(sx + 5, sy - 5, QString("%1m").arg(dist, 0, 'f', 2));
       }
     }
@@ -882,12 +885,12 @@ void GeoViewerWidget::paintGL() {
 void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
   if (measure_ctrl_ && measure_ctrl_->IsActive()) {
     if (ev->button() == Qt::LeftButton) {
-      QVector3D worldPos;
-      std::optional<PickResult> pickedIdx;
+      QVector3D world_pos;
+      std::optional<PickResult> picked_idx;
       if (GetWorldPosAt((int)ev->position().x(), (int)ev->position().y(),
-                        worldPos, pickedIdx)) {
-        if (pickedIdx.has_value() && pickedIdx->layer == LayerType::kLanes) {
-          measure_ctrl_->AddPoint(worldPos);
+                        world_pos, picked_idx)) {
+        if (picked_idx.has_value() && picked_idx->layer == LayerType::kLanes) {
+          measure_ctrl_->AddPoint(world_pos);
           update();
         }
       }
@@ -901,51 +904,51 @@ void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
   camera_.BeginDrag(ev->position().toPoint(), ev->button());
 
   if (ev->button() == Qt::LeftButton) {
-    QVector3D worldPos;
-    std::optional<PickResult> pickedIdx;
+    QVector3D world_pos;
+    std::optional<PickResult> picked_idx;
     if (GetWorldPosAt((int)ev->position().x(), (int)ev->position().y(),
-                      worldPos, pickedIdx) &&
-        pickedIdx.has_value() && map_) {
-      QString roadId, elementId;
-      TreeNodeType nodeType = TreeNodeType::kRoad;
-      size_t vi = pickedIdx->vertexIndex;
+                      world_pos, picked_idx) &&
+        picked_idx.has_value() && map_) {
+      QString road_id, element_id;
+      TreeNodeType node_type = TreeNodeType::kRoad;
+      size_t vi = picked_idx->vertex_index;
 
-      if (pickedIdx->layer == LayerType::kLanes) {
-        roadId =
+      if (picked_idx->layer == LayerType::kLanes) {
+        road_id =
             QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
         double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-        int laneId = network_mesh_.lanes_mesh.get_lane_id(vi);
-        elementId = QString("%1:%2").arg(s0).arg(laneId);
-        nodeType = TreeNodeType::kLane;
-      } else if (pickedIdx->layer == LayerType::kObjects) {
-        roadId = QString::fromStdString(
+        int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+        element_id = QString("%1:%2").arg(s0).arg(lane_id);
+        node_type = TreeNodeType::kLane;
+      } else if (picked_idx->layer == LayerType::kObjects) {
+        road_id = QString::fromStdString(
             network_mesh_.road_objects_mesh.get_road_id(vi));
-        elementId = QString::fromStdString(
+        element_id = QString::fromStdString(
             network_mesh_.road_objects_mesh.get_road_object_id(vi));
-        nodeType = TreeNodeType::kObject;
-      } else if (pickedIdx->layer == LayerType::kSignalLights) {
-        roadId = QString::fromStdString(
+        node_type = TreeNodeType::kObject;
+      } else if (picked_idx->layer == LayerType::kSignalLights) {
+        road_id = QString::fromStdString(
             network_mesh_.road_signals_mesh.get_road_id(vi));
-        elementId = QString::fromStdString(
+        element_id = QString::fromStdString(
             network_mesh_.road_signals_mesh.get_road_signal_id(vi));
-        nodeType = TreeNodeType::kLight;
-      } else if (pickedIdx->layer == LayerType::kSignalSigns) {
-        roadId = QString::fromStdString(
+        node_type = TreeNodeType::kLight;
+      } else if (picked_idx->layer == LayerType::kSignalSigns) {
+        road_id = QString::fromStdString(
             network_mesh_.road_signals_mesh.get_road_id(vi));
-        elementId = QString::fromStdString(
+        element_id = QString::fromStdString(
             network_mesh_.road_signals_mesh.get_road_signal_id(vi));
-        nodeType = TreeNodeType::kSign;
-      } else if (pickedIdx->layer == LayerType::kJunctions) {
+        node_type = TreeNodeType::kSign;
+      } else if (picked_idx->layer == LayerType::kJunctions) {
         auto group_id = FindJunctionGroupByVertex(vi);
         if (group_id.has_value()) {
-          roadId = QString::fromStdString(*group_id);
-          elementId = QString::fromStdString(*group_id);
-          nodeType = TreeNodeType::kJunctionGroup;
+          road_id = QString::fromStdString(*group_id);
+          element_id = QString::fromStdString(*group_id);
+          node_type = TreeNodeType::kJunctionGroup;
         }
       }
 
-      if (!roadId.isEmpty()) {
-        emit elementSelected(roadId, nodeType, elementId);
+      if (!road_id.isEmpty()) {
+        emit ElementSelected(road_id, node_type, element_id);
       }
     }
   }
@@ -981,12 +984,13 @@ void GeoViewerWidget::wheelEvent(QWheelEvent* ev) {
     const float wheelDelta = static_cast<float>(numDegrees.y()) / 120.0f;
     const float maxDist = qMax(camera_.MeshRadius() * 100.0f, 50000000.0f);
 
-    QVector3D worldPos;
-    std::optional<PickResult> pickedIdx;
-    const bool hasPick = GetWorldPosAt(
-        (int)ev->position().x(), (int)ev->position().y(), worldPos, pickedIdx);
+    QVector3D world_pos;
+    std::optional<PickResult> picked_idx;
+    const bool hasPick =
+        GetWorldPosAt((int)ev->position().x(), (int)ev->position().y(),
+                      world_pos, picked_idx);
 
-    camera_.ZoomToward(wheelDelta, maxDist, worldPos, hasPick);
+    camera_.ZoomToward(wheelDelta, maxDist, world_pos, hasPick);
     update();
   }
   ev->accept();
@@ -1014,10 +1018,10 @@ bool GeoViewerWidget::InitializeRendering() {
   // Connect measurement signals
   connect(measure_ctrl_.get(), &MeasureToolController::pointsChanged, this,
           &GeoViewerWidget::UpdateMeasureBuffers);
-  connect(measure_ctrl_.get(), &MeasureToolController::totalDistanceChanged,
-          this, &GeoViewerWidget::totalDistanceChanged);
+  connect(measure_ctrl_.get(), &MeasureToolController::TotalDistanceChanged,
+          this, &GeoViewerWidget::TotalDistanceChanged);
   connect(measure_ctrl_.get(), &MeasureToolController::activeChanged, this,
-          &GeoViewerWidget::measureModeChanged);
+          &GeoViewerWidget::MeasureModeChanged);
 
   if (!InitShaders()) {
     return false;
@@ -1035,9 +1039,9 @@ bool GeoViewerWidget::InitShaders() {
         uniform mat4 projection;
         out vec3 vWorldPos;
         void main() {
-            vec4 worldPos = model * vec4(aPos, 1.0);
-            vWorldPos = worldPos.xyz;
-            gl_Position = projection * view * worldPos;
+            vec4 world_pos = model * vec4(aPos, 1.0);
+            vWorldPos = world_pos.xyz;
+            gl_Position = projection * view * world_pos;
         }
     )";
   const char* fragmentShaderSource = R"(
@@ -1046,9 +1050,9 @@ bool GeoViewerWidget::InitShaders() {
     in vec3 vWorldPos;
     uniform vec3 objectColor;
     uniform float alpha;
-    uniform bool isDashed;
+    uniform bool is_dashed;
     void main() {
-        if (isDashed) {
+        if (is_dashed) {
             float d = length(vWorldPos.xy) * 2.0; 
             if (fract(d) > 0.5) discard;
         }
@@ -1126,12 +1130,12 @@ void GeoViewerWidget::CalculateMeshCenter() {
 
 bool GeoViewerWidget::CheckShaderErrors(GLuint shader, std::string type) {
   GLint success;
-  GLchar infoLog[1024];
+  GLchar info_log[1024];
   glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
   if (!success) {
-    glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+    glGetShaderInfoLog(shader, 1024, NULL, info_log);
     qCritical() << "Shader error" << QString::fromStdString(type) << ":"
-                << infoLog;
+                << info_log;
     return false;
   }
   return true;
@@ -1139,11 +1143,11 @@ bool GeoViewerWidget::CheckShaderErrors(GLuint shader, std::string type) {
 
 bool GeoViewerWidget::CheckProgramErrors(GLuint program) {
   GLint success;
-  GLchar infoLog[1024];
+  GLchar info_log[1024];
   glGetProgramiv(program, GL_LINK_STATUS, &success);
   if (!success) {
-    glGetProgramInfoLog(program, 1024, NULL, infoLog);
-    qCritical() << "Program link error:" << infoLog;
+    glGetProgramInfoLog(program, 1024, NULL, info_log);
+    qCritical() << "Program link error:" << info_log;
     return false;
   }
   return true;
@@ -1159,9 +1163,9 @@ void GeoViewerWidget::StartSpatialGridBuild() {
   }
   const std::uint64_t generation = ++spatial_grid_generation_;
   auto map = map_;
-  const odr::RoadNetworkMesh* networkMesh = &network_mesh_;
-  const odr::Mesh3D* junctionMesh = &junction_mesh_;
-  const int gridResolution = grid_resolution_;
+  const odr::RoadNetworkMesh* network_mesh = &network_mesh_;
+  const odr::Mesh3D* junction_mesh = &junction_mesh_;
+  const int grid_resolution = grid_resolution_;
 
   connect(
       spatial_grid_watcher_,
@@ -1177,9 +1181,9 @@ void GeoViewerWidget::StartSpatialGridBuild() {
       Qt::SingleShotConnection);
 
   spatial_grid_watcher_->setFuture(QtConcurrent::run(
-      [this, map, networkMesh, junctionMesh, gridResolution]() {
-        return BuildSpatialGridData(map, *networkMesh, *junctionMesh,
-                                    gridResolution);
+      [this, map, network_mesh, junction_mesh, grid_resolution]() {
+        return BuildSpatialGridData(map, *network_mesh, *junction_mesh,
+                                    grid_resolution);
       }));
 }
 
@@ -1191,30 +1195,30 @@ void GeoViewerWidget::BuildSpatialGrid() {
 
 std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
     std::shared_ptr<odr::OpenDriveMap> map,
-    const odr::RoadNetworkMesh& networkMesh, const odr::Mesh3D& junctionMesh,
-    int gridResolution) const {
+    const odr::RoadNetworkMesh& network_mesh, const odr::Mesh3D& junction_mesh,
+    int grid_resolution) const {
   return BuildSpatialGridBoxes(
-      networkMesh.lanes_mesh,
+      network_mesh.lanes_mesh,
       {
-          SceneMeshLayerView{&networkMesh.lanes_mesh,
+          SceneMeshLayerView{&network_mesh.lanes_mesh,
                              static_cast<uint32_t>(LayerType::kLanes),
                              {}},
-          SceneMeshLayerView{&networkMesh.roadmarks_mesh,
+          SceneMeshLayerView{&network_mesh.roadmarks_mesh,
                              static_cast<uint32_t>(LayerType::kRoadmarks),
                              {}},
-          SceneMeshLayerView{&networkMesh.road_objects_mesh,
+          SceneMeshLayerView{&network_mesh.road_objects_mesh,
                              static_cast<uint32_t>(LayerType::kObjects),
                              {}},
           SceneMeshLayerView{
-              &junctionMesh, static_cast<uint32_t>(LayerType::kJunctions), {}},
+              &junction_mesh, static_cast<uint32_t>(LayerType::kJunctions), {}},
           SceneMeshLayerView{
-              &networkMesh.road_signals_mesh,
+              &network_mesh.road_signals_mesh,
               static_cast<uint32_t>(LayerType::kSignalLights),
-              [map, &networkMesh](uint32_t vertex_index) {
+              [map, &network_mesh](uint32_t vertex_index) {
                 std::string road_id =
-                    networkMesh.road_signals_mesh.get_road_id(vertex_index);
+                    network_mesh.road_signals_mesh.get_road_id(vertex_index);
                 std::string signal_id =
-                    networkMesh.road_signals_mesh.get_road_signal_id(
+                    network_mesh.road_signals_mesh.get_road_signal_id(
                         vertex_index);
                 bool is_light = false;
                 if (map && map->id_to_road.count(road_id)) {
@@ -1229,7 +1233,7 @@ std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
                                                  : LayerType::kSignalSigns);
               }},
       },
-      gridResolution);
+      grid_resolution);
 }
 
 std::optional<GeoViewerWidget::PickResult>
@@ -1259,7 +1263,7 @@ GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
     return std::nullopt;
   }
 
-  closestT = result->distance;
+  closest_t_ = result->distance;
   return PickResult{static_cast<LayerType>(result->layer_tag),
                     result->vertex_index};
 }
@@ -1299,48 +1303,48 @@ void GeoViewerWidget::ClearRoutingPaths() {
 
 // UpdateRoutingBuffers() migrated to RoutingBufferManager::BuildBuffers()
 
-void GeoViewerWidget::RendererToLocalCoord(const QVector3D& rendererPos,
-                                           double& localX, double& localY,
-                                           double& localZ) const {
-
-  localX = rendererPos.x();
-  localY = rendererPos.z();
-  if (right_hand_traffic_) localY = -localY;  // Reverse mirroring
-  localZ = rendererPos.y();
+void GeoViewerWidget::RendererToLocalCoord(const QVector3D& renderer_pos,
+                                           double& local_x, double& local_y,
+                                           double& local_z) const {
+  local_x = renderer_pos.x();
+  local_y = renderer_pos.z();
+  if (right_hand_traffic_) local_y = -local_y;  // Reverse mirroring
+  local_z = renderer_pos.y();
 }
 
-bool GeoViewerWidget::LocalToWGS84(double localX, double localY, double localZ,
-                                   double& lon, double& lat, double& alt) const {
+bool GeoViewerWidget::LocalToWGS84(double local_x, double local_y,
+                                   double local_z, double& lon, double& lat,
+                                   double& alt) const {
   try {
-    double x = localX, y = localY;
+    double x = local_x, y = local_y;
     CoordinateUtil::Instance().LocalToWGS84(&x, &y, nullptr);
     lon = x;
     lat = y;
-    alt = localZ;
+    alt = local_z;
     return true;
   } catch (...) {
     return false;
   }
 }
 
-bool GeoViewerWidget::GetWorldPosAt(int x, int y, QVector3D& worldPos,
-                                    std::optional<PickResult>& pickedIdx) {
-  pickedIdx = GetPickedVertexIndex(x, y);
+bool GeoViewerWidget::GetWorldPosAt(int x, int y, QVector3D& world_pos,
+                                    std::optional<PickResult>& picked_idx) {
+  picked_idx = GetPickedVertexIndex(x, y);
 
-  float mouseX = (2.0f * x) / viewport_size_.width() - 1.0f;
-  float mouseY = 1.0f - (2.0f * y) / viewport_size_.height();
+  float mouse_x = (2.0f * x) / viewport_size_.width() - 1.0f;
+  float mouse_y = 1.0f - (2.0f * y) / viewport_size_.height();
 
-  QMatrix4x4 invMVP = (proj_ * GetViewMatrix()).inverted();
-  QVector4D rayOrigin = invMVP * QVector4D(mouseX, mouseY, -1.0f, 1.0f);
-  QVector4D rayEnd = invMVP * QVector4D(mouseX, mouseY, 1.0f, 1.0f);
-  rayOrigin /= rayOrigin.w();
-  rayEnd /= rayEnd.w();
+  QMatrix4x4 inv_mvp = (proj_ * GetViewMatrix()).inverted();
+  QVector4D ray_origin = inv_mvp * QVector4D(mouse_x, mouse_y, -1.0f, 1.0f);
+  QVector4D ray_end = inv_mvp * QVector4D(mouse_x, mouse_y, 1.0f, 1.0f);
+  ray_origin /= ray_origin.w();
+  ray_end /= ray_end.w();
 
-  QVector3D origin(rayOrigin.x(), rayOrigin.y(), rayOrigin.z());
-  QVector3D direction = (rayEnd - rayOrigin).toVector3D().normalized();
+  QVector3D origin(ray_origin.x(), ray_origin.y(), ray_origin.z());
+  QVector3D direction = (ray_end - ray_origin).toVector3D().normalized();
 
-  if (pickedIdx.has_value()) {
-    worldPos = origin + direction * closestT;
+  if (picked_idx.has_value()) {
+    world_pos = origin + direction * closest_t_;
     return true;
   }
 
@@ -1349,7 +1353,7 @@ bool GeoViewerWidget::GetWorldPosAt(int x, int y, QVector3D& worldPos,
   if (std::abs(direction.y()) > 1e-6f) {
     float t = -origin.y() / direction.y();
     if (t > 0) {
-      worldPos = origin + direction * t;
+      world_pos = origin + direction * t;
       return true;
     }
   }
@@ -1359,94 +1363,95 @@ bool GeoViewerWidget::GetWorldPosAt(int x, int y, QVector3D& worldPos,
 
 void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
   camera_.EndDrag();
-  QVector3D worldPos;
-  std::optional<PickResult> pickedIdx;
-  if (!GetWorldPosAt(ev->pos().x(), ev->pos().y(), worldPos, pickedIdx)) {
+  QVector3D world_pos;
+  std::optional<PickResult> picked_idx;
+  if (!GetWorldPosAt(ev->pos().x(), ev->pos().y(), world_pos, picked_idx)) {
     return;
   }
 
-  double localX, localY, localZ;
-  RendererToLocalCoord(worldPos, localX, localY, localZ);
+  double local_x, local_y, local_z;
+  RendererToLocalCoord(world_pos, local_x, local_y, local_z);
 
-  double lon = localX, lat = localY, alt = localZ;
+  double lon = local_x, lat = local_y, alt = local_z;
   const bool has_wgs84 = georeference_valid_ &&
-                         LocalToWGS84(localX, localY, localZ, lon, lat, alt);
-  QString coordText;
+                         LocalToWGS84(local_x, local_y, local_z, lon, lat, alt);
+  QString coord_text;
   if (coord_mode_ == CoordinateMode::kWGS84 && has_wgs84) {
-    coordText = QString("%1,%2,%3")
-                    .arg(lon, 0, 'f', 8)
-                    .arg(lat, 0, 'f', 8)
-                    .arg(alt, 0, 'f', 2);
+    coord_text = QString("%1,%2,%3")
+                     .arg(lon, 0, 'f', 8)
+                     .arg(lat, 0, 'f', 8)
+                     .arg(alt, 0, 'f', 2);
   } else {
-    coordText = QString("%1,%2,%3")
-                    .arg(localX, 0, 'f', 3)
-                    .arg(localY, 0, 'f', 3)
-                    .arg(localZ, 0, 'f', 3);
+    coord_text = QString("%1,%2,%3")
+                     .arg(local_x, 0, 'f', 3)
+                     .arg(local_y, 0, 'f', 3)
+                     .arg(local_z, 0, 'f', 3);
   }
-  QString infoText;
+  QString info_text;
 
-  if (pickedIdx.has_value() && map_) {
-    size_t vi = pickedIdx->vertexIndex;
-    if (pickedIdx->layer == LayerType::kLanes) {
-      std::string rId = network_mesh_.lanes_mesh.get_road_id(vi);
-      if (map_->id_to_road.count(rId)) {
-        infoText =
+  if (picked_idx.has_value() && map_) {
+    size_t vi = picked_idx->vertex_index;
+    if (picked_idx->layer == LayerType::kLanes) {
+      std::string road_id = network_mesh_.lanes_mesh.get_road_id(vi);
+      if (map_->id_to_road.count(road_id)) {
+        info_text =
             QString("%1/%2/%3")
-                .arg(rId.c_str())
+                .arg(road_id.c_str())
                 .arg(network_mesh_.lanes_mesh.get_lanesec_s0(vi), 0, 'f', 2)
                 .arg(network_mesh_.lanes_mesh.get_lane_id(vi));
       }
-    } else if (pickedIdx->layer == LayerType::kRoadmarks) {
-      std::string rId = network_mesh_.roadmarks_mesh.get_road_id(vi);
-      if (map_->id_to_road.count(rId)) {
-        const auto& r = map_->id_to_road.at(rId);
-        std::string mType = network_mesh_.roadmarks_mesh.get_roadmark_type(vi);
-        infoText = QString("Roadmark %1 in kRoad %2 (Name: %3)")
-                       .arg(mType.c_str())
-                       .arg(rId.c_str())
-                       .arg(r.name.c_str());
+    } else if (picked_idx->layer == LayerType::kRoadmarks) {
+      std::string road_id = network_mesh_.roadmarks_mesh.get_road_id(vi);
+      if (map_->id_to_road.count(road_id)) {
+        const auto& r = map_->id_to_road.at(road_id);
+        std::string road_mark_type =
+            network_mesh_.roadmarks_mesh.get_roadmark_type(vi);
+        info_text = QString("Roadmark %1 in kRoad %2 (Name: %3)")
+                        .arg(road_mark_type.c_str())
+                        .arg(road_id.c_str())
+                        .arg(r.name.c_str());
       }
-    } else if (pickedIdx->layer == LayerType::kObjects) {
-      std::string rId = network_mesh_.road_objects_mesh.get_road_id(vi);
-      if (map_->id_to_road.count(rId)) {
-        const auto& r = map_->id_to_road.at(rId);
-        std::string oId =
+    } else if (picked_idx->layer == LayerType::kObjects) {
+      std::string road_id = network_mesh_.road_objects_mesh.get_road_id(vi);
+      if (map_->id_to_road.count(road_id)) {
+        const auto& r = map_->id_to_road.at(road_id);
+        std::string object_id =
             network_mesh_.road_objects_mesh.get_road_object_id(vi);
-        if (r.id_to_object.count(oId)) {
-          const auto& obj = r.id_to_object.at(oId);
-          infoText = QString("kObject %1 (Name: %2, Type: %3) in kRoad %4")
-                         .arg(oId.c_str())
-                         .arg(obj.name.c_str())
-                         .arg(obj.type.c_str())
-                         .arg(rId.c_str());
+        if (r.id_to_object.count(object_id)) {
+          const auto& obj = r.id_to_object.at(object_id);
+          info_text = QString("kObject %1 (Name: %2, Type: %3) in kRoad %4")
+                          .arg(object_id.c_str())
+                          .arg(obj.name.c_str())
+                          .arg(obj.type.c_str())
+                          .arg(road_id.c_str());
         }
       }
-    } else if (pickedIdx->layer == LayerType::kSignalLights ||
-               pickedIdx->layer == LayerType::kSignalSigns) {
-      std::string rId = network_mesh_.road_signals_mesh.get_road_id(vi);
-      if (map_->id_to_road.count(rId)) {
-        const auto& r = map_->id_to_road.at(rId);
+    } else if (picked_idx->layer == LayerType::kSignalLights ||
+               picked_idx->layer == LayerType::kSignalSigns) {
+      std::string road_id = network_mesh_.road_signals_mesh.get_road_id(vi);
+      if (map_->id_to_road.count(road_id)) {
+        const auto& r = map_->id_to_road.at(road_id);
         std::string sId =
             network_mesh_.road_signals_mesh.get_road_signal_id(vi);
         if (r.id_to_signal.count(sId)) {
           const auto& sig = r.id_to_signal.at(sId);
-          infoText = QString("Signal %1 (Name: %2, Type: %3) in kRoad %4")
-                         .arg(sId.c_str())
-                         .arg(sig.name.c_str())
-                         .arg(sig.type.c_str())
-                         .arg(rId.c_str());
+          info_text = QString("Signal %1 (Name: %2, Type: %3) in kRoad %4")
+                          .arg(sId.c_str())
+                          .arg(sig.name.c_str())
+                          .arg(sig.type.c_str())
+                          .arg(road_id.c_str());
         }
       }
     }
   }
 
   QMenu menu(this);
-  QAction* copyCoord =
-      menu.addAction(tr("📋 Copy coordinate: %1").arg(coordText));
+  QAction* copy_coord =
+      menu.addAction(tr("📋 Copy coordinate: %1").arg(coord_text));
   QAction* copyInfo = nullptr;
   QAction* copyAll = nullptr;
-  if (!infoText.isEmpty()) {
-    copyInfo = menu.addAction(tr("🏷️ Copy info: %1").arg(infoText));
+  if (!info_text.isEmpty()) {
+    copyInfo = menu.addAction(tr("🏷️ Copy info: %1").arg(info_text));
     copyAll = menu.addAction(tr("📋 Copy all"));
   }
 
@@ -1455,7 +1460,7 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
 
   QAction* setStartRouting = nullptr;
   QAction* setEndRouting = nullptr;
-  if (pickedIdx && pickedIdx->layer == LayerType::kLanes) {
+  if (picked_idx && picked_idx->layer == LayerType::kLanes) {
     menu.addSeparator();
     setStartRouting = menu.addAction(tr("🚩 Set as routing start"));
     setEndRouting = menu.addAction(tr("🏁 Set as routing end"));
@@ -1463,118 +1468,120 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
 
   QAction* selected = menu.exec(ev->globalPos());
   if (selected == hideElement) {
-    QString roadId, elementId, group;
-    size_t vi = pickedIdx->vertexIndex;
-    if (pickedIdx->layer == LayerType::kLanes) {
-      roadId = QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
+    QString road_id, element_id, group;
+    size_t vi = picked_idx->vertex_index;
+    if (picked_idx->layer == LayerType::kLanes) {
+      road_id =
+          QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
       double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-      int laneId = network_mesh_.lanes_mesh.get_lane_id(vi);
+      int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
       group = "lane";
-      elementId = QString::fromStdString(FormatSectionValue(s0)) + ":" +
-                  QString::number(laneId);
-    } else if (pickedIdx->layer == LayerType::kObjects) {
-      roadId = QString::fromStdString(
+      element_id = QString::fromStdString(FormatSectionValue(s0)) + ":" +
+                   QString::number(lane_id);
+    } else if (picked_idx->layer == LayerType::kObjects) {
+      road_id = QString::fromStdString(
           network_mesh_.road_objects_mesh.get_road_id(vi));
-      elementId = QString::fromStdString(
+      element_id = QString::fromStdString(
           network_mesh_.road_objects_mesh.get_road_object_id(vi));
       group = "objects";
-    } else if (pickedIdx->layer == LayerType::kSignalLights) {
-      roadId = QString::fromStdString(
+    } else if (picked_idx->layer == LayerType::kSignalLights) {
+      road_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_id(vi));
-      elementId = QString::fromStdString(
+      element_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_signal_id(vi));
       group = "lights";
-    } else if (pickedIdx->layer == LayerType::kSignalSigns) {
-      roadId = QString::fromStdString(
+    } else if (picked_idx->layer == LayerType::kSignalSigns) {
+      road_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_id(vi));
-      elementId = QString::fromStdString(
+      element_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_signal_id(vi));
       group = "signs";
     }
-    if (!roadId.isEmpty()) {
+    if (!road_id.isEmpty()) {
       SetElementVisible(
-          QString("E:%1:%2:%3").arg(roadId).arg(group).arg(elementId), false);
+          QString("E:%1:%2:%3").arg(road_id).arg(group).arg(element_id), false);
     }
-  } else if (selected == copyCoord) {
-    QApplication::clipboard()->setText(coordText);
+  } else if (selected == copy_coord) {
+    QApplication::clipboard()->setText(coord_text);
   } else if (selected == copyInfo && copyInfo) {
-    QApplication::clipboard()->setText(infoText);
+    QApplication::clipboard()->setText(info_text);
   } else if (selected == copyAll && copyAll) {
     QApplication::clipboard()->setText(
-        QString("%1 | %2").arg(coordText).arg(infoText));
+        QString("%1 | %2").arg(coord_text).arg(info_text));
   } else if (selected == addFav) {
-    QString roadId, elementId, name;
-    TreeNodeType nodeType = TreeNodeType::kRoad;
-    size_t vi = pickedIdx->vertexIndex;
-    if (pickedIdx->layer == LayerType::kLanes) {
-      roadId = QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
+    QString road_id, element_id, name;
+    TreeNodeType node_type = TreeNodeType::kRoad;
+    size_t vi = picked_idx->vertex_index;
+    if (picked_idx->layer == LayerType::kLanes) {
+      road_id =
+          QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
       double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-      int laneId = network_mesh_.lanes_mesh.get_lane_id(vi);
-      elementId = QString::fromStdString(FormatSectionValue(s0)) + ":" +
-                  QString::number(laneId);
-      nodeType = TreeNodeType::kLane;
-      name = QString("kRoad %1 kLane %2").arg(roadId).arg(elementId);
-    } else if (pickedIdx->layer == LayerType::kObjects) {
-      roadId = QString::fromStdString(
+      int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+      element_id = QString::fromStdString(FormatSectionValue(s0)) + ":" +
+                   QString::number(lane_id);
+      node_type = TreeNodeType::kLane;
+      name = QString("kRoad %1 kLane %2").arg(road_id).arg(element_id);
+    } else if (picked_idx->layer == LayerType::kObjects) {
+      road_id = QString::fromStdString(
           network_mesh_.road_objects_mesh.get_road_id(vi));
-      elementId = QString::fromStdString(
+      element_id = QString::fromStdString(
           network_mesh_.road_objects_mesh.get_road_object_id(vi));
-      nodeType = TreeNodeType::kObject;
-      name = QString("kObject %1").arg(elementId);
-    } else if (pickedIdx->layer == LayerType::kSignalLights) {
-      roadId = QString::fromStdString(
+      node_type = TreeNodeType::kObject;
+      name = QString("kObject %1").arg(element_id);
+    } else if (picked_idx->layer == LayerType::kSignalLights) {
+      road_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_id(vi));
-      elementId = QString::fromStdString(
+      element_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_signal_id(vi));
-      nodeType = TreeNodeType::kLight;
-      name = QString("kLight %1").arg(elementId);
-    } else if (pickedIdx->layer == LayerType::kSignalSigns) {
-      roadId = QString::fromStdString(
+      node_type = TreeNodeType::kLight;
+      name = QString("kLight %1").arg(element_id);
+    } else if (picked_idx->layer == LayerType::kSignalSigns) {
+      road_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_id(vi));
-      elementId = QString::fromStdString(
+      element_id = QString::fromStdString(
           network_mesh_.road_signals_mesh.get_road_signal_id(vi));
-      nodeType = TreeNodeType::kSign;
-      name = QString("kSign %1").arg(elementId);
+      node_type = TreeNodeType::kSign;
+      name = QString("kSign %1").arg(element_id);
     }
-    if (!roadId.isEmpty()) {
-      emit addFavoriteRequested(roadId, nodeType, elementId, name);
+    if (!road_id.isEmpty()) {
+      emit AddFavoriteRequested(road_id, node_type, element_id, name);
     }
   } else if (selected == setStartRouting || selected == setEndRouting) {
-    size_t vi = pickedIdx->vertexIndex;
-    QString roadId =
+    size_t vi = picked_idx->vertex_index;
+    QString road_id =
         QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
     double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-    int laneId = network_mesh_.lanes_mesh.get_lane_id(vi);
-    const std::string lane_pos =
-        BuildLanePosition(roadId.toStdString(), FormatSectionValue(s0),
-                          QString::number(laneId).toStdString());
-    QString lanePos = QString::fromStdString(lane_pos);
+    int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+    const std::string lane_pos_std =
+        BuildLanePosition(road_id.toStdString(), FormatSectionValue(s0),
+                          QString::number(lane_id).toStdString());
+    QString lane_pos = QString::fromStdString(lane_pos_std);
     if (selected == setStartRouting)
-      emit routingStartRequested(lanePos.trimmed());
+      emit RoutingStartRequested(lane_pos.trimmed());
     else
-      emit routingEndRequested(lanePos.trimmed());
+      emit RoutingEndRequested(lane_pos.trimmed());
   }
 }
 
-void GeoViewerWidget::UpdateHighlight(size_t vertIdx, LayerType type) {
+void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
   size_t start = 0, end = 0;
   const odr::Mesh3D* mesh = nullptr;
 
   if (type == LayerType::kLanes) {
-    auto interval = network_mesh_.lanes_mesh.get_idx_interval_lane(vertIdx);
+    auto interval = network_mesh_.lanes_mesh.get_idx_interval_lane(vert_idx);
     start = interval[0];
     end = interval[1];
     mesh = &network_mesh_.lanes_mesh;
   } else if (type == LayerType::kObjects) {
     auto interval =
-        network_mesh_.road_objects_mesh.get_idx_interval_road_object(vertIdx);
+        network_mesh_.road_objects_mesh.get_idx_interval_road_object(vert_idx);
     start = interval[0];
     end = interval[1];
     mesh = &network_mesh_.road_objects_mesh;
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
     auto interval =
-        network_mesh_.road_signals_mesh.get_idx_interval_signal(vertIdx);
+        network_mesh_.road_signals_mesh.get_idx_interval_signal(vert_idx);
     start = interval[0];
     end = interval[1];
     mesh = &network_mesh_.road_signals_mesh;
@@ -1592,7 +1599,7 @@ void GeoViewerWidget::UpdateHighlight(size_t vertIdx, LayerType type) {
   highlight_mgr_->cur_layer = type;
 
   std::vector<uint32_t> indices;
-  size_t vOffset = layers_[(int)type].vertex_offset;
+  size_t v_offset = layers_[(int)type].vertex_offset;
 
   for (size_t i = 0; i < mesh->indices.size(); i += 3) {
     uint32_t i0 = mesh->indices[i];
@@ -1600,13 +1607,13 @@ void GeoViewerWidget::UpdateHighlight(size_t vertIdx, LayerType type) {
     uint32_t i2 = mesh->indices[i + 2];
     if (i0 >= start && i0 < end && i1 >= start && i1 < end && i2 >= start &&
         i2 < end) {
-      indices.push_back(i0 + vOffset);
-      indices.push_back(i1 + vOffset);
-      indices.push_back(i2 + vOffset);
+      indices.push_back(i0 + v_offset);
+      indices.push_back(i1 + v_offset);
+      indices.push_back(i2 + v_offset);
     }
   }
 
-  SetHighlightIndices(indices, type, type == LayerType::kLanes, vertIdx);
+  SetHighlightIndices(indices, type, type == LayerType::kLanes, vert_idx);
 }
 
 void GeoViewerWidget::ClearHighlight() {
@@ -1750,7 +1757,7 @@ bool GeoViewerWidget::LoadOpenScenarioFile(const QString& file_path,
   open_scenarios_.push_back(std::move(state));
 
   ResolveOpenScenarioData();
-  emit openScenarioDataChanged();
+  emit OpenScenarioDataChanged();
   update();
   return true;
 }
@@ -1762,7 +1769,7 @@ bool GeoViewerWidget::RemoveOpenScenarioFile(const QString& file_id) {
                          });
   if (it == open_scenarios_.end()) return false;
   open_scenarios_.erase(it);
-  emit openScenarioDataChanged();
+  emit OpenScenarioDataChanged();
   update();
   return true;
 }
@@ -1801,7 +1808,7 @@ void GeoViewerWidget::SetOpenScenarioFileVisible(const QString& file_id,
     for (auto& entity : file.entities) {
       entity.visible = visible;
     }
-    emit openScenarioDataChanged();
+    emit OpenScenarioDataChanged();
     update();
     return;
   }
@@ -1823,7 +1830,7 @@ void GeoViewerWidget::SetOpenScenarioEntityVisible(const QString& file_id,
       if (entity.visible) ++visible_count;
     }
     file.visible = visible_count > 0;
-    emit openScenarioDataChanged();
+    emit OpenScenarioDataChanged();
     update();
     return;
   }
@@ -1860,7 +1867,7 @@ void GeoViewerWidget::CenterOnOpenScenarioEntity(const QString& file_id,
 }
 
 void GeoViewerWidget::RenderOpenScenarioOverlay(QPainter& painter,
-                                                const QMatrix4x4& viewProj) {
+                                                const QMatrix4x4& view_proj) {
   if (open_scenarios_.empty()) return;
 
   QPen traj_pen(QColor(80, 180, 255, 180));
@@ -1884,8 +1891,8 @@ void GeoViewerWidget::RenderOpenScenarioOverlay(QPainter& painter,
       if (entity.trajectory.size() >= 2) {
         painter.setPen(traj_pen);
         for (std::size_t i = 1; i < entity.trajectory.size(); ++i) {
-          QVector4D a_clip = viewProj * QVector4D(entity.trajectory[i - 1], 1);
-          QVector4D b_clip = viewProj * QVector4D(entity.trajectory[i], 1);
+          QVector4D a_clip = view_proj * QVector4D(entity.trajectory[i - 1], 1);
+          QVector4D b_clip = view_proj * QVector4D(entity.trajectory[i], 1);
           if (a_clip.w() <= 0.0f || b_clip.w() <= 0.0f) continue;
           const QPointF a((a_clip.x() / a_clip.w() + 1.0f) * width() * 0.5f,
                           (1.0f - a_clip.y() / a_clip.w()) * height() * 0.5f);
@@ -1895,7 +1902,7 @@ void GeoViewerWidget::RenderOpenScenarioOverlay(QPainter& painter,
         }
       }
 
-      QVector4D clip = viewProj * QVector4D(entity.position, 1.0f);
+      QVector4D clip = view_proj * QVector4D(entity.position, 1.0f);
       if (clip.w() <= 0.0f) continue;
       const float ndc_x = clip.x() / clip.w();
       const float ndc_y = clip.y() / clip.w();
@@ -1918,117 +1925,117 @@ void GeoViewerWidget::RenderOpenScenarioOverlay(QPainter& painter,
 }
 
 void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
-  QVector3D worldPos;
-  std::optional<PickResult> pickedIdx;
+  QVector3D world_pos;
+  std::optional<PickResult> picked_idx;
 
-  QString typeStr, idStr, nameStr;
+  QString type_str, id_str, name_str;
 
-  float mouseX = (2.0f * x) / viewport_size_.width() - 1.0f;
-  float mouseY = 1.0f - (2.0f * y) / viewport_size_.height();
-  QMatrix4x4 invMVP = (proj_ * GetViewMatrix()).inverted();
-  QVector4D ro4 = invMVP * QVector4D(mouseX, mouseY, -1.0f, 1.0f);
-  QVector4D re4 = invMVP * QVector4D(mouseX, mouseY, 1.0f, 1.0f);
+  float mouse_x = (2.0f * x) / viewport_size_.width() - 1.0f;
+  float mouse_y = 1.0f - (2.0f * y) / viewport_size_.height();
+  QMatrix4x4 inv_mvp = (proj_ * GetViewMatrix()).inverted();
+  QVector4D ro4 = inv_mvp * QVector4D(mouse_x, mouse_y, -1.0f, 1.0f);
+  QVector4D re4 = inv_mvp * QVector4D(mouse_x, mouse_y, 1.0f, 1.0f);
   ro4 /= ro4.w();
   re4 /= re4.w();
   QVector3D origin(ro4.x(), ro4.y(), ro4.z());
   QVector3D direction = (re4 - ro4).toVector3D().normalized();
 
-  pickedIdx = GetPickedVertexIndex(x, y);
+  picked_idx = GetPickedVertexIndex(x, y);
 
-  if (pickedIdx.has_value() && map_) {
-    worldPos = origin + direction * closestT;
-    size_t vi = pickedIdx->vertexIndex;
+  if (picked_idx.has_value() && map_) {
+    world_pos = origin + direction * closest_t_;
+    size_t vi = picked_idx->vertex_index;
 
-    if (pickedIdx->layer == LayerType::kLanes) {
-      std::string rId = network_mesh_.lanes_mesh.get_road_id(vi);
+    if (picked_idx->layer == LayerType::kLanes) {
+      std::string r_id = network_mesh_.lanes_mesh.get_road_id(vi);
       double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-      int lId = network_mesh_.lanes_mesh.get_lane_id(vi);
+      int l_id = network_mesh_.lanes_mesh.get_lane_id(vi);
 
-      typeStr = "kLane";
-      idStr = QString("%1 / %2 / %3").arg(rId.c_str()).arg(s0).arg(lId);
+      type_str = "kLane";
+      id_str = QString("%1 / %2 / %3").arg(r_id.c_str()).arg(s0).arg(l_id);
 
-      if (map_->id_to_road.count(rId)) {
-        auto& r = map_->id_to_road.at(rId);
-        nameStr =
+      if (map_->id_to_road.count(r_id)) {
+        auto& r = map_->id_to_road.at(r_id);
+        name_str =
             QString("kRoad: %1 | Length: %2").arg(r.name.c_str()).arg(r.length);
 
         if (r.s_to_lanesection.count(s0)) {
           auto& lanesec = r.s_to_lanesection.at(s0);
-          if (lanesec.id_to_lane.count(lId)) {
-            typeStr = QString("kLane (%1)")
-                          .arg(lanesec.id_to_lane.at(lId).type.c_str());
+          if (lanesec.id_to_lane.count(l_id)) {
+            type_str = QString("kLane (%1)")
+                           .arg(lanesec.id_to_lane.at(l_id).type.c_str());
           }
         }
       }
-      UpdateHighlight(vi, pickedIdx->layer);
-    } else if (pickedIdx->layer == LayerType::kRoadmarks) {
-      std::string rId = network_mesh_.roadmarks_mesh.get_road_id(vi);
-      typeStr = "Roadmark";
-      idStr = QString::fromStdString(
+      UpdateHighlight(vi, picked_idx->layer);
+    } else if (picked_idx->layer == LayerType::kRoadmarks) {
+      std::string r_id = network_mesh_.roadmarks_mesh.get_road_id(vi);
+      type_str = "Roadmark";
+      id_str = QString::fromStdString(
           network_mesh_.roadmarks_mesh.get_roadmark_type(vi));
-      if (map_->id_to_road.count(rId)) {
-        const auto& r = map_->id_to_road.at(rId);
-        nameStr = QString("kRoad: %1").arg(r.name.c_str());
+      if (map_->id_to_road.count(r_id)) {
+        const auto& r = map_->id_to_road.at(r_id);
+        name_str = QString("kRoad: %1").arg(r.name.c_str());
       }
       ClearHighlight();
-    } else if (pickedIdx->layer == LayerType::kObjects) {
-      std::string rId = network_mesh_.road_objects_mesh.get_road_id(vi);
-      std::string oId = network_mesh_.road_objects_mesh.get_road_object_id(vi);
-      typeStr = "kObject";
-      if (map_->id_to_road.count(rId)) {
-        const auto& r = map_->id_to_road.at(rId);
-        if (r.id_to_object.count(oId)) {
-          idStr = QString("%1 (%2)")
-                      .arg(oId.c_str())
-                      .arg(r.id_to_object.at(oId).type.c_str());
-          nameStr = QString::fromStdString(r.id_to_object.at(oId).name);
+    } else if (picked_idx->layer == LayerType::kObjects) {
+      std::string r_id = network_mesh_.road_objects_mesh.get_road_id(vi);
+      std::string o_id = network_mesh_.road_objects_mesh.get_road_object_id(vi);
+      type_str = "kObject";
+      if (map_->id_to_road.count(r_id)) {
+        const auto& r = map_->id_to_road.at(r_id);
+        if (r.id_to_object.count(o_id)) {
+          id_str = QString("%1 (%2)")
+                       .arg(o_id.c_str())
+                       .arg(r.id_to_object.at(o_id).type.c_str());
+          name_str = QString::fromStdString(r.id_to_object.at(o_id).name);
         } else {
-          idStr = QString::fromStdString(oId);
+          id_str = QString::fromStdString(o_id);
         }
       } else {
-        idStr = QString::fromStdString(oId);
+        id_str = QString::fromStdString(o_id);
       }
-      UpdateHighlight(vi, pickedIdx->layer);
-    } else if (pickedIdx->layer == LayerType::kSignalLights ||
-               pickedIdx->layer == LayerType::kSignalSigns) {
-      std::string rId = network_mesh_.road_signals_mesh.get_road_id(vi);
-      std::string sId = network_mesh_.road_signals_mesh.get_road_signal_id(vi);
-      typeStr = pickedIdx->layer == LayerType::kSignalLights ? "TrafficLight"
-                                                             : "TrafficSign";
-      if (map_->id_to_road.count(rId)) {
-        const auto& r = map_->id_to_road.at(rId);
-        if (r.id_to_signal.count(sId)) {
-          idStr = QString("%1 (%2)")
-                      .arg(sId.c_str())
-                      .arg(r.id_to_signal.at(sId).type.c_str());
-          nameStr = QString::fromStdString(r.id_to_signal.at(sId).name);
+      UpdateHighlight(vi, picked_idx->layer);
+    } else if (picked_idx->layer == LayerType::kSignalLights ||
+               picked_idx->layer == LayerType::kSignalSigns) {
+      std::string r_id = network_mesh_.road_signals_mesh.get_road_id(vi);
+      std::string s_id = network_mesh_.road_signals_mesh.get_road_signal_id(vi);
+      type_str = picked_idx->layer == LayerType::kSignalLights ? "TrafficLight"
+                                                               : "TrafficSign";
+      if (map_->id_to_road.count(r_id)) {
+        const auto& r = map_->id_to_road.at(r_id);
+        if (r.id_to_signal.count(s_id)) {
+          id_str = QString("%1 (%2)")
+                       .arg(s_id.c_str())
+                       .arg(r.id_to_signal.at(s_id).type.c_str());
+          name_str = QString::fromStdString(r.id_to_signal.at(s_id).name);
         } else {
-          idStr = QString::fromStdString(sId);
+          id_str = QString::fromStdString(s_id);
         }
       } else {
-        idStr = QString::fromStdString(sId);
+        id_str = QString::fromStdString(s_id);
       }
-      UpdateHighlight(vi, pickedIdx->layer);
-    } else if (pickedIdx->layer == LayerType::kJunctions) {
+      UpdateHighlight(vi, picked_idx->layer);
+    } else if (picked_idx->layer == LayerType::kJunctions) {
       auto group_id = FindJunctionGroupByVertex(vi);
       if (group_id.has_value()) {
-        const std::string& groupId = *group_id;
-        typeStr = "Junction";
-        idStr = QString::fromStdString(groupId);
-        auto groupIndexIt = junction_group_index_by_id_.find(groupId);
-        if (groupIndexIt != junction_group_index_by_id_.end()) {
+        const std::string& group_id_str = *group_id;
+        type_str = "Junction";
+        id_str = QString::fromStdString(group_id_str);
+        auto group_index_it = junction_group_index_by_id_.find(group_id_str);
+        if (group_index_it != junction_group_index_by_id_.end()) {
           const auto& group =
-              junction_cluster_result_.groups[groupIndexIt->second];
-          nameStr = QString("%1 | %2 roads | %3")
-                        .arg(JunctionClusterUtil::SemanticTypeToString(
-                            group.semantic_type))
-                        .arg((int)group.external_road_ids.size())
-                        .arg((int)group.junction_ids.size());
+              junction_cluster_result_.groups[group_index_it->second];
+          name_str = QString("%1 | %2 roads | %3")
+                         .arg(JunctionClusterUtil::SemanticTypeToString(
+                             group.semantic_type))
+                         .arg((int)group.external_road_ids.size())
+                         .arg((int)group.junction_ids.size());
         }
         auto indices = CollectIndicesForCachedElements(
             LayerType::kJunctions, junction_element_items_,
             junction_mesh_.indices, [&](const SceneCachedElement& element) {
-              return element.elementKey == ("JG:" + groupId);
+              return element.element_key == ("JG:" + group_id_str);
             });
         SetHighlightIndices(indices, LayerType::kJunctions);
       } else {
@@ -2036,73 +2043,75 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
       }
     }
   } else {
-    worldPos = origin + direction * 1000.0f;
+    world_pos = origin + direction * 1000.0f;
     ClearHighlight();
   }
 
-  double localX, localY, localZ;
-  RendererToLocalCoord(worldPos, localX, localY, localZ);
-  double lon = localX, lat = localY, alt = localZ;
+  double local_x, local_y, local_z;
+  RendererToLocalCoord(world_pos, local_x, local_y, local_z);
+  double lon = local_x, lat = local_y, alt = local_z;
   if (georeference_valid_) {
-    LocalToWGS84(localX, localY, localZ, lon, lat, alt);
+    LocalToWGS84(local_x, local_y, local_z, lon, lat, alt);
   }
 
-  emit hoverInfoChanged(localX, localY, localZ, lon, lat, alt, typeStr, idStr, nameStr);
+  emit HoverInfoChanged(local_x, local_y, local_z, lon, lat, alt, type_str,
+                        id_str, name_str);
 }
 
-void GeoViewerWidget::SearchObject(LayerType type, const QString& idStr) {
+void GeoViewerWidget::SearchObject(LayerType type, const QString& id_str) {
   if (!map_) return;
-  std::string targetId = idStr.toStdString();
-  size_t targetStartVertex = SIZE_MAX;
-  const odr::Mesh3D* targetMesh = nullptr;
+  std::string target_id = id_str.toStdString();
+  size_t target_start_vertex = SIZE_MAX;
+  const odr::Mesh3D* target_mesh = nullptr;
 
-  auto findIdStr = [&](const std::map<size_t, std::string>& m) {
+  auto find_id_str = [&](const std::map<size_t, std::string>& m) {
     for (const auto& kv : m) {
-      if (kv.second == targetId) return kv.first;
+      if (kv.second == target_id) return kv.first;
     }
     return SIZE_MAX;
   };
 
   if (type == LayerType::kLanes) {
-    targetStartVertex = findIdStr(network_mesh_.lanes_mesh.road_start_indices);
-    targetMesh = &network_mesh_.lanes_mesh;
+    target_start_vertex =
+        find_id_str(network_mesh_.lanes_mesh.road_start_indices);
+    target_mesh = &network_mesh_.lanes_mesh;
   } else if (type == LayerType::kObjects) {
-    targetStartVertex =
-        findIdStr(network_mesh_.road_objects_mesh.road_object_start_indices);
-    targetMesh = &network_mesh_.road_objects_mesh;
+    target_start_vertex =
+        find_id_str(network_mesh_.road_objects_mesh.road_object_start_indices);
+    target_mesh = &network_mesh_.road_objects_mesh;
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
-    targetStartVertex =
-        findIdStr(network_mesh_.road_signals_mesh.road_signal_start_indices);
-    targetMesh = &network_mesh_.road_signals_mesh;
-    if (targetStartVertex != SIZE_MAX) {
-      std::string rId =
-          network_mesh_.road_signals_mesh.get_road_id(targetStartVertex);
-      if (map_->id_to_road.count(rId)) {
+    target_start_vertex =
+        find_id_str(network_mesh_.road_signals_mesh.road_signal_start_indices);
+    target_mesh = &network_mesh_.road_signals_mesh;
+    if (target_start_vertex != SIZE_MAX) {
+      std::string r_id =
+          network_mesh_.road_signals_mesh.get_road_id(target_start_vertex);
+      if (map_->id_to_road.count(r_id)) {
         bool is_light = false;
-        auto& r = map_->id_to_road.at(rId);
-        if (r.id_to_signal.count(targetId))
-          is_light = (r.id_to_signal.at(targetId).name == "TrafficLight");
+        auto& r = map_->id_to_road.at(r_id);
+        if (r.id_to_signal.count(target_id))
+          is_light = (r.id_to_signal.at(target_id).name == "TrafficLight");
         if ((type == LayerType::kSignalLights && !is_light) ||
             (type == LayerType::kSignalSigns && is_light)) {
-          targetStartVertex = SIZE_MAX;
+          target_start_vertex = SIZE_MAX;
         }
       }
     }
   }
 
-  if (targetStartVertex == SIZE_MAX || !targetMesh) return;
+  if (target_start_vertex == SIZE_MAX || !target_mesh) return;
 
-  UpdateHighlight(targetStartVertex, type);
+  UpdateHighlight(target_start_vertex, type);
 
   if (highlight_mgr_ && highlight_mgr_->cur_start < highlight_mgr_->cur_end) {
     double cx = 0, cy = 0, cz = 0;
     int count = 0;
     for (size_t i = highlight_mgr_->cur_start;
-         i < highlight_mgr_->cur_end && i < targetMesh->vertices.size(); i++) {
-      cx += targetMesh->vertices[i][0];
-      cy += targetMesh->vertices[i][1];
-      cz += targetMesh->vertices[i][2];
+         i < highlight_mgr_->cur_end && i < target_mesh->vertices.size(); i++) {
+      cx += target_mesh->vertices[i][0];
+      cy += target_mesh->vertices[i][1];
+      cz += target_mesh->vertices[i][2];
       count++;
     }
     if (count > 0) {
@@ -2186,7 +2195,7 @@ void GeoViewerWidget::BuildJunctionPlanes() {
     }
     junction_group_centers_[group.group_id] = LocalToRendererPoint(centroid);
 
-    const uint32_t triStart =
+    const uint32_t tri_start =
         static_cast<uint32_t>(junction_mesh_.indices.size() / 3);
     for (uint32_t i = 1; i <= points.size(); ++i) {
       const uint32_t next = (i == points.size()) ? 1 : (i + 1);
@@ -2195,10 +2204,10 @@ void GeoViewerWidget::BuildJunctionPlanes() {
     }
 
     SceneCachedElement element;
-    element.roadKey = "JG:" + group.group_id;
-    element.groupKey = "junctions";
-    element.elementKey = "JG:" + group.group_id;
-    element.ranges.push_back({triStart, static_cast<uint32_t>(points.size())});
+    element.road_key = "JG:" + group.group_id;
+    element.group_key = "junctions";
+    element.element_key = "JG:" + group.group_id;
+    element.ranges.push_back({tri_start, static_cast<uint32_t>(points.size())});
     junction_element_items_.push_back(std::move(element));
   }
 }
@@ -2293,29 +2302,29 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
 
   // Calculate highlighted bounding box
   if (mesh && !indices.empty()) {
-    const size_t vOffset = layers_[(int)type].vertex_offset;
-    QVector3D minB(std::numeric_limits<float>::max(),
-                   std::numeric_limits<float>::max(),
-                   std::numeric_limits<float>::max());
-    QVector3D maxB(std::numeric_limits<float>::lowest(),
-                   std::numeric_limits<float>::lowest(),
-                   std::numeric_limits<float>::lowest());
-    for (uint32_t globalIdx : indices) {
-      if (globalIdx < vOffset) continue;
-      const size_t localIdx = static_cast<size_t>(globalIdx - vOffset);
-      if (localIdx >= mesh->vertices.size()) continue;
-      const auto& v = mesh->vertices[localIdx];
-      minB.setX(std::min(minB.x(), static_cast<float>(v[0])));
-      minB.setY(std::min(minB.y(), static_cast<float>(v[1])));
-      minB.setZ(std::min(minB.z(), static_cast<float>(v[2])));
-      maxB.setX(std::max(maxB.x(), static_cast<float>(v[0])));
-      maxB.setY(std::max(maxB.y(), static_cast<float>(v[1])));
-      maxB.setZ(std::max(maxB.z(), static_cast<float>(v[2])));
+    const size_t v_offset = layers_[(int)type].vertex_offset;
+    QVector3D min_b(std::numeric_limits<float>::max(),
+                    std::numeric_limits<float>::max(),
+                    std::numeric_limits<float>::max());
+    QVector3D max_b(std::numeric_limits<float>::lowest(),
+                    std::numeric_limits<float>::lowest(),
+                    std::numeric_limits<float>::lowest());
+    for (uint32_t global_idx : indices) {
+      if (global_idx < v_offset) continue;
+      const size_t local_idx = static_cast<size_t>(global_idx - v_offset);
+      if (local_idx >= mesh->vertices.size()) continue;
+      const auto& v = mesh->vertices[local_idx];
+      min_b.setX(std::min(min_b.x(), static_cast<float>(v[0])));
+      min_b.setY(std::min(min_b.y(), static_cast<float>(v[1])));
+      min_b.setZ(std::min(min_b.z(), static_cast<float>(v[2])));
+      max_b.setX(std::max(max_b.x(), static_cast<float>(v[0])));
+      max_b.setY(std::max(max_b.y(), static_cast<float>(v[1])));
+      max_b.setZ(std::max(max_b.z(), static_cast<float>(v[2])));
     }
-    if (minB.x() <= maxB.x()) {
+    if (min_b.x() <= max_b.x()) {
       highlight_mgr_->bounds_valid = true;
-      highlight_mgr_->min_bound = minB;
-      highlight_mgr_->max_bound = maxB;
+      highlight_mgr_->min_bound = min_b;
+      highlight_mgr_->max_bound = max_b;
     }
   }
 
@@ -2326,11 +2335,11 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
   // Neighbor highlight
   if (with_neighbors && type == LayerType::kLanes && routing_graph_) {
     std::vector<uint32_t> n_indices;
-    const std::string rId =
+    const std::string road_id =
         network_mesh_.lanes_mesh.get_road_id(reference_vertex);
     const double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(reference_vertex);
-    const int lId = network_mesh_.lanes_mesh.get_lane_id(reference_vertex);
-    const odr::LaneKey key(rId, s0, lId);
+    const int lane_id = network_mesh_.lanes_mesh.get_lane_id(reference_vertex);
+    const odr::LaneKey key(road_id, s0, lane_id);
 
     std::vector<odr::LaneKey> neighbors;
     auto succs = routing_graph_->get_lane_successors(key);
@@ -2338,16 +2347,16 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
     neighbors.insert(neighbors.end(), succs.begin(), succs.end());
     neighbors.insert(neighbors.end(), preds.begin(), preds.end());
 
-    const size_t laneVOffset = layers_[(int)LayerType::kLanes].vertex_offset;
-    for (const auto& nKey : neighbors) {
-      auto itemIt = lane_element_index_by_key_.find(nKey);
-      if (itemIt != lane_element_index_by_key_.end()) {
-        const auto& el = lane_element_items_[itemIt->second];
+    const size_t lane_v_offset = layers_[(int)LayerType::kLanes].vertex_offset;
+    for (const auto& neighbor_key : neighbors) {
+      auto item_itr = lane_element_index_by_key_.find(neighbor_key);
+      if (item_itr != lane_element_index_by_key_.end()) {
+        const auto& el = lane_element_items_[item_itr->second];
         for (const auto& range : el.ranges) {
           const std::size_t base = static_cast<std::size_t>(range.start) * 3;
           for (uint32_t k = 0; k < range.count * 3; ++k) {
             n_indices.push_back(network_mesh_.lanes_mesh.indices[base + k] +
-                                static_cast<uint32_t>(laneVOffset));
+                                static_cast<uint32_t>(lane_v_offset));
           }
         }
       }
@@ -2367,13 +2376,14 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
   update();
 }
 
-void GeoViewerWidget::HighlightElement(const QString& roadId, TreeNodeType type,
-                                       const QString& elementId) {
+void GeoViewerWidget::HighlightElement(const QString& road_id,
+                                       TreeNodeType type,
+                                       const QString& element_id) {
   if (type == TreeNodeType::kJunction || type == TreeNodeType::kJunctionGroup) {
     selected_junction_group_id_ =
-        (type == TreeNodeType::kJunctionGroup) ? elementId : roadId;
+        (type == TreeNodeType::kJunctionGroup) ? element_id : road_id;
     selected_junction_id_ =
-        (type == TreeNodeType::kJunction) ? elementId : QString();
+        (type == TreeNodeType::kJunction) ? element_id : QString();
     ClearHighlight();
     update();
     return;
@@ -2381,114 +2391,115 @@ void GeoViewerWidget::HighlightElement(const QString& roadId, TreeNodeType type,
 
   selected_junction_group_id_.clear();
   selected_junction_id_.clear();
-  if (!map_ || roadId.isEmpty()) {
+  if (!map_ || road_id.isEmpty()) {
     ClearHighlight();
     return;
   }
 
-  LayerType layerType = LayerType::kLanes;
+  LayerType layer_type = LayerType::kLanes;
 
-  std::string roadIdStr = roadId.toStdString();
-  std::string elementIdStr = elementId.toStdString();
+  std::string road_id_str = road_id.toStdString();
+  std::string element_id_str = element_id.toStdString();
 
   if (type == TreeNodeType::kRoad) {
-    layerType = LayerType::kLanes;
+    layer_type = LayerType::kLanes;
     auto indices = CollectIndicesForCachedElements(
-        layerType, lane_element_items_, network_mesh_.lanes_mesh.indices,
+        layer_type, lane_element_items_, network_mesh_.lanes_mesh.indices,
         [&](const SceneCachedElement& element) {
-          return element.roadKey == ("R:" + roadIdStr);
+          return element.road_key == ("R:" + road_id_str);
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kSectionGroup) {
-    layerType = LayerType::kLanes;
+    layer_type = LayerType::kLanes;
     auto indices = CollectIndicesForCachedElements(
-        layerType, lane_element_items_, network_mesh_.lanes_mesh.indices,
+        layer_type, lane_element_items_, network_mesh_.lanes_mesh.indices,
         [&](const SceneCachedElement& element) {
-          return element.groupKey == ("G:" + roadIdStr + ":section");
+          return element.group_key == ("G:" + road_id_str + ":section");
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kSection || type == TreeNodeType::kLane) {
-    layerType = LayerType::kLanes;
-    const std::string prefix = "E:" + roadIdStr + ":lane:" +
-                               elementIdStr.substr(0, elementIdStr.find(':'));
+    layer_type = LayerType::kLanes;
+    const std::string prefix =
+        "E:" + road_id_str +
+        ":lane:" + element_id_str.substr(0, element_id_str.find(':'));
     auto indices = CollectIndicesForCachedElements(
-        layerType, lane_element_items_, network_mesh_.lanes_mesh.indices,
+        layer_type, lane_element_items_, network_mesh_.lanes_mesh.indices,
         [&](const SceneCachedElement& element) {
           if (type == TreeNodeType::kSection) {
-            return element.elementKey.rfind(prefix + ":", 0) == 0;
+            return element.element_key.rfind(prefix + ":", 0) == 0;
           }
-          return element.elementKey ==
-                 ("E:" + roadIdStr + ":lane:" + elementIdStr);
+          return element.element_key ==
+                 ("E:" + road_id_str + ":lane:" + element_id_str);
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kObjectGroup) {
-    layerType = LayerType::kObjects;
+    layer_type = LayerType::kObjects;
     auto indices = CollectIndicesForCachedElements(
-        layerType, object_element_items_,
+        layer_type, object_element_items_,
         network_mesh_.road_objects_mesh.indices,
         [&](const SceneCachedElement& element) {
-          return element.groupKey == ("G:" + roadIdStr + ":objects");
+          return element.group_key == ("G:" + road_id_str + ":objects");
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kObject) {
-    layerType = LayerType::kObjects;
+    layer_type = LayerType::kObjects;
     auto indices = CollectIndicesForCachedElements(
-        layerType, object_element_items_,
+        layer_type, object_element_items_,
         network_mesh_.road_objects_mesh.indices,
         [&](const SceneCachedElement& element) {
-          return element.elementKey ==
-                 ("E:" + roadIdStr + ":objects:" + elementIdStr);
+          return element.element_key ==
+                 ("E:" + road_id_str + ":objects:" + element_id_str);
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kLightGroup ||
              type == TreeNodeType::kSignGroup) {
-    layerType = (type == TreeNodeType::kLightGroup) ? LayerType::kSignalLights
-                                                    : LayerType::kSignalSigns;
+    layer_type = (type == TreeNodeType::kLightGroup) ? LayerType::kSignalLights
+                                                     : LayerType::kSignalSigns;
     const std::string group =
         (type == TreeNodeType::kLightGroup) ? "light" : "sign";
     auto indices = CollectIndicesForCachedElements(
-        layerType, signal_element_items_,
+        layer_type, signal_element_items_,
         network_mesh_.road_signals_mesh.indices,
         [&](const SceneCachedElement& element) {
-          return element.groupKey == ("G:" + roadIdStr + ":" + group);
+          return element.group_key == ("G:" + road_id_str + ":" + group);
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kLight || type == TreeNodeType::kSign) {
-    layerType = (type == TreeNodeType::kLight) ? LayerType::kSignalLights
-                                               : LayerType::kSignalSigns;
+    layer_type = (type == TreeNodeType::kLight) ? LayerType::kSignalLights
+                                                : LayerType::kSignalSigns;
     const std::string group = (type == TreeNodeType::kLight) ? "light" : "sign";
     auto indices = CollectIndicesForCachedElements(
-        layerType, signal_element_items_,
+        layer_type, signal_element_items_,
         network_mesh_.road_signals_mesh.indices,
         [&](const SceneCachedElement& element) {
-          return element.elementKey ==
-                 ("E:" + roadIdStr + ":" + group + ":" + elementIdStr);
+          return element.element_key ==
+                 ("E:" + road_id_str + ":" + group + ":" + element_id_str);
         });
-    SetHighlightIndices(indices, layerType);
+    SetHighlightIndices(indices, layer_type);
     return;
   }
 
   ClearHighlight();
 }
 
-void GeoViewerWidget::CenterOnElement(const QString& roadId, TreeNodeType type,
-                                      const QString& elementId) {
+void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
+                                      const QString& element_id) {
   if (!map_) return;
 
   if (type == TreeNodeType::kJunction || type == TreeNodeType::kJunctionGroup) {
-    HighlightElement(roadId, type, elementId);
-    QString groupId =
-        (type == TreeNodeType::kJunctionGroup) ? elementId : roadId;
-    auto groupIt = junction_group_index_by_id_.find(groupId.toStdString());
-    if (groupIt != junction_group_index_by_id_.end()) {
+    HighlightElement(road_id, type, element_id);
+    QString group_id =
+        (type == TreeNodeType::kJunctionGroup) ? element_id : road_id;
+    auto group_itr = junction_group_index_by_id_.find(group_id.toStdString());
+    if (group_itr != junction_group_index_by_id_.end()) {
       camera_.SetTarget(JunctionGroupCenter(
-          junction_cluster_result_.groups[groupIt->second]));
+          junction_cluster_result_.groups[group_itr->second]));
       camera_.SetPitch(-75.0f);
       camera_.SetYaw(25.0f);
       camera_.SetDistance(80.0f);
@@ -2497,28 +2508,28 @@ void GeoViewerWidget::CenterOnElement(const QString& roadId, TreeNodeType type,
     return;
   }
 
-  if (roadId.isEmpty()) return;
+  if (road_id.isEmpty()) return;
 
-  HighlightElement(roadId, type, elementId);
+  HighlightElement(road_id, type, element_id);
 
   // Find the interval and mesh again for centering (or we could pass it from
   // HighlightElement)
-  std::string roadIdStr = roadId.toStdString();
-  std::string elementIdStr = elementId.toStdString();
+  std::string road_id_str = road_id.toStdString();
+  std::string element_id_str = element_id.toStdString();
 
-  const size_t targetStartVertex =
+  const size_t target_start_vertex =
       highlight_mgr_ ? highlight_mgr_->cur_start : SIZE_MAX;
-  const LayerType layerType =
+  const LayerType layer_type =
       highlight_mgr_ ? highlight_mgr_->cur_layer : LayerType::kCount;
-  const odr::Mesh3D* targetMesh = nullptr;
+  const odr::Mesh3D* target_mesh = nullptr;
 
-  if (layerType == LayerType::kLanes)
-    targetMesh = &network_mesh_.lanes_mesh;
-  else if (layerType == LayerType::kObjects)
-    targetMesh = &network_mesh_.road_objects_mesh;
-  else if (layerType == LayerType::kSignalLights ||
-           layerType == LayerType::kSignalSigns)
-    targetMesh = &network_mesh_.road_signals_mesh;
+  if (layer_type == LayerType::kLanes)
+    target_mesh = &network_mesh_.lanes_mesh;
+  else if (layer_type == LayerType::kObjects)
+    target_mesh = &network_mesh_.road_objects_mesh;
+  else if (layer_type == LayerType::kSignalLights ||
+           layer_type == LayerType::kSignalSigns)
+    target_mesh = &network_mesh_.road_signals_mesh;
 
   if (highlight_mgr_ && highlight_mgr_->bounds_valid) {
     camera_.SetTarget((highlight_mgr_->min_bound + highlight_mgr_->max_bound) *
@@ -2533,47 +2544,47 @@ void GeoViewerWidget::CenterOnElement(const QString& roadId, TreeNodeType type,
     return;
   }
 
-  if (targetStartVertex != SIZE_MAX && targetMesh) {
+  if (target_start_vertex != SIZE_MAX && target_mesh) {
     // Compute center of the element
     double cx = 0, cy = 0, cz = 0;
     int count = 0;
 
     size_t start = 0, end = 0;
-    if (layerType == LayerType::kLanes) {
+    if (layer_type == LayerType::kLanes) {
       if (type == TreeNodeType::kRoad) {
-        start = targetStartVertex;
+        start = target_start_vertex;
         end = network_mesh_.lanes_mesh.vertices.size();
         for (size_t i = start; i < network_mesh_.lanes_mesh.vertices.size();
              i++) {
-          if (network_mesh_.lanes_mesh.get_road_id(i) != roadIdStr) {
+          if (network_mesh_.lanes_mesh.get_road_id(i) != road_id_str) {
             end = i;
             break;
           }
         }
       } else {
         auto interval =
-            network_mesh_.lanes_mesh.get_idx_interval_lane(targetStartVertex);
+            network_mesh_.lanes_mesh.get_idx_interval_lane(target_start_vertex);
         start = interval[0];
         end = interval[1];
       }
-    } else if (layerType == LayerType::kObjects) {
+    } else if (layer_type == LayerType::kObjects) {
       auto interval =
           network_mesh_.road_objects_mesh.get_idx_interval_road_object(
-              targetStartVertex);
+              target_start_vertex);
       start = interval[0];
       end = interval[1];
-    } else if (layerType == LayerType::kSignalLights ||
-               layerType == LayerType::kSignalSigns) {
+    } else if (layer_type == LayerType::kSignalLights ||
+               layer_type == LayerType::kSignalSigns) {
       auto interval = network_mesh_.road_signals_mesh.get_idx_interval_signal(
-          targetStartVertex);
+          target_start_vertex);
       start = interval[0];
       end = interval[1];
     }
 
-    for (size_t i = start; i < end && i < targetMesh->vertices.size(); i++) {
-      cx += targetMesh->vertices[i][0];
-      cy += targetMesh->vertices[i][1];
-      cz += targetMesh->vertices[i][2];
+    for (size_t i = start; i < end && i < target_mesh->vertices.size(); i++) {
+      cx += target_mesh->vertices[i][0];
+      cy += target_mesh->vertices[i][1];
+      cz += target_mesh->vertices[i][2];
       count++;
     }
 
@@ -2587,21 +2598,21 @@ void GeoViewerWidget::CenterOnElement(const QString& roadId, TreeNodeType type,
   }
 }
 
-void GeoViewerWidget::HighlightRoads(const QStringList& roadIds) {
-  if (!map_ || roadIds.isEmpty()) {
+void GeoViewerWidget::HighlightRoads(const QStringList& road_ids) {
+  if (!map_ || road_ids.isEmpty()) {
     ClearHighlight();
     return;
   }
   std::set<std::string> ids;
-  for (const auto& roadId : roadIds) {
-    ids.insert(roadId.toStdString());
+  for (const auto& road_id : road_ids) {
+    ids.insert(road_id.toStdString());
   }
   auto indices = CollectIndicesForCachedElements(
       LayerType::kLanes, lane_element_items_, network_mesh_.lanes_mesh.indices,
       [&](const SceneCachedElement& element) {
         const std::string prefix = "R:";
-        return element.roadKey.rfind(prefix, 0) == 0 &&
-               ids.count(element.roadKey.substr(prefix.size())) > 0;
+        return element.road_key.rfind(prefix, 0) == 0 &&
+               ids.count(element.road_key.substr(prefix.size())) > 0;
       });
   SetHighlightIndices(indices, LayerType::kLanes);
 }
@@ -2641,13 +2652,12 @@ void GeoViewerWidget::JumpToLocalLocation(double x, double y, double z) {
   update();
 }
 
-
 void GeoViewerWidget::GenerateRefLinePoints(
-    std::shared_ptr<odr::OpenDriveMap> map, std::vector<float>& allVertices,
+    std::shared_ptr<odr::OpenDriveMap> map, std::vector<float>& all_vertices,
     std::map<std::string, VertRange>& ranges) {
   if (!map) return;
-  for (const auto& [roadId, road] : map->id_to_road) {
-    size_t startIdx = allVertices.size() / 3;
+  for (const auto& [road_id, road] : map->id_to_road) {
+    size_t startIdx = all_vertices.size() / 3;
     double road_len = road.length;
 
     // Samples
@@ -2673,12 +2683,12 @@ void GeoViewerWidget::GenerateRefLinePoints(
     for (size_t i = 0; i < pts.size() - 1; ++i) {
       QVector3D p1 = transformPt(pts[i]);
       QVector3D p2 = transformPt(pts[i + 1]);
-      allVertices.push_back(p1.x());
-      allVertices.push_back(p1.y());
-      allVertices.push_back(p1.z());
-      allVertices.push_back(p2.x());
-      allVertices.push_back(p2.y());
-      allVertices.push_back(p2.z());
+      all_vertices.push_back(p1.x());
+      all_vertices.push_back(p1.y());
+      all_vertices.push_back(p1.z());
+      all_vertices.push_back(p2.x());
+      all_vertices.push_back(p2.y());
+      all_vertices.push_back(p2.z());
     }
 
     // Arrows every 20m
@@ -2702,30 +2712,30 @@ void GeoViewerWidget::GenerateRefLinePoints(
                                       transformPt(p3_l)};
 
         // Add as triangle lines (3 segments)
-        allVertices.push_back(tri[0][0]);
-        allVertices.push_back(tri[0][1]);
-        allVertices.push_back(tri[0][2]);
-        allVertices.push_back(tri[1][0]);
-        allVertices.push_back(tri[1][1]);
-        allVertices.push_back(tri[1][2]);
+        all_vertices.push_back(tri[0][0]);
+        all_vertices.push_back(tri[0][1]);
+        all_vertices.push_back(tri[0][2]);
+        all_vertices.push_back(tri[1][0]);
+        all_vertices.push_back(tri[1][1]);
+        all_vertices.push_back(tri[1][2]);
 
-        allVertices.push_back(tri[1][0]);
-        allVertices.push_back(tri[1][1]);
-        allVertices.push_back(tri[1][2]);
-        allVertices.push_back(tri[2][0]);
-        allVertices.push_back(tri[2][1]);
-        allVertices.push_back(tri[2][2]);
+        all_vertices.push_back(tri[1][0]);
+        all_vertices.push_back(tri[1][1]);
+        all_vertices.push_back(tri[1][2]);
+        all_vertices.push_back(tri[2][0]);
+        all_vertices.push_back(tri[2][1]);
+        all_vertices.push_back(tri[2][2]);
 
-        allVertices.push_back(tri[2][0]);
-        allVertices.push_back(tri[2][1]);
-        allVertices.push_back(tri[2][2]);
-        allVertices.push_back(tri[0][0]);
-        allVertices.push_back(tri[0][1]);
-        allVertices.push_back(tri[0][2]);
+        all_vertices.push_back(tri[2][0]);
+        all_vertices.push_back(tri[2][1]);
+        all_vertices.push_back(tri[2][2]);
+        all_vertices.push_back(tri[0][0]);
+        all_vertices.push_back(tri[0][1]);
+        all_vertices.push_back(tri[0][2]);
       }
     }
 
-    ranges[roadId] = {startIdx, (allVertices.size() / 3) - startIdx};
+    ranges[road_id] = {startIdx, (all_vertices.size() / 3) - startIdx};
   }
 }
 
@@ -2755,26 +2765,28 @@ QVector3D GeoViewerWidget::LocalToRendererPoint(const odr::Vec3D& point) const {
   return QVector3D(rx, ry, rz);
 }
 
-bool GeoViewerWidget::IsJunctionVisible(const QString& groupId,
-                                        const QString& junctionId) const {
-  if (hidden_elements_.count(("JG:" + groupId).toStdString())) return false;
-  if (!junctionId.isEmpty()) {
+bool GeoViewerWidget::IsJunctionVisible(const QString& group_id,
+                                        const QString& junction_id) const {
+  if (hidden_elements_.count(("JG:" + group_id).toStdString())) return false;
+  if (!junction_id.isEmpty()) {
     if (hidden_elements_.count(
-            ("J:" + groupId + ":" + junctionId).toStdString()))
+            ("J:" + group_id + ":" + junction_id).toStdString()))
       return false;
   } else {
-    // Check group-level visibility (JG:groupId)
-    if (hidden_elements_.count(("JG:" + groupId).toStdString())) return false;
+    // Check group-level visibility (JG:group_id)
+    if (hidden_elements_.count(("JG:" + group_id).toStdString())) return false;
 
     // Hide cluster overlay only when all child junctions are hidden.
-    auto groupIndexit = junction_group_index_by_id_.find(groupId.toStdString());
-    if (groupIndexit != junction_group_index_by_id_.end()) {
-      const auto& group = junction_cluster_result_.groups[groupIndexit->second];
+    auto group_index_itr =
+        junction_group_index_by_id_.find(group_id.toStdString());
+    if (group_index_itr != junction_group_index_by_id_.end()) {
+      const auto& group =
+          junction_cluster_result_.groups[group_index_itr->second];
       if (!group.junction_ids.empty()) {
         bool all_children_hidden = true;
         for (const auto& jid : group.junction_ids) {
-          std::string jKey = "J:" + group.group_id + ":" + jid;
-          if (hidden_elements_.count(jKey) == 0) {
+          std::string junction_key = "J:" + group.group_id + ":" + jid;
+          if (hidden_elements_.count(junction_key) == 0) {
             all_children_hidden = false;
             break;
           }
@@ -2787,7 +2799,7 @@ bool GeoViewerWidget::IsJunctionVisible(const QString& groupId,
 }
 
 void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
-                                            const QMatrix4x4& viewProj) {
+                                            const QMatrix4x4& view_proj) {
   if (!layers_[(int)LayerType::kJunctions].visible) return;
   if (junction_cluster_result_.groups.empty()) return;
 
@@ -2798,19 +2810,20 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
   painter.setFont(QFont("Menlo", 9));
 
   for (const auto& group : junction_cluster_result_.groups) {
-    const QString groupId = QString::fromStdString(group.group_id);
-    if (!IsJunctionVisible(groupId)) continue;
+    const QString group_id = QString::fromStdString(group.group_id);
+    if (!IsJunctionVisible(group_id)) continue;
 
     const QVector3D center = JunctionGroupCenter(group);
-    QVector4D clipPos = viewProj * QVector4D(center, 1.0f);
-    if (clipPos.w() <= 0.0f) continue;
-    const float ndcX = clipPos.x() / clipPos.w();
-    const float ndcY = clipPos.y() / clipPos.w();
-    if (ndcX < -1.2f || ndcX > 1.2f || ndcY < -1.2f || ndcY > 1.2f) continue;
+    QVector4D clip_pos = view_proj * QVector4D(center, 1.0f);
+    if (clip_pos.w() <= 0.0f) continue;
+    const float ndc_x = clip_pos.x() / clip_pos.w();
+    const float ndc_y = clip_pos.y() / clip_pos.w();
+    if (ndc_x < -1.2f || ndc_x > 1.2f || ndc_y < -1.2f || ndc_y > 1.2f)
+      continue;
 
-    const int sx = (int)((ndcX + 1.0f) * width() * 0.5f);
-    const int sy = (int)((1.0f - ndcY) * height() * 0.5f);
-    const bool selected = (selected_junction_group_id_ == groupId);
+    const int sx = (int)((ndc_x + 1.0f) * width() * 0.5f);
+    const int sy = (int)((1.0f - ndc_y) * height() * 0.5f);
+    const bool selected = (selected_junction_group_id_ == group_id);
 
     painter.setPen(selected ? selectedPen : ringPen);
     painter.setBrush(selected ? QColor(80, 255, 140, 80)
@@ -2818,15 +2831,16 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
     painter.drawEllipse(QPointF(sx, sy), selected ? 9.0 : 7.0,
                         selected ? 9.0 : 7.0);
 
-    for (const auto& junctionIdStr : group.junction_ids) {
-      const QString junctionId = QString::fromStdString(junctionIdStr);
-      if (!IsJunctionVisible(groupId, junctionId)) continue;
-      auto memberIndexIt = junction_member_index_by_id_.find(junctionIdStr);
-      if (memberIndexIt == junction_member_index_by_id_.end()) {
+    for (const auto& junction_id_itr : group.junction_ids) {
+      const QString junction_id = QString::fromStdString(junction_id_itr);
+      if (!IsJunctionVisible(group_id, junction_id)) continue;
+      auto member_index_itr =
+          junction_member_index_by_id_.find(junction_id_itr);
+      if (member_index_itr == junction_member_index_by_id_.end()) {
         continue;
       }
       const auto& member =
-          junction_cluster_result_.junctions[memberIndexIt->second];
+          junction_cluster_result_.junctions[member_index_itr->second];
       if (!member.incoming_box.valid) {
         continue;
       }
@@ -2835,15 +2849,15 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
           (member.incoming_box.min[1] + member.incoming_box.max[1]) * 0.5,
           (member.incoming_box.min[2] + member.incoming_box.max[2]) * 0.5};
       const QVector3D memberCenter = LocalToRendererPoint(local_center);
-      QVector4D memberClip = viewProj * QVector4D(memberCenter, 1.0f);
-      if (memberClip.w() <= 0.0f) continue;
+      QVector4D member_clip = view_proj * QVector4D(memberCenter, 1.0f);
+      if (member_clip.w() <= 0.0f) continue;
       const int msx =
-          (int)(((memberClip.x() / memberClip.w()) + 1.0f) * width() * 0.5f);
+          (int)(((member_clip.x() / member_clip.w()) + 1.0f) * width() * 0.5f);
       const int msy =
-          (int)((1.0f - (memberClip.y() / memberClip.w())) * height() * 0.5f);
+          (int)((1.0f - (member_clip.y() / member_clip.w())) * height() * 0.5f);
       const bool memberSelected =
           selected && (selected_junction_id_.isEmpty() ||
-                       selected_junction_id_ == junctionId);
+                       selected_junction_id_ == junction_id);
       painter.setPen(Qt::NoPen);
       painter.setBrush(memberSelected ? QColor(80, 255, 140, 240)
                                       : QColor(255, 230, 160, 220));
@@ -2851,7 +2865,7 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
                           memberSelected ? 4.0 : 3.0);
     }
 
-    const QString text = QString("%1 [%2]").arg(groupId).arg(
+    const QString text = QString("%1 [%2]").arg(group_id).arg(
         JunctionClusterUtil::SemanticTypeToString(group.semantic_type));
     painter.setPen(Qt::white);
     painter.drawText(sx + 10, sy - 8, text);
@@ -2867,7 +2881,7 @@ void GeoViewerWidget::SetMeasureMode(bool active) {
   } else {
     setCursor(Qt::ArrowCursor);
   }
-  emit measureModeChanged(active);
+  emit MeasureModeChanged(active);
   update();
 }
 

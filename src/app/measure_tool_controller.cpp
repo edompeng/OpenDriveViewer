@@ -11,15 +11,15 @@ void MeasureToolController::SetActive(bool active) {
   emit activeChanged(active_);
 }
 
-void MeasureToolController::AddPoint(const QVector3D& worldPos) {
-  points_.push_back(worldPos);
-  emit totalDistanceChanged(TotalDistance());
+void MeasureToolController::AddPoint(const QVector3D& world_pos) {
+  points_.push_back(world_pos);
+  emit TotalDistanceChanged(TotalDistance());
   emit pointsChanged();
 }
 
 void MeasureToolController::ClearPoints() {
   points_.clear();
-  emit totalDistanceChanged(0.0);
+  emit TotalDistanceChanged(0.0);
   emit pointsChanged();
 }
 

@@ -28,7 +28,7 @@ TEST_CASE("Scene index builder collects only matching element ranges",
 
   const auto result = CollectSceneIndices(
       elements, indices, 10, [](const SceneCachedElement& element) {
-        return element.roadKey == "R:b";
+        return element.road_key == "R:b";
       });
 
   REQUIRE(result == std::vector<uint32_t>{11, 13, 12});

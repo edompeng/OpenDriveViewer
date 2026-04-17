@@ -28,8 +28,8 @@ void AddTriangleRange(ItemContainer& items, ItemMap& item_map, Key&& key,
 }  // namespace
 
 void GeoViewerWidget::SetMapAndMesh(
-    std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh networkMesh,
-    const JunctionClusterResult* junctionGrouping) {
+    std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh network_mesh,
+    const JunctionClusterResult* junction_grouping) {
   const bool had_user_points = !user_points_.empty();
 
   makeCurrent();
@@ -38,7 +38,7 @@ void GeoViewerWidget::SetMapAndMesh(
   if (!map_) {
     ResetSceneData();
     ResolveOpenScenarioData();
-    emit openScenarioDataChanged();
+    emit OpenScenarioDataChanged();
     doneCurrent();
     if (had_user_points) {
       ClearUserPoints();
@@ -47,9 +47,9 @@ void GeoViewerWidget::SetMapAndMesh(
     return;
   }
 
-  network_mesh_ = std::move(networkMesh);
-  junction_cluster_result_ = junctionGrouping
-                                 ? *junctionGrouping
+  network_mesh_ = std::move(network_mesh);
+  junction_cluster_result_ = junction_grouping
+                                 ? *junction_grouping
                                  : JunctionClusterUtil::Analyze(*map_);
 
   ClearMeshAuxiliaryData(network_mesh_.lanes_mesh);
@@ -71,7 +71,7 @@ void GeoViewerWidget::SetMapAndMesh(
   ApplyDefaultLayerStyles();
   FinalizeSceneUpdate();
   ResolveOpenScenarioData();
-  emit openScenarioDataChanged();
+  emit OpenScenarioDataChanged();
 
   doneCurrent();
   if (had_user_points) {
@@ -168,9 +168,9 @@ void GeoViewerWidget::BuildLaneElementCache() {
     AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
       SceneCachedElement element;
       const std::string s0_string = FormatSectionValue(s0);
-      element.roadKey = "R:" + road_id;
-      element.groupKey = "G:" + road_id + ":section";
-      element.elementKey =
+      element.road_key = "R:" + road_id;
+      element.group_key = "G:" + road_id + ":section";
+      element.element_key =
           "E:" + road_id + ":lane:" + s0_string + ":" + std::to_string(lane_id);
       return element;
     });
@@ -199,8 +199,8 @@ void GeoViewerWidget::BuildRoadmarkElementCache() {
 
     AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
       SceneCachedElement element;
-      element.roadKey = "R:" + road_id;
-      element.groupKey = "G:" + road_id + ":section";
+      element.road_key = "R:" + road_id;
+      element.group_key = "G:" + road_id + ":section";
       return element;
     });
   }
@@ -223,9 +223,9 @@ void GeoViewerWidget::BuildObjectElementCache() {
 
     AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
       SceneCachedElement element;
-      element.roadKey = "R:" + road_id;
-      element.groupKey = "G:" + road_id + ":objects";
-      element.elementKey = "E:" + road_id + ":objects:" + object_id;
+      element.road_key = "R:" + road_id;
+      element.group_key = "G:" + road_id + ":objects";
+      element.element_key = "E:" + road_id + ":objects:" + object_id;
       return element;
     });
   }
@@ -256,9 +256,9 @@ void GeoViewerWidget::BuildSignalElementCache() {
         }
       }
       const std::string group = is_light ? "light" : "sign";
-      element.roadKey = "R:" + road_id;
-      element.groupKey = "G:" + road_id + ":" + group;
-      element.elementKey = "E:" + road_id + ":" + group + ":" + signal_id;
+      element.road_key = "R:" + road_id;
+      element.group_key = "G:" + road_id + ":" + group;
+      element.element_key = "E:" + road_id + ":" + group + ":" + signal_id;
       return element;
     });
   }
@@ -286,11 +286,11 @@ void GeoViewerWidget::BuildOutlineElementCache() {
       item_map[key] = items.size();
       SceneOutlineElement element;
       const std::string s0_string = FormatSectionValue(s0);
-      element.roadKey = "R:" + road_id;
-      element.groupKey = "G:" + road_id + ":section";
-      element.elementKey =
+      element.road_key = "R:" + road_id;
+      element.group_key = "G:" + road_id + ":section";
+      element.element_key =
           "E:" + road_id + ":lane:" + s0_string + ":" + std::to_string(lane_id);
-      element.isDashed = false;
+      element.is_dashed = false;
 
       if (map_->id_to_road.count(road_id)) {
         auto& road = map_->id_to_road.at(road_id);
@@ -300,7 +300,7 @@ void GeoViewerWidget::BuildOutlineElementCache() {
             auto& lane = section.id_to_lane.at(lane_id);
             for (const auto& group : lane.roadmark_groups) {
               if (group.type == "broken") {
-                element.isDashed = true;
+                element.is_dashed = true;
                 break;
               }
             }
