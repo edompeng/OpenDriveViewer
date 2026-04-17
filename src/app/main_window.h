@@ -46,6 +46,7 @@ class MainWindow : public QMainWindow {
   void RetranslateUi();
   QWidget *BuildCoordinateTools();
   void SetupConnections();
+  void UpdateWindowTitle();
   void StartMapLoad(const QString &path);
   void ApplyCoordinateModePolicy(bool georeference_valid);
 
@@ -58,7 +59,9 @@ class MainWindow : public QMainWindow {
   FavoritesWidget *favorites_panel_;
   CoordinatePointsWidget *coordinate_points_panel_;
   LoadingProgressWidget *load_progress_ = nullptr;
-  QAction *measure_action_;
+  QString current_map_path_;
+  QString pending_map_path_;
+  QAction* measure_action_;
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
 

@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -27,8 +28,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   SetupToolbar();
   SetupConnections();
 
-  // Set window title
-  setWindowTitle("OpenDriveViewer");
+  UpdateWindowTitle();
 }
 
 void MainWindow::HandleLoadMap() {
@@ -128,6 +128,7 @@ void MainWindow::RetranslateUi() {
   panels_btn_->setText(tr("Windows"));
   lang_btn_->setText(tr("Language"));
   measure_action_->setText(tr("Measure"));
+  UpdateWindowTitle();
 
   if (coord_mode_ == CoordinateMode::kWGS84) {
     jump_label_->setText(tr("Jump to (lon,lat,alt):"));
@@ -383,6 +384,8 @@ void MainWindow::SetupConnections() {
       return;
     }
 
+    current_map_path_ = pending_map_path_;
+
     qDebug() << "Junction grouping:" << data.junction_grouping.groups.size()
              << "physical groups from"
              << data.junction_grouping.junctions.size()
@@ -401,6 +404,9 @@ void MainWindow::SetupConnections() {
                              ? tr("Map ready. Building layer tree...")
                              : tr("Map ready in local coordinates mode. "
                                   "Building layer tree..."));
+
+    UpdateWindowTitle();
+
     QTimer::singleShot(0, this, [this]() {
       layer_control_->UpdateTree();
       if (wgs84_mode_allowed_) {
@@ -424,7 +430,17 @@ void MainWindow::StartMapLoad(const QString& path) {
   }
 
   status_->showMessage(tr("Loading map and generating mesh..."));
+  pending_map_path_ = path;
   map_loader_->Start(path);
+}
+
+void MainWindow::UpdateWindowTitle() {
+  if (current_map_path_.isEmpty()) {
+    setWindowTitle("OpenDriveViewer");
+  } else {
+    setWindowTitle(QString("OpenDriveViewer - %1")
+                       .arg(QFileInfo(current_map_path_).fileName()));
+  }
 }
 
 void MainWindow::ApplyCoordinateModePolicy(bool georeference_valid) {
