@@ -30,6 +30,8 @@ void AddTriangleRange(ItemContainer& items, ItemMap& item_map, Key&& key,
 void GeoViewerWidget::SetMapAndMesh(
     std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh networkMesh,
     const JunctionClusterResult* junctionGrouping) {
+  const bool had_user_points = !user_points_.empty();
+
   makeCurrent();
 
   map_ = std::move(map);
@@ -38,6 +40,9 @@ void GeoViewerWidget::SetMapAndMesh(
     ResolveOpenScenarioData();
     emit openScenarioDataChanged();
     doneCurrent();
+    if (had_user_points) {
+      ClearUserPoints();
+    }
     update();
     return;
   }
@@ -69,6 +74,9 @@ void GeoViewerWidget::SetMapAndMesh(
   emit openScenarioDataChanged();
 
   doneCurrent();
+  if (had_user_points) {
+    ClearUserPoints();
+  }
   update();
 }
 
