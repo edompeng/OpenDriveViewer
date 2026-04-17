@@ -26,6 +26,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
 
  protected:
   void RetranslateUi() override;
+  void showEvent(QShowEvent* event) override;
 
  private slots:
   void HandleAddPoint();
@@ -52,6 +53,6 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   QPushButton* clear_btn_ = nullptr;
   QLabel* list_label_ = nullptr;
   bool is_collapsed_ = false;
+  bool points_list_dirty_ = true;
   CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
 };
-

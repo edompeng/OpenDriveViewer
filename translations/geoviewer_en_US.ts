@@ -4,79 +4,79 @@
 <context>
     <name>CoordinatePointsWidget</name>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="31"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="135"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="32"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="137"/>
         <source>&lt;b&gt;Coordinate Points&lt;/b&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="53"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="137"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="54"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="139"/>
         <source>(lon,lat[,alt]); ...:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="59"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="139"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="60"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="141"/>
         <source>(lon,lat) or (lon,lat,alt) semicolon separated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="67"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="145"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="68"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="147"/>
         <source>Add</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="74"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="146"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="75"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="148"/>
         <source>Clear All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="92"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="147"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="93"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="149"/>
         <source>Added points:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="141"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="143"/>
         <source>(x,y[,z]); ...:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="143"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="145"/>
         <source>(x,y) or (x,y,z) semicolon separated</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="193"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="211"/>
         <source>👁 Hide point</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="193"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="211"/>
         <source>👁 Show point</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="194"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="212"/>
         <source>🎨 Change color</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="195"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="213"/>
         <source>🎯 Jump to point</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="197"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="215"/>
         <source>❌ Delete point</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="209"/>
-        <location filename="../src/app/coordinate_points_widget.cpp" line="265"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="227"/>
+        <location filename="../src/app/coordinate_points_widget.cpp" line="283"/>
         <source>Select point color</source>
         <translation type="unfinished"></translation>
     </message>
@@ -103,37 +103,37 @@
 <context>
     <name>GeoViewerWidget</name>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1417"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1445"/>
         <source>📋 Copy coordinate: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1421"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1449"/>
         <source>🏷️ Copy info: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1422"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1450"/>
         <source>📋 Copy all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1425"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1453"/>
         <source>👁️ Hide current object</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1426"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1454"/>
         <source>⭐ Add to favorites</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1432"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1460"/>
         <source>🚩 Set as routing start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/geo_viewer.cpp" line="1433"/>
+        <location filename="../src/app/geo_viewer.cpp" line="1461"/>
         <source>🏁 Set as routing end</source>
         <translation type="unfinished"></translation>
     </message>

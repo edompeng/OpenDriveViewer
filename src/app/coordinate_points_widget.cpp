@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
+#include <QShowEvent>
 #include <QToolButton>
 
 #include "src/utility/input_parsing.h"
@@ -94,6 +95,7 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
   contentLayout->addWidget(list_label_);
 
   points_list_ = new QListWidget(content_area_);
+  points_list_->setUniformItemSizes(true);
   points_list_->setContextMenuPolicy(Qt::CustomContextMenu);
   points_list_->setStyleSheet(
       "QListWidget { background-color: rgba(0,0,0,0.2); color: #eee; "
@@ -145,13 +147,16 @@ void CoordinatePointsWidget::RetranslateUi() {
   add_btn_->setText(tr("Add"));
   clear_btn_->setText(tr("Clear All"));
   list_label_->setText(tr("Added points:"));
-  RefreshPointsList();
+  HandlePointsChanged();
 }
 
 
 void CoordinatePointsWidget::HandleAddPoint() {
   const auto points = CoordinateInputParser::ParseUserPoints(
       input_points_edit_->text().toStdString());
+  if (points.empty()) return;
+
+  viewer_->BeginUserPointsBatch();
   for (const auto& point : points) {
     if (coord_mode_ == CoordinateMode::kWGS84) {
       viewer_->AddUserPoint(point.x, point.y, point.z);
@@ -159,6 +164,7 @@ void CoordinatePointsWidget::HandleAddPoint() {
       viewer_->AddUserPointLocal(point.x, point.y, point.z);
     }
   }
+  viewer_->EndUserPointsBatch();
 
   // List is refreshed via the userPointsChanged signal
 }
@@ -168,7 +174,19 @@ void CoordinatePointsWidget::HandleClearPoints() {
   // List is refreshed via the userPointsChanged signal
 }
 
-void CoordinatePointsWidget::HandlePointsChanged() { RefreshPointsList(); }
+void CoordinatePointsWidget::HandlePointsChanged() {
+  points_list_dirty_ = true;
+  if (!isVisible()) return;
+  RefreshPointsList();
+  points_list_dirty_ = false;
+}
+
+void CoordinatePointsWidget::showEvent(QShowEvent* event) {
+  FloatingPanelWidget::showEvent(event);
+  if (!points_list_dirty_) return;
+  RefreshPointsList();
+  points_list_dirty_ = false;
+}
 
 void CoordinatePointsWidget::HandleItemDoubleClicked(QListWidgetItem* item) {
   if (!item) return;
@@ -306,6 +324,7 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
 }
 
 void CoordinatePointsWidget::RefreshPointsList() {
+  points_list_->setUpdatesEnabled(false);
   points_list_->clear();
   const int count = viewer_->UserPointCount();
   for (int i = 0; i < count; ++i) {
@@ -315,4 +334,5 @@ void CoordinatePointsWidget::RefreshPointsList() {
     points_list_->addItem(item);
     points_list_->setItemWidget(item, BuildPointItemWidget(i));
   }
+  points_list_->setUpdatesEnabled(true);
 }

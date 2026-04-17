@@ -117,6 +117,8 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
                     std::optional<double> alt = std::nullopt);
   // Add point using local coordinates (x, y, z)
   void AddUserPointLocal(double x, double y, std::optional<double> z = std::nullopt);
+  void BeginUserPointsBatch();
+  void EndUserPointsBatch();
   void RemoveUserPoint(int index);
   void SetUserPointVisible(int index, bool visible);
   void SetUserPointColor(int index, const QVector3D& color);
@@ -389,6 +391,10 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   std::vector<UserPoint> user_points_;
   GLuint user_points_vao_ = 0;
   GLuint user_points_vbo_ = 0;
+  int user_points_batch_depth_ = 0;
+  bool user_points_batch_dirty_ = false;
+  bool user_points_batch_buffer_dirty_ = false;
+  void CommitUserPointsChange(bool buffer_dirty);
 
   // ---- OpenScenario Internal State ----
   struct OpenScenarioEntityState {

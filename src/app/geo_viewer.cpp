@@ -50,11 +50,45 @@ GeoViewerWidget::~GeoViewerWidget() {
   for (int i = 0; i < kLayerCount; ++i) {
     if (layers_[i].ebo) glDeleteBuffers(1, &layers_[i].ebo);
   }
+  if (user_points_vbo_) glDeleteBuffers(1, &user_points_vbo_);
+  if (user_points_vao_) glDeleteVertexArrays(1, &user_points_vao_);
   if (measure_vbo_) glDeleteBuffers(1, &measure_vbo_);
   if (measure_vao_) glDeleteVertexArrays(1, &measure_vao_);
   glDeleteVertexArrays(1, &vao_);
   glDeleteProgram(shader_program_);
   doneCurrent();
+}
+
+void GeoViewerWidget::CommitUserPointsChange(bool buffer_dirty) {
+  if (user_points_batch_depth_ > 0) {
+    user_points_batch_dirty_ = true;
+    if (buffer_dirty) {
+      user_points_batch_buffer_dirty_ = true;
+    }
+    return;
+  }
+
+  if (buffer_dirty) {
+    UpdateUserPointsBuffers();
+  }
+  update();
+  emit userPointsChanged();
+}
+
+void GeoViewerWidget::BeginUserPointsBatch() { ++user_points_batch_depth_; }
+
+void GeoViewerWidget::EndUserPointsBatch() {
+  if (user_points_batch_depth_ <= 0) return;
+  --user_points_batch_depth_;
+  if (user_points_batch_depth_ != 0 || !user_points_batch_dirty_) return;
+
+  if (user_points_batch_buffer_dirty_) {
+    UpdateUserPointsBuffers();
+  }
+  user_points_batch_dirty_ = false;
+  user_points_batch_buffer_dirty_ = false;
+  update();
+  emit userPointsChanged();
 }
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
@@ -178,17 +212,13 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
     }
   }
 
-  UpdateUserPointsBuffers();
-  update();
-  emit userPointsChanged();
+  CommitUserPointsChange(true);
 }
 
 void GeoViewerWidget::RemoveUserPoint(int index) {
   if (index < 0 || index >= static_cast<int>(user_points_.size())) return;
   user_points_.erase(user_points_.begin() + index);
-  UpdateUserPointsBuffers();
-  update();
-  emit userPointsChanged();
+  CommitUserPointsChange(true);
 }
 
 void GeoViewerWidget::AddUserPointLocal(double x, double y, std::optional<double> z) {
@@ -252,16 +282,14 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y, std::optional<double
     }
   }
 
-  UpdateUserPointsBuffers();
-  update();
-  emit userPointsChanged();
+  CommitUserPointsChange(true);
 }
 
 void GeoViewerWidget::SetUserPointVisible(int index, bool visible) {
   if (index < 0 || index >= static_cast<int>(user_points_.size())) return;
+  if (user_points_[index].visible == visible) return;
   user_points_[index].visible = visible;
-  UpdateUserPointsBuffers();
-  update();
+  CommitUserPointsChange(false);
 }
 
 void GeoViewerWidget::SetUserPointColor(int index, const QVector3D& color) {
@@ -271,10 +299,9 @@ void GeoViewerWidget::SetUserPointColor(int index, const QVector3D& color) {
 }
 
 void GeoViewerWidget::ClearUserPoints() {
+  if (user_points_.empty()) return;
   user_points_.clear();
-  UpdateUserPointsBuffers();
-  update();
-  emit userPointsChanged();
+  CommitUserPointsChange(true);
 }
 
 int GeoViewerWidget::UserPointCount() const {
@@ -301,6 +328,7 @@ void GeoViewerWidget::UpdateUserPointsBuffers() {
   // Upload all point positions (visible or not) — visibility is handled
   // during draw calls by skipping invisible points individually.
   std::vector<float> data;
+  data.reserve(user_points_.size() * 3);
   for (const auto& p : user_points_) {
     data.push_back(p.worldPos.x());
     data.push_back(p.worldPos.y());
@@ -310,7 +338,7 @@ void GeoViewerWidget::UpdateUserPointsBuffers() {
   glBindVertexArray(user_points_vao_);
   glBindBuffer(GL_ARRAY_BUFFER, user_points_vbo_);
   glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(),
-               GL_STATIC_DRAW);
+               GL_DYNAMIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
   glEnableVertexAttribArray(0);
   glBindVertexArray(0);
