@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "core",
+    srcs = ["project_context.cpp"],
+    hdrs = ["project_context.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/utility:geoviewer_utility_core",
+    ],
+)

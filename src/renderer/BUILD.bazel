@@ -1,0 +1,14 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS")
+
+cc_library(
+    name = "renderer",
+    srcs = ["scene_renderer.cpp"],
+    hdrs = ["scene_renderer.h"],
+    copts = QT_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel:qt6",
+        "//src/utility:geoviewer_utility_core",
+    ],
+)

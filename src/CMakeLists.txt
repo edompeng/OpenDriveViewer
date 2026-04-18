@@ -1,3 +1,10 @@
+# New Modular Structure
+add_subdirectory(core)
+add_subdirectory(renderer)
+add_subdirectory(logic)
+add_subdirectory(ui)
+
+# Keep legacy for now to allow incremental migration
 add_subdirectory(utility)
 add_subdirectory(app)
 

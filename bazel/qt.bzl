@@ -29,15 +29,15 @@ def qt_moc_genrule(name, headers, moc_tool = "//bazel:moc_wrapper"):
     native.genrule(
         name = name,
         srcs = headers,
-        outs = ["moc_" + h.replace(".h", ".cpp") for h in headers],
+        outs = ["moc_" + h.split("/")[-1].replace(".h", ".cpp") for h in headers],
         tools = [moc_tool],
         local = 1,
         cmd = " && ".join([
-            "export QT6_ROOT='{qt6_root}' && $(location {tool}) $(location {h}) $(@D)/moc_{cpp}".format(
+            "export QT6_ROOT='{qt6_root}' && $(location {tool}) $(location {h}) $(@D)/moc_{cpp_base}".format(
                 qt6_root = QT6_ROOT,
                 tool = moc_tool,
                 h = h,
-                cpp = h.replace(".h", ".cpp"),
+                cpp_base = h.split("/")[-1].replace(".h", ".cpp"),
             )
             for h in headers
         ]),

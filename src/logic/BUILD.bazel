@@ -1,0 +1,12 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "logic",
+    srcs = ["scene_manager.cpp"],
+    hdrs = ["scene_manager.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/core:core",
+        "//third_party/libOpenDRIVE:opendrive",
+    ],
+)

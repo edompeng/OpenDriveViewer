@@ -1,0 +1,24 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
+
+qt_moc_genrule(
+    name = "moc_files",
+    headers = ["widgets/geo_viewer_widget.h"],
+)
+
+cc_library(
+    name = "ui",
+    srcs = [
+        "widgets/geo_viewer_widget.cpp",
+        ":moc_files",
+    ],
+    hdrs = ["widgets/geo_viewer_widget.h"],
+    copts = QT_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel:qt6",
+        "//src/core:core",
+        "//src/renderer:renderer",
+        "//src/logic:logic",
+    ],
+)

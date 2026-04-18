@@ -53,11 +53,21 @@ add_subdirectory(src)
 macro(add_geoviewer_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(${name} PRIVATE GeoViewerUtility Catch2::Catch2WithMain Qt6::Gui)
+  target_link_libraries(${name} PRIVATE 
+    GeoViewerUtility 
+    GeoViewerCore 
+    GeoViewerLogic
+    Catch2::Catch2WithMain 
+    Qt6::Gui
+  )
   target_compile_definitions(${name} PRIVATE
     GEOVIEWER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME ${name} COMMAND ${name})
 endmacro()
+
+add_geoviewer_test(ProjectContextTests
+  tests/project_context_test.cpp
+)
 
 add_geoviewer_test(ViewerCoreTests
   tests/scene_index_builder_test.cpp

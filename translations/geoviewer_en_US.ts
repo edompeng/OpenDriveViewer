@@ -264,137 +264,137 @@
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="127"/>
-        <location filename="../src/app/main_window.cpp" line="210"/>
+        <location filename="../src/app/main_window.cpp" line="211"/>
         <source>Load .xodr</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="128"/>
-        <location filename="../src/app/main_window.cpp" line="231"/>
+        <location filename="../src/app/main_window.cpp" line="232"/>
         <source>Windows</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="129"/>
-        <location filename="../src/app/main_window.cpp" line="165"/>
-        <location filename="../src/app/main_window.cpp" line="240"/>
-        <location filename="../src/app/main_window.cpp" line="249"/>
+        <location filename="../src/app/main_window.cpp" line="166"/>
+        <location filename="../src/app/main_window.cpp" line="241"/>
+        <location filename="../src/app/main_window.cpp" line="250"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="130"/>
-        <location filename="../src/app/main_window.cpp" line="257"/>
+        <location filename="../src/app/main_window.cpp" line="258"/>
         <source>Measure</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="133"/>
-        <location filename="../src/app/main_window.cpp" line="290"/>
+        <location filename="../src/app/main_window.cpp" line="134"/>
+        <location filename="../src/app/main_window.cpp" line="291"/>
         <source>Jump to (lon,lat,alt):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="134"/>
-        <location filename="../src/app/main_window.cpp" line="293"/>
+        <location filename="../src/app/main_window.cpp" line="135"/>
+        <location filename="../src/app/main_window.cpp" line="294"/>
         <source>lon,lat,alt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="136"/>
+        <location filename="../src/app/main_window.cpp" line="137"/>
         <source>Jump to (x,y,z):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="137"/>
+        <location filename="../src/app/main_window.cpp" line="138"/>
         <source>x,y,z</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/app/main_window.cpp" line="141"/>
-        <location filename="../src/app/main_window.cpp" line="269"/>
-        <source>WGS84 (lon, lat)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="142"/>
         <location filename="../src/app/main_window.cpp" line="270"/>
+        <source>WGS84 (lon, lat)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/app/main_window.cpp" line="143"/>
+        <location filename="../src/app/main_window.cpp" line="271"/>
         <source>Local (x, y)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="146"/>
-        <location filename="../src/app/main_window.cpp" line="216"/>
+        <location filename="../src/app/main_window.cpp" line="147"/>
+        <location filename="../src/app/main_window.cpp" line="217"/>
         <source>Panels</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/app/main_window.cpp" line="149"/>
-        <location filename="../src/app/main_window.cpp" line="224"/>
-        <source>Layer Control</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="150"/>
         <location filename="../src/app/main_window.cpp" line="225"/>
-        <source>OpenSCENARIO</source>
+        <source>Layer Control</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="151"/>
         <location filename="../src/app/main_window.cpp" line="226"/>
-        <source>Routing</source>
+        <source>OpenSCENARIO</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="152"/>
         <location filename="../src/app/main_window.cpp" line="227"/>
-        <source>Favorites</source>
+        <source>Routing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../src/app/main_window.cpp" line="153"/>
         <location filename="../src/app/main_window.cpp" line="228"/>
+        <source>Favorites</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/app/main_window.cpp" line="154"/>
+        <location filename="../src/app/main_window.cpp" line="229"/>
         <source>Coordinate Inputs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="356"/>
+        <location filename="../src/app/main_window.cpp" line="357"/>
         <source>Total Distance: %1 m</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="368"/>
+        <location filename="../src/app/main_window.cpp" line="369"/>
         <source>Finalizing map data and uploading to GPU...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="382"/>
+        <location filename="../src/app/main_window.cpp" line="383"/>
         <source>Failed to load map.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="401"/>
+        <location filename="../src/app/main_window.cpp" line="404"/>
         <source>Map ready. Building layer tree...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="402"/>
+        <location filename="../src/app/main_window.cpp" line="405"/>
         <source>Map ready in local coordinates mode. Building layer tree...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="407"/>
+        <location filename="../src/app/main_window.cpp" line="413"/>
         <source>Map loaded successfully.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="410"/>
+        <location filename="../src/app/main_window.cpp" line="416"/>
         <source>Map loaded successfully. Invalid georeference: local coordinate mode only.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/app/main_window.cpp" line="426"/>
+        <location filename="../src/app/main_window.cpp" line="432"/>
         <source>Loading map and generating mesh...</source>
         <translation type="unfinished"></translation>
     </message>

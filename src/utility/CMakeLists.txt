@@ -1,14 +1,37 @@
-add_library(GeoViewerUtility STATIC
-  coordinate_util.cpp coordinate_util.h
-  coordinate_mode_policy.h
-  favorites_store.cpp favorites_store.h
-  input_parsing.cpp input_parsing.h
-  junction_grouping.cpp junction_grouping.h
-  map_loader.cpp map_loader.h
-  routing_logic.cpp routing_logic.h
-  viewer_text_util.cpp viewer_text_util.h
-  scene_enums.h
+# Core utility (no PROJ dependency)
+add_library(GeoViewerUtilityCore SHARED
+  favorites_store.cpp
+  input_parsing.cpp
+  junction_grouping.cpp
+  layer_tree_model.cpp
+  open_scenario_parser.cpp
+  routing_logic.cpp
+  viewer_text_util.cpp
 )
 
-target_include_directories(GeoViewerUtility PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(GeoViewerUtility PUBLIC OpenDrive pugixml::pugixml PROJ::proj)
+target_include_directories(GeoViewerUtilityCore PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(GeoViewerUtilityCore PUBLIC OpenDrive pugixml::pugixml)
+
+# Coordinate utility (PROJ dependency)
+add_library(GeoViewerCoordinateUtil SHARED
+  coordinate_util.cpp
+)
+
+target_include_directories(GeoViewerCoordinateUtil PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(GeoViewerCoordinateUtil PUBLIC PROJ::proj)
+
+# Map loader (depends on both)
+add_library(GeoViewerMapLoader SHARED
+  map_loader.cpp
+)
+
+target_include_directories(GeoViewerMapLoader PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(GeoViewerMapLoader PUBLIC GeoViewerUtilityCore GeoViewerCoordinateUtil OpenDrive)
+
+# Umbrella target for backward compatibility or ease of use
+add_library(GeoViewerUtility INTERFACE)
+target_link_libraries(GeoViewerUtility INTERFACE 
+  GeoViewerUtilityCore 
+  GeoViewerCoordinateUtil 
+  GeoViewerMapLoader
+)
