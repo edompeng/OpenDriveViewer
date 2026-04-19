@@ -21,15 +21,8 @@ genrule(
     name = "gen_translations_qrc",
     srcs = [":qm_outputs"],
     outs = ["translations_gen.qrc"],
-    cmd = """
-echo '<!DOCTYPE RCC><RCC version="1.0">' > $@
-echo '<qresource prefix="/i18n">' >> $@
-for f in $(locations :qm_outputs); do
-    echo "    <file>$$(basename $$f)</file>" >> $@
-done
-echo '</qresource>' >> $@
-echo '</RCC>' >> $@
-""",
+    tools = ["gen_qrc.py"],
+    cmd = "$(location gen_qrc.py) --output $@ $(locations :qm_outputs)",
 )
 
 # Bundle generated .qrc into resource wrapper
