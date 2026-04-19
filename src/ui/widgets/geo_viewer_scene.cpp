@@ -1,7 +1,9 @@
 #include "src/ui/widgets/geo_viewer.h"
 
-#include <QtConcurrent>
+#include <future>
 #include <tuple>
+#include <vector>
+#include "src/utility/thread_pool.h"
 #include "src/utility/viewer_text_util.h"
 
 namespace {
@@ -141,15 +143,16 @@ void GeoViewerWidget::PopulateLaneKeyIntervals() {
 }
 
 void GeoViewerWidget::RebuildSceneCaches() {
-  std::vector<QFuture<void>> tasks;
-  tasks.push_back(QtConcurrent::run([this]() { BuildLaneElementCache(); }));
-  tasks.push_back(QtConcurrent::run([this]() { BuildRoadmarkElementCache(); }));
-  tasks.push_back(QtConcurrent::run([this]() { BuildObjectElementCache(); }));
-  tasks.push_back(QtConcurrent::run([this]() { BuildSignalElementCache(); }));
-  tasks.push_back(QtConcurrent::run([this]() { BuildOutlineElementCache(); }));
+  std::vector<std::future<void>> tasks;
+  auto& pool = geoviewer::utility::ThreadPool::Instance();
+  tasks.push_back(pool.Enqueue([this]() { BuildLaneElementCache(); }));
+  tasks.push_back(pool.Enqueue([this]() { BuildRoadmarkElementCache(); }));
+  tasks.push_back(pool.Enqueue([this]() { BuildObjectElementCache(); }));
+  tasks.push_back(pool.Enqueue([this]() { BuildSignalElementCache(); }));
+  tasks.push_back(pool.Enqueue([this]() { BuildOutlineElementCache(); }));
 
   for (auto& task : tasks) {
-    task.waitForFinished();
+    task.get();
   }
 }
 
@@ -331,12 +334,24 @@ void GeoViewerWidget::TransformSceneMeshes() {
     std::swap(vertex[1], vertex[2]);
   };
 
-  QtConcurrent::blockingMap(network_mesh_.lanes_mesh.vertices, transform);
-  QtConcurrent::blockingMap(network_mesh_.roadmarks_mesh.vertices, transform);
-  QtConcurrent::blockingMap(network_mesh_.road_objects_mesh.vertices,
-                            transform);
-  QtConcurrent::blockingMap(network_mesh_.road_signals_mesh.vertices,
-                            transform);
+  std::vector<std::future<void>> tasks;
+  auto& pool = geoviewer::utility::ThreadPool::Instance();
+  tasks.push_back(pool.Enqueue([&]() {
+    for (auto& v : network_mesh_.lanes_mesh.vertices) transform(v);
+  }));
+  tasks.push_back(pool.Enqueue([&]() {
+    for (auto& v : network_mesh_.roadmarks_mesh.vertices) transform(v);
+  }));
+  tasks.push_back(pool.Enqueue([&]() {
+    for (auto& v : network_mesh_.road_objects_mesh.vertices) transform(v);
+  }));
+  tasks.push_back(pool.Enqueue([&]() {
+    for (auto& v : network_mesh_.road_signals_mesh.vertices) transform(v);
+  }));
+
+  for (auto& task : tasks) {
+    task.get();
+  }
 }
 
 std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {

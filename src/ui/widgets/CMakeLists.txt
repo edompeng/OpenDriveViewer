@@ -20,7 +20,6 @@ target_link_libraries(GeoViewerUIWidgets PUBLIC
     Qt6::Widgets
     Qt6::OpenGL
     Qt6::OpenGLWidgets
-    Qt6::Concurrent
     GeoViewerCore
     GeoViewerRenderer
     GeoViewerLogic

@@ -1,7 +1,8 @@
 #include "src/app/async_map_loader.h"
 
-#include <QtConcurrent/QtConcurrent>
+#include <thread>
 #include <utility>
+#include "src/utility/thread_pool.h"
 
 AsyncMapLoader::AsyncMapLoader(std::unique_ptr<IMapSceneLoader> loader,
                                QObject* parent)
@@ -13,31 +14,32 @@ AsyncMapLoader::AsyncMapLoader(std::unique_ptr<IMapSceneLoader> loader,
     emit ProgressTextChanged(
         QString("Loading map and generating mesh... (%1s)").arg(seconds));
   });
-
-  connect(&watcher_, &QFutureWatcher<MapSceneData>::finished, this, [this]() {
-    StopProgressUpdates();
-    last_result_ = watcher_.result();
-    if (last_result_.IsValid()) {
-      emit Finalizing();
-    }
-    emit Finished(last_result_.IsValid());
-  });
 }
 
 void AsyncMapLoader::Start(const QString& path) {
-  if (!loader_ || watcher_.isRunning()) return;
+  if (!loader_ || is_running_) return;
 
+  is_running_ = true;
   last_result_ = MapSceneData();
   elapsed_.restart();
   progress_timer_.start();
   emit ProgressTextChanged("Loading map and generating mesh...");
 
-  watcher_.setFuture(QtConcurrent::run([loader = loader_.get(), path]() {
-    return loader->Load(path.toStdString());
-  }));
+  geoviewer::utility::ThreadPool::Instance().Enqueue([this, path]() {
+    auto result = loader_->Load(path.toStdString());
+    QMetaObject::invokeMethod(this, [this, res = std::move(result)]() mutable {
+      is_running_ = false;
+      StopProgressUpdates();
+      last_result_ = std::move(res);
+      if (last_result_.IsValid()) {
+        emit Finalizing();
+      }
+      emit Finished(last_result_.IsValid());
+    });
+  });
 }
 
-bool AsyncMapLoader::IsRunning() const { return watcher_.isRunning(); }
+bool AsyncMapLoader::IsRunning() const { return is_running_; }
 
 MapSceneData AsyncMapLoader::TakeResult() {
   MapSceneData result = std::move(last_result_);

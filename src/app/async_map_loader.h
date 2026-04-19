@@ -1,10 +1,10 @@
 #pragma once
 
-#include <QElapsedTimer>
-#include <QFutureWatcher>
 #include <QObject>
 #include <QTimer>
+#include <atomic>
 #include <memory>
+#include <thread>
 #include "src/utility/map_loader.h"
 
 class AsyncMapLoader : public QObject {
@@ -27,7 +27,7 @@ class AsyncMapLoader : public QObject {
   void StopProgressUpdates();
 
   std::unique_ptr<IMapSceneLoader> loader_;
-  QFutureWatcher<MapSceneData> watcher_;
+  std::atomic<bool> is_running_{false};
   QTimer progress_timer_;
   QElapsedTimer elapsed_;
   MapSceneData last_result_;

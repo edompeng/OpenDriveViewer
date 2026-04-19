@@ -15,7 +15,7 @@ add_library(GeoViewerAppCore SHARED
 
 target_include_directories(GeoViewerAppCore PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(GeoViewerAppCore PUBLIC
-  Qt6::Widgets Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Concurrent
+  Qt6::Widgets Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets
   GeoViewerUtility 
   OpenGL::GL
   pugixml

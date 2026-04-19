@@ -6,7 +6,8 @@
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
-#include <QtConcurrent>
+#include <thread>
+#include "src/utility/thread_pool.h"
 #include "src/app/layer_tree_model.h"
 
 namespace {
@@ -27,8 +28,6 @@ QTreeWidgetItem* CreateChildItem(QTreeWidgetItem* parent) {
 
 LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {
-  snapshot_watcher_ =
-      new QFutureWatcher<std::shared_ptr<LayerTreeSnapshot>>(this);
   // UI Setup
   auto* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(2, 2, 2, 2);
@@ -108,6 +107,10 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   resize(250, 500);
 }
 
+LayerControlWidget::~LayerControlWidget() {
+  snapshot_generation_++;
+}
+
 void LayerControlWidget::UpdateTree() {
   if (!viewer_->GetMap()) return;
   RequestSnapshotBuild();
@@ -127,20 +130,17 @@ void LayerControlWidget::RequestSnapshotBuild() {
   auto* loading_item = CreateRootItem(tree_);
   loading_item->setText(0, "Building layer tree...");
   tree_->setUpdatesEnabled(true);
-
-  connect(
-      snapshot_watcher_,
-      &QFutureWatcher<std::shared_ptr<LayerTreeSnapshot>>::finished, this,
-      [this, generation]() {
-        if (generation != snapshot_generation_) return;
-        tree_snapshot_ = snapshot_watcher_->result();
-        PopulateTopLevelItems();
-      },
-      Qt::SingleShotConnection);
-
-  snapshot_watcher_->setFuture(QtConcurrent::run([map, junction_result]() {
-    return BuildLayerTreeSnapshot(map, junction_result);
-  }));
+  geoviewer::utility::ThreadPool::Instance().Enqueue(
+      [this, map, junction_result, generation]() {
+        auto snapshot = BuildLayerTreeSnapshot(map, junction_result);
+        QMetaObject::invokeMethod(this, [this, snapshot = std::move(snapshot),
+                                         generation]() mutable {
+          if (generation == snapshot_generation_.load()) {
+            tree_snapshot_ = std::move(snapshot);
+            PopulateTopLevelItems();
+          }
+        });
+      });
 }
 
 void LayerControlWidget::RetranslateUi() {

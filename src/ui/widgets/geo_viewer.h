@@ -7,7 +7,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
-#include <QFutureWatcher>
+#include <QFuture>
 #include <QHash>
 #include <QMatrix4x4>
 #include <QMenu>
@@ -18,13 +18,16 @@
 #include <QVector3D>
 #include <QWheelEvent>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <future>
 #include <limits>
 #include <map>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -343,8 +346,7 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
       std::shared_ptr<odr::OpenDriveMap> map,
       const odr::RoadNetworkMesh& network_mesh,
       const odr::Mesh3D& junction_mesh, int grid_resolution) const;
-  QFutureWatcher<std::vector<SceneGridBox>>* spatial_grid_watcher_ = nullptr;
-  std::uint64_t spatial_grid_generation_ = 0;
+  std::atomic<uint64_t> spatial_grid_generation_{0};
   bool spatial_grid_ready_ = false;
 
   // ---- Ray Detection ----

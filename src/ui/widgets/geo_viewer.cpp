@@ -8,13 +8,12 @@
 #include <QPolygonF>
 #include <QRegularExpression>
 #include <QStringList>
-#include <QThread>
-#include <QtConcurrent>
-#include <QtMath>
 #include <algorithm>
+#include <future>
 #include "src/app/scene_index_builder.h"
 #include "src/app/spatial_grid_index.h"
 #include "src/utility/coordinate_util.h"
+#include "src/utility/thread_pool.h"
 #include "src/utility/viewer_text_util.h"
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
@@ -23,7 +22,6 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
       vbo_(0),
       shader_program_(0),
       right_hand_traffic_(true) {
-  spatial_grid_watcher_ = new QFutureWatcher<std::vector<SceneGridBox>>(this);
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
   for (int i = 0; i < kLayerCount; ++i) {
@@ -40,10 +38,7 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
 }
 
 GeoViewerWidget::~GeoViewerWidget() {
-  if (spatial_grid_watcher_) {
-    spatial_grid_watcher_->cancel();
-    spatial_grid_watcher_->waitForFinished();
-  }
+  spatial_grid_generation_++;
   makeCurrent();
   glDeleteBuffers(1, &vbo_);
   // highlight_mgr_ automatically releases its EBO via unique_ptr
@@ -409,23 +404,24 @@ void GeoViewerWidget::UpdateMeshIndices() {
     layerData[(int)type] = {result.indices, result.chunks};
   };
 
-  std::vector<QFuture<void>> futures;
-  futures.push_back(QtConcurrent::run([&]() {
+  auto& pool = geoviewer::utility::ThreadPool::Instance();
+  std::vector<std::future<void>> futures;
+  futures.push_back(pool.Enqueue([&]() {
     collectLayerData(LayerType::kLanes, lane_element_items_,
                      network_mesh_.lanes_mesh.indices,
                      &network_mesh_.lanes_mesh);
   }));
-  futures.push_back(QtConcurrent::run([&]() {
+  futures.push_back(pool.Enqueue([&]() {
     collectLayerData(LayerType::kRoadmarks, roadmark_element_items_,
                      network_mesh_.roadmarks_mesh.indices,
                      &network_mesh_.roadmarks_mesh);
   }));
-  futures.push_back(QtConcurrent::run([&]() {
+  futures.push_back(pool.Enqueue([&]() {
     collectLayerData(LayerType::kObjects, object_element_items_,
                      network_mesh_.road_objects_mesh.indices,
                      &network_mesh_.road_objects_mesh);
   }));
-  futures.push_back(QtConcurrent::run([&]() {
+  futures.push_back(pool.Enqueue([&]() {
     // Junction groups need a specialized predicate: individual junctions use
     // "J:group_id:junction_id" keys which the generic predicate doesn't check.
     // We only hide a group's mesh if the group itself is hidden OR ALL its
@@ -463,7 +459,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
         });
     layerData[(int)LayerType::kJunctions] = {result.indices, result.chunks};
   }));
-  futures.push_back(QtConcurrent::run([&]() {
+  futures.push_back(pool.Enqueue([&]() {
     std::vector<uint32_t> indices;
     size_t v_offset = layers_[(int)LayerType::kSignalLights].vertex_offset;
     for (const auto& el : signal_element_items_) {
@@ -482,7 +478,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
     }
     layerData[(int)LayerType::kSignalLights].indices = std::move(indices);
   }));
-  futures.push_back(QtConcurrent::run([&]() {
+  futures.push_back(pool.Enqueue([&]() {
     std::vector<uint32_t> indices;
     size_t v_offset = layers_[(int)LayerType::kSignalSigns].vertex_offset;
     for (const auto& el : signal_element_items_) {
@@ -502,7 +498,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
     layerData[(int)LayerType::kSignalSigns].indices = std::move(indices);
   }));
 
-  for (auto& f : futures) f.waitForFinished();
+  for (auto& f : futures) f.get();
 
   makeCurrent();
   for (int type_index = 0; type_index < kLayerCount; ++type_index) {
@@ -1158,33 +1154,25 @@ bool GeoViewerWidget::CheckProgramErrors(GLuint program) {
 // GeoViewerWidget
 
 void GeoViewerWidget::StartSpatialGridBuild() {
-  if (spatial_grid_watcher_) {
-    spatial_grid_watcher_->cancel();
-  }
   const std::uint64_t generation = ++spatial_grid_generation_;
   auto map = map_;
   const odr::RoadNetworkMesh* network_mesh = &network_mesh_;
   const odr::Mesh3D* junction_mesh = &junction_mesh_;
   const int grid_resolution = grid_resolution_;
 
-  connect(
-      spatial_grid_watcher_,
-      &QFutureWatcher<std::vector<SceneGridBox>>::finished, this,
-      [this, generation]() {
-        if (generation != spatial_grid_generation_) {
-          return;
-        }
-        grid_boxes_ = spatial_grid_watcher_->result();
-        spatial_grid_ready_ = true;
-        update();
-      },
-      Qt::SingleShotConnection);
-
-  spatial_grid_watcher_->setFuture(QtConcurrent::run(
-      [this, map, network_mesh, junction_mesh, grid_resolution]() {
-        return BuildSpatialGridData(map, *network_mesh, *junction_mesh,
-                                    grid_resolution);
-      }));
+  geoviewer::utility::ThreadPool::Instance().Enqueue(
+      [this, map, network_mesh, junction_mesh, grid_resolution, generation]() {
+        auto result = BuildSpatialGridData(map, *network_mesh, *junction_mesh,
+                                           grid_resolution);
+        QMetaObject::invokeMethod(
+            this, [this, res = std::move(result), generation]() mutable {
+              if (generation == spatial_grid_generation_.load()) {
+                grid_boxes_ = std::move(res);
+                spatial_grid_ready_ = true;
+                update();
+              }
+            });
+      });
 }
 
 void GeoViewerWidget::BuildSpatialGrid() {

@@ -12,10 +12,10 @@ bazel_dep(name = "rules_shell", version = "0.6.1")
 # -- Qt6 configuration --
 # Module list is the single source of truth for Qt dependencies.
 qt6_config = use_repo_rule("//bazel:qt_config.bzl", "qt6_config")
+
 qt6_config(
     name = "qt6_config",
     modules = [
-        "QtConcurrent",
         "QtCore",
         "QtGui",
         "QtOpenGL",
@@ -26,4 +26,5 @@ qt6_config(
 
 # -- PROJ configuration --
 proj_config = use_repo_rule("//bazel:proj_config.bzl", "proj_config")
+
 proj_config(name = "proj_config")

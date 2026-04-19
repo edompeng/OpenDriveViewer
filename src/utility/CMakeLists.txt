@@ -4,6 +4,7 @@ add_library(GeoViewerUtilityCore SHARED
   input_parsing.cpp
   junction_grouping.cpp
   routing_logic.cpp
+  thread_pool.cpp
   viewer_text_util.cpp
 )
 

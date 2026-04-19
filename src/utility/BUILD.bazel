@@ -10,6 +10,7 @@ cc_library(
         "input_parsing.cpp",
         "junction_grouping.cpp",
         "routing_logic.cpp",
+        "thread_pool.cpp",
         "viewer_text_util.cpp",
     ],
     hdrs = [
@@ -19,6 +20,7 @@ cc_library(
         "junction_grouping.h",
         "routing_logic.h",
         "scene_enums.h",
+        "thread_pool.h",
         "viewer_text_util.h",
     ],
     copts = COMMON_COPTS,

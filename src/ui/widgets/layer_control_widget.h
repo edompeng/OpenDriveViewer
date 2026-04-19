@@ -1,6 +1,5 @@
 #pragma once
 #include <QAction>
-#include <QFutureWatcher>
 #include <QHash>
 #include <QLabel>
 #include <QLineEdit>
@@ -9,6 +8,7 @@
 #include <QPoint>
 #include <QTreeWidget>
 #include <QWidget>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include "src/app/layer_tree_model.h"
@@ -20,6 +20,7 @@ class LayerControlWidget : public FloatingPanelWidget {
  public:
   explicit LayerControlWidget(GeoViewerWidget* viewer,
                               QWidget* parent = nullptr);
+  ~LayerControlWidget() override;
   void UpdateTree();
   void SelectElement(const QString& road_id, TreeNodeType type,
                      const QString& element_id);
@@ -59,9 +60,8 @@ class LayerControlWidget : public FloatingPanelWidget {
   std::shared_ptr<const LayerTreeSnapshot> tree_snapshot_;
   QHash<QString, int> road_snapshot_index_by_id_;
   QHash<QString, int> junction_snapshot_index_by_id_;
-  QFutureWatcher<std::shared_ptr<LayerTreeSnapshot>>* snapshot_watcher_ =
-      nullptr;
-  std::uint64_t snapshot_generation_ = 0;
+  std::atomic<uint64_t> snapshot_generation_{0};
+  uint64_t last_displayed_generation_ = 0;
 
   void RequestSnapshotBuild();
   void PopulateTopLevelItems();
