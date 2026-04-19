@@ -1,6 +1,7 @@
 #include "src/ui/widgets/geo_viewer_widget.h"
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include "src/core/project_context.h"
 
 namespace geoviewer::ui::widgets {
 
@@ -19,17 +20,17 @@ void GeoViewerWidget::resizeGL(int w, int h) { renderer_->Resize(w, h); }
 
 void GeoViewerWidget::paintGL() { renderer_->Render(); }
 
-void GeoViewerWidget::mousePressEvent(QMouseEvent* event) {
+void GeoViewerWidget::mousePressEvent(QMouseEvent*) {
   // Handle camera rotation start or selection
   update();
 }
 
-void GeoViewerWidget::mouseMoveEvent(QMouseEvent* event) {
+void GeoViewerWidget::mouseMoveEvent(QMouseEvent*) {
   // Handle camera update or hover info
   update();
 }
 
-void GeoViewerWidget::wheelEvent(QWheelEvent* event) {
+void GeoViewerWidget::wheelEvent(QWheelEvent*) {
   // Handle zoom
   update();
 }
@@ -42,7 +43,7 @@ void GeoViewerWidget::SetupSignals() {
     update();
   });
 
-  context.OnMapChanged([this](const std::string& path) {
+  context.OnMapChanged([this](const std::string&) {
     // Possibly trigger logic to reload map data
     // Then call renderer_->UploadVertices/Indices
     update();

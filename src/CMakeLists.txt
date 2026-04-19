@@ -1,6 +1,5 @@
 add_subdirectory(utility)
 add_subdirectory(core)
-add_subdirectory(renderer)
 add_subdirectory(logic)
 add_subdirectory(app)
 add_subdirectory(ui)

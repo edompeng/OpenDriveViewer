@@ -3,8 +3,7 @@
 #include <QOpenGLWidget>
 #include <memory>
 
-#include "src/renderer/scene_renderer.h"
-#include "src/core/project_context.h"
+#include "src/ui/renderer/scene_renderer.h"
 
 namespace geoviewer::ui::widgets {
 

@@ -49,6 +49,6 @@ cc_library(
         "//src/app:app_core",
         "//src/core",
         "//src/logic",
-        "//src/renderer",
+        "//src/ui/renderer",
     ],
 )
