@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "third_party/libOpenDRIVE/include/Lane.h"
+#include "Lane.h"
 
 struct ParsedUserPoint {
   double x = 0.0;

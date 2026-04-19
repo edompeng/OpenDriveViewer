@@ -8,9 +8,9 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include "third_party/libOpenDRIVE/include/Junction.h"
-#include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
-#include "third_party/libOpenDRIVE/include/Road.h"
+#include "Junction.h"
+#include "OpenDriveMap.h"
+#include "Road.h"
 
 namespace {
 

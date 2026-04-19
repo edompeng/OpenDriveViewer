@@ -32,8 +32,8 @@
 #include "src/logic/camera_controller.h"
 #include "src/logic/measure_tool_controller.h"
 #include "src/ui/render/gl_renderer.h"
-#include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
-#include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
+#include "OpenDriveMap.h"
+#include "RoadNetworkMesh.h"
 
 using LanesMesh = odr::LanesMesh;
 class QPainter;

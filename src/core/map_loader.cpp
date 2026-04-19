@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include "src/core/coordinate_util.h"
-#include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
+#include "OpenDriveMap.h"
 
 MapSceneData OpenDriveMapSceneLoader::Load(const std::string& path) const {
   MapSceneData data;

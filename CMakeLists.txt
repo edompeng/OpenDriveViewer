@@ -53,8 +53,19 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_subdirectory(third_party/pugixml)
-add_subdirectory(third_party/libOpenDRIVE)
+FetchContent_Declare(
+  pugixml
+  URL https://github.com/zeux/pugixml/archive/refs/tags/v1.15.tar.gz
+)
+FetchContent_MakeAvailable(pugixml)
+
+FetchContent_Declare(
+  libOpenDRIVE
+  URL https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/0.5.0.tar.gz
+  PATCH_COMMAND patch -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/third_party/patches/libOpenDRIVE.patch
+)
+FetchContent_MakeAvailable(libOpenDRIVE)
+
 add_subdirectory(src)
 
 # --- Tests ---

@@ -1,11 +1,5 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
-cc_library(
+alias(
     name = "pugixml",
-    srcs = ["src/pugixml.cpp"],
-    hdrs = [
-        "src/pugiconfig.hpp",
-        "src/pugixml.hpp",
-    ],
-    includes = ["src"],
+    actual = "@pugixml//:pugixml",
     visibility = ["//visibility:public"],
 )

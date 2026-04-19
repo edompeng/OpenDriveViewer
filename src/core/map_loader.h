@@ -4,7 +4,7 @@
 #include <string>
 #include "src/core/junction_grouping.h"
 #include "src/core/scene_enums.h"
-#include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
+#include "RoadNetworkMesh.h"
 
 namespace odr {
 class OpenDriveMap;

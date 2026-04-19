@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "third_party/libOpenDRIVE/include/Lane.h"
+#include "Lane.h"
 
 struct RouteHistoryEntry {
   std::string display_name;

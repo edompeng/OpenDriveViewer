@@ -29,3 +29,6 @@ qt6_config(
 proj_config = use_repo_rule("//bazel:proj_config.bzl", "proj_config")
 
 proj_config(name = "proj_config")
+
+non_module_deps = use_extension("//bazel:repositories.bzl", "non_module_deps")
+use_repo(non_module_deps, "pugixml", "opendrive")

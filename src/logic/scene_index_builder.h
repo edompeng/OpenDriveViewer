@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 #include "src/core/scene_geometry_types.h"
-#include "third_party/libOpenDRIVE/include/Mesh.h"
+#include "Mesh.h"
 
 struct SceneLayerIndexResult {
   std::vector<uint32_t> indices;

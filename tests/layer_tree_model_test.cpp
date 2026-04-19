@@ -1,6 +1,6 @@
 #include "src/ui/widgets/layer_tree_model.h"
 #include <gtest/gtest.h>
-#include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
+#include "OpenDriveMap.h"
 
 #include <fstream>
 #include <vector>

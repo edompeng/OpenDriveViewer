@@ -6,7 +6,7 @@
 #include <optional>
 #include <vector>
 #include "src/core/scene_geometry_types.h"
-#include "third_party/libOpenDRIVE/include/Mesh.h"
+#include "Mesh.h"
 
 struct SceneMeshLayerView {
   const odr::Mesh3D* mesh = nullptr;

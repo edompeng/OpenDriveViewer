@@ -5,7 +5,7 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "third_party/libOpenDRIVE/include/Math.hpp"
+#include "Math.hpp"
 
 namespace odr {
 class OpenDriveMap;

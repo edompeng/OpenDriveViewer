@@ -4,7 +4,7 @@
 #include <vector>
 #include "src/logic/input_parsing.h"
 #include "src/logic/routing_logic.h"
-#include "third_party/libOpenDRIVE/include/RoutingGraph.h"
+#include "RoutingGraph.h"
 
 RoutingWidget::RoutingWidget(GeoViewerWidget* viewer, QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {

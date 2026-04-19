@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
-#include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
+#include "OpenDriveMap.h"
+#include "RoadNetworkMesh.h"
 
 namespace geoviewer::logic {
 

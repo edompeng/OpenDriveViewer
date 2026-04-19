@@ -7,7 +7,7 @@
 #include <vector>
 #include "src/core/junction_grouping.h"
 #include "src/core/scene_enums.h"
-#include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
+#include "OpenDriveMap.h"
 
 struct RoadChildSnapshot {
   QString element_id;
