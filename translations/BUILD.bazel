@@ -1,3 +1,4 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
 load("//bazel:qt.bzl", "qt_lrelease", "qt_resource")
 
 package(default_visibility = ["//visibility:public"])
@@ -16,13 +17,19 @@ qt_lrelease(
     ],
 )
 
+py_binary(
+    name = "gen_qrc_bin",
+    srcs = ["gen_qrc.py"],
+    main = "gen_qrc.py",
+)
+
 # Generate .qrc file referencing just the filenames
 genrule(
     name = "gen_translations_qrc",
     srcs = [":qm_outputs"],
     outs = ["translations_gen.qrc"],
-    tools = ["gen_qrc.py"],
-    cmd = "$(location gen_qrc.py) --output $@ $(locations :qm_outputs)",
+    tools = [":gen_qrc_bin"],
+    cmd = "$(location :gen_qrc_bin) --output $@ $(locations :qm_outputs)",
 )
 
 # Bundle generated .qrc into resource wrapper
