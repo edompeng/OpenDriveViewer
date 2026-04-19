@@ -93,8 +93,9 @@ void FavoritesWidget::ToggleCollapse() {
 void FavoritesWidget::AddFavorite(const QString& road_id, TreeNodeType type,
                                   const QString& element_id,
                                   const QString& name) {
-  const std::string display_name_std = BuildFavoriteDisplayName(
-      road_id.toStdString(), type, element_id.toStdString(), name.toStdString());
+  const std::string display_name_std =
+      BuildFavoriteDisplayName(road_id.toStdString(), type,
+                               element_id.toStdString(), name.toStdString());
   const QString display_name = QString::fromStdString(display_name_std);
   if (!favorites_.Add(road_id.toStdString(), type, element_id.toStdString(),
                       display_name_std)) {
@@ -155,9 +156,7 @@ void FavoritesWidget::HandleItemDoubleClicked(QListWidgetItem* item) {
                            QString::fromStdString(favorite->element_id));
 }
 
-void FavoritesWidget::HandleItemClicked(QListWidgetItem* item) {
-  // Optional: jump to on click? User said right click for jump.
-}
+void FavoritesWidget::HandleItemClicked(QListWidgetItem* /*item*/) {}
 
 void FavoritesWidget::RefreshListIndices() {
   for (int i = 0; i < list_->count(); ++i) {

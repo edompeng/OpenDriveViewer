@@ -920,7 +920,7 @@ GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
 }
 
 int GeoViewerWidget::AddRoutingPath(const std::vector<odr::LaneKey>& path,
-                                    const QString& name) {
+                                    const QString& /*name*/) {
   if (!map_ || path.empty() || !gl_renderer_) return -1;
   auto* routing_buf_mgr = gl_renderer_->GetRoutingBufferManager();
   if (!routing_buf_mgr) return -1;

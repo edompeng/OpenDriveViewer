@@ -24,7 +24,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   QString locale = QLocale::system().name();
   if (locale.isEmpty()) locale = "zh_CN";
   if (!translator_->load(":/i18n/geoviewer_" + locale + ".qm")) {
-    (void)translator_->load(":/i18n/geoviewer_zh_CN.qm");
+    if (!translator_->load(":/i18n/geoviewer_zh_CN.qm")) {
+      qWarning() << "Failed to load default translation file";
+    }
   }
   qApp->installTranslator(translator_);
 

@@ -213,7 +213,7 @@ void RoutingWidget::HandleHistoryContextMenu(const QPoint& pos) {
   }
 }
 
-void RoutingWidget::HandleItemDoubleClicked(QTreeWidgetItem* item, int column) {
+void RoutingWidget::HandleItemDoubleClicked(QTreeWidgetItem* item, int /*column*/) {
   if (!item) return;
 
   if (item->parent() == nullptr) {
@@ -231,7 +231,7 @@ void RoutingWidget::HandleItemDoubleClicked(QTreeWidgetItem* item, int column) {
   }
 }
 
-void RoutingWidget::HandleItemEntered(QTreeWidgetItem* item, int column) {
+void RoutingWidget::HandleItemEntered(QTreeWidgetItem* item, int /*column*/) {
   if (!item) {
     viewer_->ClearHighlight();
     return;

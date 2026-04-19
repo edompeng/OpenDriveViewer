@@ -359,7 +359,7 @@ void LayerControlWidget::HandleItemExpanded(QTreeWidgetItem* item) {
   EnsureChildrenLoaded(item);
 }
 
-void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item, int column) {
+void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item, int /*column*/) {
   if (!item) {
     emit ItemHovered("", TreeNodeType::kRoad, "");
     return;
@@ -386,7 +386,7 @@ void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item, int column) {
 }
 
 void LayerControlWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
-                                                 int column) {
+                                                 int /*column*/) {
   if (!item) return;
 
   TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
@@ -413,7 +413,7 @@ void LayerControlWidget::leaveEvent(QEvent* event) {
   QWidget::leaveEvent(event);
 }
 
-void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int column) {
+void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int /*column*/) {
   if (is_populating_) return;
 
   const TreeNodeType changed_type =
