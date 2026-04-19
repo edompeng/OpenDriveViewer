@@ -23,7 +23,7 @@ cc_library(
         "//bazel:qt6",
         "//src/core",
         "//src/logic",
-        "//src/ui/renderer",
+        "//src/ui/render",
         "//src/ui/widgets",
     ],
 )

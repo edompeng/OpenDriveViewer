@@ -1,7 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -27,12 +26,13 @@ class ProjectContext {
 
   // Selection state
   void SetSelectedElement(const std::string& road_id, TreeNodeType type,
-                         const std::string& element_id);
-  
+                          const std::string& element_id);
+
   // Callbacks (Signals)
   using MapChangedCallback = std::function<void(const std::string&)>;
   using LayerVisibilityCallback = std::function<void(LayerType, bool)>;
-  using SelectionCallback = std::function<void(const std::string&, TreeNodeType, const std::string&)>;
+  using SelectionCallback =
+      std::function<void(const std::string&, TreeNodeType, const std::string&)>;
 
   void OnMapChanged(MapChangedCallback callback);
   void OnLayerVisibilityChanged(LayerVisibilityCallback callback);

@@ -1,6 +1,5 @@
 #include "src/logic/input_parsing.h"
 
-#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 
@@ -114,7 +113,6 @@ std::vector<ParsedUserPoint> CoordinateInputParser::ParseUserPoints(
         points.push_back(parsed);
       }
     }
-
   }
 
   return points;
@@ -146,7 +144,6 @@ std::optional<ParsedJumpLocation> CoordinateInputParser::ParseJumpLocation(
   if (coords.size() == 3 && ParseDouble(coords[2], &parsed.z) == false) {
     return std::nullopt;
   }
-
 
   return parsed;
 }

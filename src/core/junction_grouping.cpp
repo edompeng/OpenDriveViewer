@@ -4,10 +4,8 @@
 #include <cmath>
 #include <limits>
 #include <map>
-#include <numeric>
 #include <set>
 #include <stdexcept>
-#include <tuple>
 #include <utility>
 #include <vector>
 #include "third_party/libOpenDRIVE/include/Junction.h"

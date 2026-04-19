@@ -355,6 +355,7 @@ void GeoViewerWidget::TransformSceneMeshes() {
 }
 
 std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
+  if (!gl_renderer_) return {};
   std::vector<float> vertices;
   std::size_t total_vertex_count =
       network_mesh_.lanes_mesh.vertices.size() +
@@ -371,7 +372,7 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   vertices.reserve(total_vertex_count * 3);
 
   auto append_mesh = [&](const odr::Mesh3D& mesh, LayerType type) {
-    layers_[static_cast<int>(type)].vertex_offset = vertices.size() / 3;
+    gl_renderer_->SetLayerVertexOffset(type, vertices.size() / 3);
     for (const auto& vertex : mesh.vertices) {
       vertices.push_back(vertex[0]);
       vertices.push_back(vertex[1]);
@@ -384,14 +385,14 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   append_mesh(network_mesh_.road_objects_mesh, LayerType::kObjects);
   append_mesh(junction_mesh_, LayerType::kJunctions);
 
-  layers_[static_cast<int>(LayerType::kReferenceLines)].vertex_offset =
-      vertices.size() / 3;
+  gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
+                                     vertices.size() / 3);
   GenerateRefLinePoints(map_, vertices, road_ref_line_vert_ranges_);
 
-  layers_[static_cast<int>(LayerType::kSignalLights)].vertex_offset =
-      vertices.size() / 3;
-  layers_[static_cast<int>(LayerType::kSignalSigns)].vertex_offset =
-      vertices.size() / 3;
+  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights,
+                                     vertices.size() / 3);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns,
+                                     vertices.size() / 3);
   for (const auto& vertex : network_mesh_.road_signals_mesh.vertices) {
     vertices.push_back(vertex[0]);
     vertices.push_back(vertex[1]);
@@ -403,71 +404,54 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
 
 void GeoViewerWidget::UploadVertexBufferData(
     const std::vector<float>& vertices) {
-  if (vertices.empty() || !vbo_) return;
-
-  glBindVertexArray(vao_);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
-               vertices.data(), GL_STATIC_DRAW);
-  glBindVertexArray(0);
+  if (vertices.empty() || !gl_renderer_) return;
+  gl_renderer_->UploadSceneVertices(vertices);
 }
 
 void GeoViewerWidget::ApplyDefaultLayerStyles() {
-  layers_[static_cast<int>(LayerType::kLanes)].color =
-      QVector3D(0.75f, 0.75f, 0.75f);
-  layers_[static_cast<int>(LayerType::kLanes)].alpha = 0.4f;
+  if (!gl_renderer_) return;
 
-  layers_[static_cast<int>(LayerType::kLaneLines)].color =
-      QVector3D(1.0f, 1.0f, 0.0f);
-  layers_[static_cast<int>(LayerType::kLaneLines)].alpha = 1.0f;
-  layers_[static_cast<int>(LayerType::kLaneLines)].draw_mode = GL_LINES;
-  layers_[static_cast<int>(LayerType::kLaneLines)].polygon_offset_factor =
-      -1.0f;
-  layers_[static_cast<int>(LayerType::kLaneLines)].polygon_offset_units = -1.0f;
+  gl_renderer_->SetLayerColor(LayerType::kLanes, QVector3D(0.75f, 0.75f, 0.75f));
+  gl_renderer_->SetLayerAlpha(LayerType::kLanes, 0.4f);
 
-  layers_[static_cast<int>(LayerType::kLaneLinesDashed)].color =
-      QVector3D(1.0f, 1.0f, 0.0f);
-  layers_[static_cast<int>(LayerType::kLaneLinesDashed)].alpha = 0.8f;
-  layers_[static_cast<int>(LayerType::kLaneLinesDashed)].draw_mode = GL_LINES;
-  layers_[static_cast<int>(LayerType::kLaneLinesDashed)].polygon_offset_factor =
-      -1.0f;
-  layers_[static_cast<int>(LayerType::kLaneLinesDashed)].polygon_offset_units =
-      -1.0f;
+  gl_renderer_->SetLayerColor(LayerType::kLaneLines,
+                              QVector3D(1.0f, 1.0f, 0.0f));
+  gl_renderer_->SetLayerAlpha(LayerType::kLaneLines, 1.0f);
+  gl_renderer_->SetLayerDrawMode(LayerType::kLaneLines, GL_LINES);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kLaneLines, -1.0f, -1.0f);
 
-  layers_[static_cast<int>(LayerType::kRoadmarks)].color =
-      QVector3D(1.0f, 1.0f, 1.0f);
-  layers_[static_cast<int>(LayerType::kRoadmarks)].alpha = 1.0f;
-  layers_[static_cast<int>(LayerType::kRoadmarks)].polygon_offset_factor =
-      -1.0f;
-  layers_[static_cast<int>(LayerType::kRoadmarks)].polygon_offset_units = -1.0f;
+  gl_renderer_->SetLayerColor(LayerType::kLaneLinesDashed,
+                              QVector3D(1.0f, 1.0f, 0.0f));
+  gl_renderer_->SetLayerAlpha(LayerType::kLaneLinesDashed, 0.8f);
+  gl_renderer_->SetLayerDrawMode(LayerType::kLaneLinesDashed, GL_LINES);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kLaneLinesDashed, -1.0f, -1.0f);
 
-  layers_[static_cast<int>(LayerType::kObjects)].color =
-      QVector3D(0.8f, 0.5f, 0.3f);
-  layers_[static_cast<int>(LayerType::kObjects)].alpha = 1.0f;
+  gl_renderer_->SetLayerColor(LayerType::kRoadmarks,
+                              QVector3D(1.0f, 1.0f, 1.0f));
+  gl_renderer_->SetLayerAlpha(LayerType::kRoadmarks, 1.0f);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kRoadmarks, -1.0f, -1.0f);
 
-  layers_[static_cast<int>(LayerType::kReferenceLines)].color =
-      QVector3D(1.0f, 0.5f, 0.0f);
-  layers_[static_cast<int>(LayerType::kReferenceLines)].alpha = 1.0f;
-  layers_[static_cast<int>(LayerType::kReferenceLines)].draw_mode = GL_LINES;
-  layers_[static_cast<int>(LayerType::kReferenceLines)].polygon_offset_factor =
-      -2.0f;
-  layers_[static_cast<int>(LayerType::kReferenceLines)].polygon_offset_units =
-      -2.0f;
+  gl_renderer_->SetLayerColor(LayerType::kObjects, QVector3D(0.8f, 0.5f, 0.3f));
+  gl_renderer_->SetLayerAlpha(LayerType::kObjects, 1.0f);
 
-  layers_[static_cast<int>(LayerType::kSignalLights)].color =
-      QVector3D(0.2f, 0.8f, 0.8f);
-  layers_[static_cast<int>(LayerType::kSignalLights)].alpha = 1.0f;
+  gl_renderer_->SetLayerColor(LayerType::kReferenceLines,
+                              QVector3D(1.0f, 0.5f, 0.0f));
+  gl_renderer_->SetLayerAlpha(LayerType::kReferenceLines, 1.0f);
+  gl_renderer_->SetLayerDrawMode(LayerType::kReferenceLines, GL_LINES);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kReferenceLines, -2.0f, -2.0f);
 
-  layers_[static_cast<int>(LayerType::kSignalSigns)].color =
-      QVector3D(0.8f, 0.2f, 0.2f);
-  layers_[static_cast<int>(LayerType::kSignalSigns)].alpha = 1.0f;
+  gl_renderer_->SetLayerColor(LayerType::kSignalLights,
+                              QVector3D(0.2f, 0.8f, 0.8f));
+  gl_renderer_->SetLayerAlpha(LayerType::kSignalLights, 1.0f);
 
-  layers_[static_cast<int>(LayerType::kJunctions)].color =
-      QVector3D(1.0f, 0.75f, 0.2f);
-  layers_[static_cast<int>(LayerType::kJunctions)].alpha = 0.45f;
-  layers_[static_cast<int>(LayerType::kJunctions)].polygon_offset_factor =
-      -2.5f;
-  layers_[static_cast<int>(LayerType::kJunctions)].polygon_offset_units = -2.5f;
+  gl_renderer_->SetLayerColor(LayerType::kSignalSigns,
+                              QVector3D(0.8f, 0.2f, 0.2f));
+  gl_renderer_->SetLayerAlpha(LayerType::kSignalSigns, 1.0f);
+
+  gl_renderer_->SetLayerColor(LayerType::kJunctions,
+                              QVector3D(1.0f, 0.75f, 0.2f));
+  gl_renderer_->SetLayerAlpha(LayerType::kJunctions, 0.45f);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kJunctions, -2.5f, -2.5f);
 }
 
 void GeoViewerWidget::FinalizeSceneUpdate() {

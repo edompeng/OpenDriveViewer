@@ -3,8 +3,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Lane.h"
-#include "RoutingGraph.h"
+#include "third_party/libOpenDRIVE/include/Lane.h"
 
 struct ParsedUserPoint {
   double x = 0.0;
@@ -17,7 +16,6 @@ struct ParsedJumpLocation {
   double y = 0.0;
   double z = 0.0;
 };
-
 
 class CoordinateInputParser {
  public:

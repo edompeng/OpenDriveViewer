@@ -6,7 +6,6 @@
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
-#include <thread>
 #include "src/core/thread_pool.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
@@ -107,9 +106,7 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   resize(250, 500);
 }
 
-LayerControlWidget::~LayerControlWidget() {
-  snapshot_generation_++;
-}
+LayerControlWidget::~LayerControlWidget() { snapshot_generation_++; }
 
 void LayerControlWidget::UpdateTree() {
   if (!viewer_->GetMap()) return;
@@ -133,13 +130,13 @@ void LayerControlWidget::RequestSnapshotBuild() {
   geoviewer::utility::ThreadPool::Instance().Enqueue(
       [this, map, junction_result, generation]() {
         auto snapshot = BuildLayerTreeSnapshot(map, junction_result);
-        QMetaObject::invokeMethod(this, [this, snapshot = std::move(snapshot),
-                                         generation]() mutable {
-          if (generation == snapshot_generation_.load()) {
-            tree_snapshot_ = std::move(snapshot);
-            PopulateTopLevelItems();
-          }
-        });
+        QMetaObject::invokeMethod(
+            this, [this, snapshot = std::move(snapshot), generation]() mutable {
+              if (generation == snapshot_generation_.load()) {
+                tree_snapshot_ = std::move(snapshot);
+                PopulateTopLevelItems();
+              }
+            });
       });
 }
 

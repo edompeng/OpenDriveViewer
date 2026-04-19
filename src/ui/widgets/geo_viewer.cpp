@@ -17,40 +17,15 @@
 #include "src/core/viewer_text_util.h"
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
-    : QOpenGLWidget(parent),
-      vao_(0),
-      vbo_(0),
-      shader_program_(0),
-      right_hand_traffic_(true) {
+    : QOpenGLWidget(parent), right_hand_traffic_(true) {
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
-  for (int i = 0; i < kLayerCount; ++i) {
-    layers_[i].ebo = 0;
-    layers_[i].index_count = 0;
-    layers_[i].visible = true;
-    layers_[i].polygon_offset_factor = 0.0f;
-    layers_[i].polygon_offset_units = 0.0f;
-    layers_[i].alpha = 1.0f;
-    layers_[i].draw_mode = GL_TRIANGLES;
-  }
-  layers_[(int)LayerType::kRouting].color = QVector3D(0.0f, 1.0f, 0.5f);
-  layers_[(int)LayerType::kRouting].alpha = 0.8f;
 }
 
 GeoViewerWidget::~GeoViewerWidget() {
   spatial_grid_generation_++;
   makeCurrent();
-  glDeleteBuffers(1, &vbo_);
-  // highlight_mgr_ automatically releases its EBO via unique_ptr
-  for (int i = 0; i < kLayerCount; ++i) {
-    if (layers_[i].ebo) glDeleteBuffers(1, &layers_[i].ebo);
-  }
-  if (user_points_vbo_) glDeleteBuffers(1, &user_points_vbo_);
-  if (user_points_vao_) glDeleteVertexArrays(1, &user_points_vao_);
-  if (measure_vbo_) glDeleteBuffers(1, &measure_vbo_);
-  if (measure_vao_) glDeleteVertexArrays(1, &measure_vao_);
-  glDeleteVertexArrays(1, &vao_);
-  glDeleteProgram(shader_program_);
+  gl_renderer_.reset();
   doneCurrent();
 }
 
@@ -87,20 +62,20 @@ void GeoViewerWidget::EndUserPointsBatch() {
 }
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
+  if (!gl_renderer_) return;
   if (type >= LayerType::kLanes && type < LayerType::kCount) {
-    layers_[(int)type].visible = visible;
-    if (!visible && highlight_mgr_ && highlight_mgr_->cur_layer == type) {
+    auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+    if (!visible && highlight_mgr && highlight_mgr->cur_layer == type) {
       ClearHighlight();
     }
+    gl_renderer_->SetLayerVisible(type, visible);
     update();
   }
 }
 
 bool GeoViewerWidget::IsLayerVisible(LayerType type) const {
-  if (type >= LayerType::kLanes && type < LayerType::kCount) {
-    return layers_[(int)type].visible;
-  }
-  return false;
+  if (!gl_renderer_) return false;
+  return gl_renderer_->IsLayerVisible(type);
 }
 
 void GeoViewerWidget::SetElementVisible(const QString& id, bool visible) {
@@ -314,11 +289,8 @@ GeoViewerWidget::UserPointSnapshot GeoViewerWidget::GetUserPointSnapshot(
 }
 
 void GeoViewerWidget::UpdateUserPointsBuffers() {
+  if (!gl_renderer_) return;
   makeCurrent();
-  if (!user_points_vao_) {
-    glGenVertexArrays(1, &user_points_vao_);
-    glGenBuffers(1, &user_points_vbo_);
-  }
 
   // Upload all point positions (visible or not) — visibility is handled
   // during draw calls by skipping invisible points individually.
@@ -330,33 +302,16 @@ void GeoViewerWidget::UpdateUserPointsBuffers() {
     data.push_back(p.world_pos.z());
   }
 
-  glBindVertexArray(user_points_vao_);
-  glBindBuffer(GL_ARRAY_BUFFER, user_points_vbo_);
-  glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(),
-               GL_DYNAMIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-  glEnableVertexAttribArray(0);
-  glBindVertexArray(0);
+  gl_renderer_->UploadUserPointsData(data);
   doneCurrent();
 }
 
 void GeoViewerWidget::UpdateMeasureBuffers() {
-  if (!measure_ctrl_) return;
+  if (!measure_ctrl_ || !gl_renderer_) return;
   const auto& points = measure_ctrl_->Points();
 
   makeCurrent();
-  if (!measure_vao_) {
-    glGenVertexArrays(1, &measure_vao_);
-    glGenBuffers(1, &measure_vbo_);
-  }
-
-  glBindVertexArray(measure_vao_);
-  glBindBuffer(GL_ARRAY_BUFFER, measure_vbo_);
-  glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(QVector3D),
-               points.data(), GL_DYNAMIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(QVector3D), nullptr);
-  glBindVertexArray(0);
+  gl_renderer_->UploadMeasurePointsData(points);
   doneCurrent();
 }
 
@@ -373,8 +328,10 @@ void GeoViewerWidget::SetRightHandTraffic(bool rht) {
 
 void GeoViewerWidget::UpdateMeshIndices() {
   needs_index_update_ = false;
-  if (!map_) return;
+  if (!map_ || !gl_renderer_) return;
   makeCurrent();
+
+  static constexpr int kLayerCount = static_cast<int>(LayerType::kCount);
 
   struct LayerTasks {
     std::vector<uint32_t> indices;
@@ -388,7 +345,8 @@ void GeoViewerWidget::UpdateMeshIndices() {
                               const odr::Mesh3D* base_mesh) {
     if (!base_mesh) return;
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
-        elements, original_indices, layers_[(int)type].vertex_offset,
+        elements, original_indices,
+        gl_renderer_->GetLayerVertexOffset(type),
         *base_mesh, [this](const SceneCachedElement& element) {
           if (hidden_elements_.count(element.road_key)) return false;
           if (!element.group_key.empty() &&
@@ -401,7 +359,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
           }
           return true;
         });
-    layerData[(int)type] = {result.indices, result.chunks};
+    layerData[static_cast<int>(type)] = {result.indices, result.chunks};
   };
 
   auto& pool = geoviewer::utility::ThreadPool::Instance();
@@ -428,7 +386,8 @@ void GeoViewerWidget::UpdateMeshIndices() {
     // individual junctions are hidden.
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
         junction_element_items_, junction_mesh_.indices,
-        layers_[(int)LayerType::kJunctions].vertex_offset, junction_mesh_,
+        gl_renderer_->GetLayerVertexOffset(LayerType::kJunctions),
+        junction_mesh_,
         [this](const SceneCachedElement& element) {
           // Check group-level visibility (JG:group_id)
           if (hidden_elements_.count(element.road_key)) return false;
@@ -457,11 +416,13 @@ void GeoViewerWidget::UpdateMeshIndices() {
           }
           return true;
         });
-    layerData[(int)LayerType::kJunctions] = {result.indices, result.chunks};
+    layerData[static_cast<int>(LayerType::kJunctions)] = {result.indices,
+                                                          result.chunks};
   }));
   futures.push_back(pool.Enqueue([&]() {
     std::vector<uint32_t> indices;
-    size_t v_offset = layers_[(int)LayerType::kSignalLights].vertex_offset;
+    size_t v_offset =
+        gl_renderer_->GetLayerVertexOffset(LayerType::kSignalLights);
     for (const auto& el : signal_element_items_) {
       if (el.group_key.find(":light") == std::string::npos) continue;
       if (hidden_elements_.count(el.road_key) ||
@@ -472,15 +433,17 @@ void GeoViewerWidget::UpdateMeshIndices() {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
               network_mesh_.road_signals_mesh.indices[range.start * 3 + k] +
-              (uint32_t)v_offset);
+              static_cast<uint32_t>(v_offset));
         }
       }
     }
-    layerData[(int)LayerType::kSignalLights].indices = std::move(indices);
+    layerData[static_cast<int>(LayerType::kSignalLights)].indices =
+        std::move(indices);
   }));
   futures.push_back(pool.Enqueue([&]() {
     std::vector<uint32_t> indices;
-    size_t v_offset = layers_[(int)LayerType::kSignalSigns].vertex_offset;
+    size_t v_offset =
+        gl_renderer_->GetLayerVertexOffset(LayerType::kSignalSigns);
     for (const auto& el : signal_element_items_) {
       if (el.group_key.find(":sign") == std::string::npos) continue;
       if (hidden_elements_.count(el.road_key) ||
@@ -491,11 +454,12 @@ void GeoViewerWidget::UpdateMeshIndices() {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
               network_mesh_.road_signals_mesh.indices[range.start * 3 + k] +
-              (uint32_t)v_offset);
+              static_cast<uint32_t>(v_offset));
         }
       }
     }
-    layerData[(int)LayerType::kSignalSigns].indices = std::move(indices);
+    layerData[static_cast<int>(LayerType::kSignalSigns)].indices =
+        std::move(indices);
   }));
 
   for (auto& f : futures) f.get();
@@ -505,7 +469,6 @@ void GeoViewerWidget::UpdateMeshIndices() {
     auto& data = layerData[type_index];
     LayerType type = static_cast<LayerType>(type_index);
 
-    // Fix EBO update bug: allow update for layers that can be cleared
     // Fix EBO update bug: allow data upload even for empty indices for major
     // layers so they are cleared from the screen when unchecked.
     if (data.indices.empty() && data.chunks.empty()) {
@@ -519,20 +482,16 @@ void GeoViewerWidget::UpdateMeshIndices() {
       if (!is_major_layer) continue;
     }
 
-    if (!layers_[(int)type].ebo) glGenBuffers(1, &layers_[(int)type].ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[(int)type].ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 data.indices.size() * sizeof(uint32_t), data.indices.data(),
-                 GL_STATIC_DRAW);
-    layers_[(int)type].index_count = data.indices.size();
-    layers_[(int)type].chunks = std::move(data.chunks);
+    gl_renderer_->UploadLayerIndices(type, data.indices);
+    gl_renderer_->SetLayerChunks(type, std::move(data.chunks));
   }
 
   // kLaneLines
   {
     std::vector<uint32_t> solid_indices;
     std::vector<uint32_t> dashed_indices;
-    size_t v_offset = layers_[(int)LayerType::kLanes].vertex_offset;
+    size_t v_offset =
+        gl_renderer_->GetLayerVertexOffset(LayerType::kLanes);
 
     for (const auto& el : outline_element_items_) {
       if (hidden_elements_.count(el.road_key)) continue;
@@ -543,22 +502,19 @@ void GeoViewerWidget::UpdateMeshIndices() {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 2; ++k) {
           target.push_back(
-              (uint32_t)lane_outline_indices_[range.start * 2 + k] +
-              (uint32_t)v_offset);
+              static_cast<uint32_t>(lane_outline_indices_[range.start * 2 + k]) +
+              static_cast<uint32_t>(v_offset));
         }
       }
     }
 
     auto SetupLineLayer = [&](LayerType t,
                               const std::vector<uint32_t>& indices) {
-      layers_[(int)t].chunks = BuildSceneMeshChunks(
-          indices, layers_[(int)t].vertex_offset, network_mesh_.lanes_mesh);
-      int ltype = (int)t;
-      if (!layers_[ltype].ebo) glGenBuffers(1, &layers_[ltype].ebo);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[ltype].ebo);
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint32_t),
-                   indices.data(), GL_STATIC_DRAW);
-      layers_[ltype].index_count = indices.size();
+      gl_renderer_->SetLayerChunks(
+          t, BuildSceneMeshChunks(
+                 indices, gl_renderer_->GetLayerVertexOffset(t),
+                 network_mesh_.lanes_mesh));
+      gl_renderer_->UploadLayerIndices(t, indices);
     };
     SetupLineLayer(LayerType::kLaneLines, solid_indices);
     SetupLineLayer(LayerType::kLaneLinesDashed, dashed_indices);
@@ -567,29 +523,21 @@ void GeoViewerWidget::UpdateMeshIndices() {
   // Reference Lines
   {
     std::vector<uint32_t> ref_line_indices;
-    bool layer_visible = layers_[(int)LayerType::kReferenceLines].visible;
+    bool layer_visible = gl_renderer_->IsLayerVisible(LayerType::kReferenceLines);
     for (const auto& [road_id, road] : map_->id_to_road) {
       if (layer_visible && IsElementActuallyVisible(road_id, "refline", "")) {
         if (road_ref_line_vert_ranges_.count(road_id)) {
           const auto& range = road_ref_line_vert_ranges_.at(road_id);
           for (size_t i = 0; i < range.count; ++i) {
-            ref_line_indices.push_back((uint32_t)(range.start + i));
+            ref_line_indices.push_back(static_cast<uint32_t>(range.start + i));
           }
         }
       }
     }
 
-    auto SetupRefLineLayer = [&](LayerType t,
-                                 const std::vector<uint32_t>& indices) {
-      int ltype = (int)t;
-      if (!layers_[ltype].ebo) glGenBuffers(1, &layers_[ltype].ebo);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[ltype].ebo);
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint32_t),
-                   indices.data(), GL_STATIC_DRAW);
-      layers_[ltype].index_count = indices.size();
-      layers_[ltype].chunks.clear();
-    };
-    SetupRefLineLayer(LayerType::kReferenceLines, ref_line_indices);
+    gl_renderer_->UploadLayerIndices(LayerType::kReferenceLines,
+                                     ref_line_indices);
+    gl_renderer_->SetLayerChunks(LayerType::kReferenceLines, {});
   }
 
   doneCurrent();
@@ -601,256 +549,70 @@ QMatrix4x4 GeoViewerWidget::GetViewMatrix() const {
 }
 
 void GeoViewerWidget::initializeGL() {
-  initializeOpenGLFunctions();
-  if (!InitializeRendering()) {
-    qCritical() << "Failed to initialize rendering";
+  gl_renderer_ = std::make_unique<geoviewer::render::GlRenderer>();
+  if (!gl_renderer_->Initialize()) {
+    qCritical() << "Failed to initialize GlRenderer";
+    return;
   }
+
+  measure_ctrl_ = std::make_unique<MeasureToolController>(this);
+  connect(measure_ctrl_.get(), &MeasureToolController::pointsChanged, this,
+          &GeoViewerWidget::UpdateMeasureBuffers);
+  connect(measure_ctrl_.get(), &MeasureToolController::TotalDistanceChanged,
+          this, &GeoViewerWidget::TotalDistanceChanged);
+  connect(measure_ctrl_.get(), &MeasureToolController::activeChanged, this,
+          &GeoViewerWidget::MeasureModeChanged);
 }
 
 void GeoViewerWidget::resizeGL(int w, int h) {
-  viewport_size_ = QSize(w, h);
-  glViewport(0, 0, w, h);
+  if (gl_renderer_) {
+    gl_renderer_->Resize(w, h);
+  }
 }
 
 void GeoViewerWidget::paintGL() {
+  if (!gl_renderer_) return;
+
   if (needs_index_update_ && batch_update_count_ == 0) {
     UpdateMeshIndices();
   }
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  if (!mesh_updated_) return;
-
-  glUseProgram(shader_program_);
-
-  QMatrix4x4 model;
-  model.setToIdentity();
-  glUniformMatrix4fv(glGetUniformLocation(shader_program_, "model"), 1,
-                     GL_FALSE, model.data());
+  if (!mesh_updated_) {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    return;
+  }
 
   QMatrix4x4 view = GetViewMatrix();
-  glUniformMatrix4fv(glGetUniformLocation(shader_program_, "view"), 1, GL_FALSE,
-                     view.data());
-
-  float aspect = (float)viewport_size_.width() / (float)viewport_size_.height();
-
   const float distance = camera_.GetDistance();
   const float mesh_radius = camera_.MeshRadius();
 
-  // 1. Ensure the near plane is always smaller than the viewing distance to
-  // prevent clipping the current view. Also set a minimum near plane to prevent
-  // large ratios with the far plane which leads to float precision issues.
-  float near_plane = qMax(0.1f, distance * 0.01f);
-
-  // 2. Calculate the ideal far plane (including the whole model)
-  float far_plane = distance + mesh_radius * 2.0f + 1000.0f;
-
-  // 3. Depth buffer precision limit: if the ratio exceeds one million times,
-  // increase the near plane instead of shrinking the far plane. This ensures
-  // distant objects won't be clipped (producing black shadows) due to ratio
-  // limits.
-  const float max_ratio = 1000000.0f;
-  if (far_plane / near_plane > max_ratio) {
-    near_plane = far_plane / max_ratio;
+  // Prepare user point data for drawing (positions + color override)
+  std::vector<std::pair<QVector3D, bool>> user_points_draw_data;
+  user_points_draw_data.reserve(user_points_.size());
+  for (const auto& p : user_points_) {
+    user_points_draw_data.push_back({p.color, p.visible});
   }
 
-  // Ensure the near plane is not pushed too far, causing clipping of the
-  // target.
-  if (near_plane > distance * 0.5f) {
-    near_plane = distance * 0.5f;
-    far_plane = near_plane * max_ratio;
-  }
+  size_t measure_ptr_count = measure_ctrl_ ? measure_ctrl_->Points().size() : 0;
 
-  proj_.setToIdentity();
-  proj_.perspective(45.0f, aspect, near_plane, far_plane);
-  glUniformMatrix4fv(glGetUniformLocation(shader_program_, "projection"), 1,
-                     GL_FALSE, proj_.data());
+  // The renderer handles all OpenGL draw calls
+  gl_renderer_->RenderScene(view, distance, mesh_radius, user_points_draw_data,
+                            measure_ptr_count, QVector3D(0.0f, 1.0f, 0.5f),
+                            0.8f);
 
-  GLint color_loc = glGetUniformLocation(shader_program_, "objectColor");
-  GLint alpha_loc = glGetUniformLocation(shader_program_, "alpha");
-  GLint dashed_loc = glGetUniformLocation(shader_program_, "is_dashed");
+  // QPainter overlays (Labels, UI elements)
+  const QMatrix4x4 view_proj = gl_renderer_->GetProjectionMatrix() * view;
+  QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing);
 
-  glBindVertexArray(vao_);
-
-  // Draw each layer
-  for (int i = 0; i < (int)LayerType::kCount; ++i) {
-    if (!layers_[i].visible || layers_[i].index_count == 0 || !layers_[i].ebo)
-      continue;
-
-    if (layers_[i].draw_mode == GL_LINES) {
-      glLineWidth(2.0f);
-    }
-
-    if (layers_[i].polygon_offset_factor != 0.0f ||
-        layers_[i].polygon_offset_units != 0.0f) {
-      glEnable(GL_POLYGON_OFFSET_FILL);
-      glEnable(GL_POLYGON_OFFSET_LINE);
-      glPolygonOffset(layers_[i].polygon_offset_factor,
-                      layers_[i].polygon_offset_units);
-    }
-
-    glUniform3f(color_loc, layers_[i].color.x(), layers_[i].color.y(),
-                layers_[i].color.z());
-    glUniform1f(alpha_loc, layers_[i].alpha);
-    glUniform1i(dashed_loc, (i == (int)LayerType::kLaneLinesDashed) ? 1 : 0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[i].ebo);
-
-    if (layers_[i].chunks.empty()) {
-      glDrawElements(layers_[i].draw_mode, layers_[i].index_count,
-                     GL_UNSIGNED_INT, 0);
-    } else {
-      QMatrix4x4 vp = proj_ * view;
-      auto IsAabbVisible = [&](const QVector3D& min_b, const QVector3D& max_b) {
-        QVector3D corners[8] = {{min_b.x(), min_b.y(), min_b.z()},
-                                {max_b.x(), min_b.y(), min_b.z()},
-                                {min_b.x(), max_b.y(), min_b.z()},
-                                {max_b.x(), max_b.y(), min_b.z()},
-                                {min_b.x(), min_b.y(), max_b.z()},
-                                {max_b.x(), min_b.y(), max_b.z()},
-                                {min_b.x(), max_b.y(), max_b.z()},
-                                {max_b.x(), max_b.y(), max_b.z()}};
-
-        bool all_out[6] = {true, true, true, true, true, true};
-        for (int c = 0; c < 8; ++c) {
-          QVector4D pt(corners[c], 1.0f);
-          pt = vp * pt;
-
-          if (pt.w() >
-              0) {  // Only judge if the point is in front of the camera
-            if (pt.x() >= -pt.w()) all_out[0] = false;
-            if (pt.x() <= pt.w()) all_out[1] = false;
-            if (pt.y() >= -pt.w()) all_out[2] = false;
-            if (pt.y() <= pt.w()) all_out[3] = false;
-            if (pt.z() >= -pt.w()) all_out[4] = false;
-            if (pt.z() <= pt.w()) all_out[5] = false;
-          } else {
-            // If the point is behind the camera, we cannot simply assume it's
-            // outside. For safety, if the AABB spans the w=0 plane, we skip
-            // clipping for now.
-            return true;
-          }
-        }
-        for (int i = 0; i < 6; ++i) {
-          if (all_out[i]) return false;
-        }
-        return true;
-      };
-
-      for (const auto& chunk : layers_[i].chunks) {
-        if (IsAabbVisible(chunk.min_bound, chunk.max_bound)) {
-          glDrawElements(
-              layers_[i].draw_mode, chunk.index_count, GL_UNSIGNED_INT,
-              (void*)(intptr_t)(chunk.index_offset * sizeof(uint32_t)));
-        }
-      }
-    }
-
-    if (layers_[i].polygon_offset_factor != 0.0f ||
-        layers_[i].polygon_offset_units != 0.0f) {
-      glDisable(GL_POLYGON_OFFSET_FILL);
-      glDisable(GL_POLYGON_OFFSET_LINE);
-    }
-  }
-
-  // Draw highlighting
-  if (highlight_mgr_ && highlight_mgr_->HasHighlight()) {
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-2.0f, -2.0f);  // Higher than roadmarks
-    glUniform3f(color_loc, 0.2f, 0.85f, 0.4f);
-    glUniform1f(alpha_loc, 1.0f);
-    glUniform1i(dashed_loc, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Primary().ebo);
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(highlight_mgr_->Primary().count),
-                   GL_UNSIGNED_INT, nullptr);
-    glDisable(GL_POLYGON_OFFSET_FILL);
-  }
-
-  // Draw neighbor highlighting (orange)
-  if (highlight_mgr_ && highlight_mgr_->HasNeighborHighlight()) {
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-1.8f, -1.8f);  // Slightly lower than primary highlight
-    glUniform3f(color_loc, 1.0f, 0.5f, 0.0f);  // Orange
-    glUniform1f(alpha_loc, 0.8f);
-    glUniform1i(dashed_loc, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Neighbor().ebo);
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(highlight_mgr_->Neighbor().count),
-                   GL_UNSIGNED_INT, nullptr);
-    glDisable(GL_POLYGON_OFFSET_FILL);
-  }
-
-  // Draw user-added points - highest priority, point-by-point drawing supports
-  // independent colors
-  if (!user_points_.empty() && user_points_vao_) {
-    glDisable(GL_DEPTH_TEST);
-    glPointSize(10.0f);
-    glUniform1f(alpha_loc, 1.0f);
-    glUniform1i(dashed_loc, 0);
-    glBindVertexArray(user_points_vao_);
-    for (int i = 0; i < static_cast<int>(user_points_.size()); ++i) {
-      if (!user_points_[i].visible) continue;
-      const auto& c = user_points_[i].color;
-      glUniform3f(color_loc, c.x(), c.y(), c.z());
-      glDrawArrays(GL_POINTS, i, 1);
-    }
-    glEnable(GL_DEPTH_TEST);
-  }
-
-  // Draw routing results
-  if (routing_buf_mgr_) {
-    for (const auto& [id, route] : routing_buf_mgr_->Routes()) {
-      if (route.visible && route.index_count > 0 && route.vao) {
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(-3.0f, -3.0f);  // Higher than highlights
-        glUniform3f(color_loc, layers_[(int)LayerType::kRouting].color.x(),
-                    layers_[(int)LayerType::kRouting].color.y(),
-                    layers_[(int)LayerType::kRouting].color.z());
-        glUniform1f(alpha_loc, layers_[(int)LayerType::kRouting].alpha);
-        glUniform1i(dashed_loc, 0);
-        glBindVertexArray(route.vao);
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(route.index_count),
-                       GL_UNSIGNED_INT, nullptr);
-        glDisable(GL_POLYGON_OFFSET_FILL);
-      }
-    }
-  }
-
-  // Draw measurement lines and points
-  if (measure_ctrl_ && !measure_ctrl_->Points().empty() && measure_vao_) {
-    glDisable(GL_DEPTH_TEST);
-    glLineWidth(3.0f);
-    glPointSize(8.0f);
-    glUniform3f(color_loc, 1.0f, 1.0f, 0.2f);  // Yellow
-    glUniform1f(alpha_loc, 1.0f);
-    glUniform1i(dashed_loc, 0);
-    glBindVertexArray(measure_vao_);
-    if (measure_ctrl_->Points().size() >= 2) {
-      glDrawArrays(GL_LINE_STRIP, 0,
-                   static_cast<GLsizei>(measure_ctrl_->Points().size()));
-    }
-    glDrawArrays(GL_POINTS, 0,
-                 static_cast<GLsizei>(measure_ctrl_->Points().size()));
-    glEnable(GL_DEPTH_TEST);
-  }
-
-  glBindVertexArray(0);
-
-  // Render distance labels
-  const bool hasMeasurePoints =
-      measure_ctrl_ && !measure_ctrl_->Points().empty();
-  if (hasMeasurePoints) {
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
+  if (measure_ptr_count > 0) {
     painter.setPen(Qt::yellow);
     QFont font = painter.font();
     font.setBold(true);
     font.setPointSize(10);
     painter.setFont(font);
 
-    const QMatrix4x4 view_proj = proj_ * view;
     const auto& pts = measure_ctrl_->Points();
-
     for (size_t i = 1; i < pts.size(); ++i) {
       const QVector3D p1 = pts[i - 1];
       const QVector3D p2 = pts[i];
@@ -866,16 +628,11 @@ void GeoViewerWidget::paintGL() {
         painter.drawText(sx + 5, sy - 5, QString("%1m").arg(dist, 0, 'f', 2));
       }
     }
-    RenderJunctionOverlay(painter, proj_ * view);
-    RenderOpenScenarioOverlay(painter, proj_ * view);
-    painter.end();
-  } else {
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
-    RenderJunctionOverlay(painter, proj_ * view);
-    RenderOpenScenarioOverlay(painter, proj_ * view);
-    painter.end();
   }
+
+  RenderJunctionOverlay(painter, view_proj);
+  RenderOpenScenarioOverlay(painter, view_proj);
+  painter.end();
 }
 
 void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
@@ -997,106 +754,15 @@ void GeoViewerWidget::focusOutEvent(QFocusEvent* event) {
   QWidget::focusOutEvent(event);
 }
 
-bool GeoViewerWidget::InitializeRendering() {
-  glClearColor(0.15f, 0.15f, 0.18f, 1.0f);
-  glEnable(GL_DEPTH_TEST);
-  glDisable(GL_CULL_FACE);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  // Initialize delegated components (Dependency Injection: pass OpenGL function
-  // interface to each sub-component)
-  auto* glFuncs = static_cast<QOpenGLExtraFunctions*>(this);
-  highlight_mgr_ = std::make_unique<HighlightManager>(glFuncs);
-  measure_ctrl_ = std::make_unique<MeasureToolController>(this);
-  routing_buf_mgr_ = std::make_unique<RoutingBufferManager>(glFuncs);
-
-  // Connect measurement signals
-  connect(measure_ctrl_.get(), &MeasureToolController::pointsChanged, this,
-          &GeoViewerWidget::UpdateMeasureBuffers);
-  connect(measure_ctrl_.get(), &MeasureToolController::TotalDistanceChanged,
-          this, &GeoViewerWidget::TotalDistanceChanged);
-  connect(measure_ctrl_.get(), &MeasureToolController::activeChanged, this,
-          &GeoViewerWidget::MeasureModeChanged);
-
-  if (!InitShaders()) {
-    return false;
+// These methods are now handled by geoviewer::render::GlRenderer
+void GeoViewerWidget::ClearHighlight() {
+  if (!gl_renderer_) return;
+  auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+  if (highlight_mgr && (highlight_mgr->HasHighlight() ||
+                         highlight_mgr->HasNeighborHighlight())) {
+    highlight_mgr->Clear();
+    update();
   }
-  InitBuffers();
-  return true;
-}
-
-bool GeoViewerWidget::InitShaders() {
-  const char* vertexShaderSource = R"(
-        #version 330 core
-        layout (location = 0) in vec3 aPos;
-        uniform mat4 model;
-        uniform mat4 view;
-        uniform mat4 projection;
-        out vec3 vWorldPos;
-        void main() {
-            vec4 world_pos = model * vec4(aPos, 1.0);
-            vWorldPos = world_pos.xyz;
-            gl_Position = projection * view * world_pos;
-        }
-    )";
-  const char* fragmentShaderSource = R"(
-    #version 330 core
-    out vec4 FragColor;
-    in vec3 vWorldPos;
-    uniform vec3 objectColor;
-    uniform float alpha;
-    uniform bool is_dashed;
-    void main() {
-        if (is_dashed) {
-            float d = length(vWorldPos.xy) * 2.0; 
-            if (fract(d) > 0.5) discard;
-        }
-        FragColor = vec4(objectColor, alpha);
-    }
-    )";
-
-  GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-  glCompileShader(vertexShader);
-
-  GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-  glCompileShader(fragmentShader);
-
-  if (!CheckShaderErrors(vertexShader, "VERTEX") ||
-      !CheckShaderErrors(fragmentShader, "FRAGMENT")) {
-    return false;
-  }
-
-  shader_program_ = glCreateProgram();
-  glAttachShader(shader_program_, vertexShader);
-  glAttachShader(shader_program_, fragmentShader);
-  glLinkProgram(shader_program_);
-
-  if (!CheckProgramErrors(shader_program_)) {
-    return false;
-  }
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentShader);
-  return true;
-}
-
-void GeoViewerWidget::InitBuffers() {
-  glGenVertexArrays(1, &vao_);
-  glBindVertexArray(vao_);
-  glGenBuffers(1, &vbo_);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-
-  // Highlight buffers are managed by HighlightManager
-  if (highlight_mgr_) {
-    highlight_mgr_->Initialize();
-  }
-
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
-                        (void*)nullptr);
-  glEnableVertexAttribArray(0);
-  glBindVertexArray(0);
 }
 
 void GeoViewerWidget::CalculateMeshCenter() {
@@ -1124,30 +790,9 @@ void GeoViewerWidget::CalculateMeshCenter() {
   camera_.FitToScene(minVec, maxVec);
 }
 
-bool GeoViewerWidget::CheckShaderErrors(GLuint shader, std::string type) {
-  GLint success;
-  GLchar info_log[1024];
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-  if (!success) {
-    glGetShaderInfoLog(shader, 1024, NULL, info_log);
-    qCritical() << "Shader error" << QString::fromStdString(type) << ":"
-                << info_log;
-    return false;
-  }
-  return true;
-}
-
-bool GeoViewerWidget::CheckProgramErrors(GLuint program) {
-  GLint success;
-  GLchar info_log[1024];
-  glGetProgramiv(program, GL_LINK_STATUS, &success);
-  if (!success) {
-    glGetProgramInfoLog(program, 1024, NULL, info_log);
-    qCritical() << "Program link error:" << info_log;
-    return false;
-  }
-  return true;
-}
+// RayIntersectsTriangle and RayIntersectsAABB migrated to
+// spatial_grid_index.cpp as free functions, no longer members of
+// GeoViewerWidget
 
 // RayIntersectsTriangle and RayIntersectsAABB migrated to
 // spatial_grid_index.cpp as free functions, no longer members of
@@ -1226,13 +871,15 @@ std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
 
 std::optional<GeoViewerWidget::PickResult>
 GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
-  if (network_mesh_.lanes_mesh.vertices.empty() || !spatial_grid_ready_) {
+  if (!gl_renderer_ || network_mesh_.lanes_mesh.vertices.empty() ||
+      !spatial_grid_ready_) {
     return std::nullopt;
   }
   QVector3D origin;
   QVector3D direction;
-  BuildRayFromScreenPoint(x, y, viewport_size_, proj_ * GetViewMatrix(), origin,
-                          direction);
+  BuildRayFromScreenPoint(x, y, gl_renderer_->GetViewportSize(),
+                          gl_renderer_->GetProjectionMatrix() * GetViewMatrix(),
+                          origin, direction);
 
   const auto result = PickFromSpatialGrid(
       grid_boxes_, origin, direction,
@@ -1258,33 +905,41 @@ GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
 
 int GeoViewerWidget::AddRoutingPath(const std::vector<odr::LaneKey>& path,
                                     const QString& name) {
-  if (!map_ || path.empty() || !routing_buf_mgr_) return -1;
+  if (!map_ || path.empty() || !gl_renderer_) return -1;
+  auto* routing_buf_mgr = gl_renderer_->GetRoutingBufferManager();
+  if (!routing_buf_mgr) return -1;
   makeCurrent();
-  const int id = routing_buf_mgr_->Add(path, map_, right_hand_traffic_);
+  const int id = routing_buf_mgr->Add(path, map_, right_hand_traffic_);
   doneCurrent();
   update();
   return id;
 }
 
 void GeoViewerWidget::RemoveRoutingPath(int id) {
-  if (!routing_buf_mgr_) return;
+  if (!gl_renderer_) return;
+  auto* routing_buf_mgr = gl_renderer_->GetRoutingBufferManager();
+  if (!routing_buf_mgr) return;
   makeCurrent();
-  routing_buf_mgr_->Remove(id);
+  routing_buf_mgr->Remove(id);
   doneCurrent();
   update();
 }
 
 void GeoViewerWidget::SetRoutingPathVisible(int id, bool visible) {
-  if (routing_buf_mgr_) {
-    routing_buf_mgr_->SetVisible(id, visible);
+  if (!gl_renderer_) return;
+  auto* routing_buf_mgr = gl_renderer_->GetRoutingBufferManager();
+  if (routing_buf_mgr) {
+    routing_buf_mgr->SetVisible(id, visible);
     update();
   }
 }
 
 void GeoViewerWidget::ClearRoutingPaths() {
-  if (!routing_buf_mgr_) return;
+  if (!gl_renderer_) return;
+  auto* routing_buf_mgr = gl_renderer_->GetRoutingBufferManager();
+  if (!routing_buf_mgr) return;
   makeCurrent();
-  routing_buf_mgr_->Clear();
+  routing_buf_mgr->Clear();
   doneCurrent();
   update();
 }
@@ -1317,12 +972,15 @@ bool GeoViewerWidget::LocalToWGS84(double local_x, double local_y,
 
 bool GeoViewerWidget::GetWorldPosAt(int x, int y, QVector3D& world_pos,
                                     std::optional<PickResult>& picked_idx) {
+  if (!gl_renderer_) return false;
   picked_idx = GetPickedVertexIndex(x, y);
 
-  float mouse_x = (2.0f * x) / viewport_size_.width() - 1.0f;
-  float mouse_y = 1.0f - (2.0f * y) / viewport_size_.height();
+  QSize viewport = gl_renderer_->GetViewportSize();
+  float mouse_x = (2.0f * x) / viewport.width() - 1.0f;
+  float mouse_y = 1.0f - (2.0f * y) / viewport.height();
 
-  QMatrix4x4 inv_mvp = (proj_ * GetViewMatrix()).inverted();
+  QMatrix4x4 inv_mvp =
+      (gl_renderer_->GetProjectionMatrix() * GetViewMatrix()).inverted();
   QVector4D ray_origin = inv_mvp * QVector4D(mouse_x, mouse_y, -1.0f, 1.0f);
   QVector4D ray_end = inv_mvp * QVector4D(mouse_x, mouse_y, 1.0f, 1.0f);
   ray_origin /= ray_origin.w();
@@ -1578,16 +1236,20 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
     return;
   }
 
-  if (start == highlight_mgr_->cur_start && end == highlight_mgr_->cur_end &&
-      type == highlight_mgr_->cur_layer) {
+  if (!gl_renderer_) return;
+  auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+  if (!highlight_mgr) return;
+
+  if (start == highlight_mgr->cur_start && end == highlight_mgr->cur_end &&
+      type == highlight_mgr->cur_layer) {
     return;
   }
-  highlight_mgr_->cur_start = start;
-  highlight_mgr_->cur_end = end;
-  highlight_mgr_->cur_layer = type;
+  highlight_mgr->cur_start = start;
+  highlight_mgr->cur_end = end;
+  highlight_mgr->cur_layer = type;
 
   std::vector<uint32_t> indices;
-  size_t v_offset = layers_[(int)type].vertex_offset;
+  size_t v_offset = gl_renderer_->GetLayerVertexOffset(type);
 
   for (size_t i = 0; i < mesh->indices.size(); i += 3) {
     uint32_t i0 = mesh->indices[i];
@@ -1604,14 +1266,7 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
   SetHighlightIndices(indices, type, type == LayerType::kLanes, vert_idx);
 }
 
-void GeoViewerWidget::ClearHighlight() {
-  if (!highlight_mgr_) return;
-  if (highlight_mgr_->HasHighlight() ||
-      highlight_mgr_->HasNeighborHighlight()) {
-    highlight_mgr_->Clear();
-    update();
-  }
-}
+
 
 QString GeoViewerWidget::BuildOpenScenarioEntityKey(
     const QString& file_id, const QString& entity_name) const {
@@ -1913,14 +1568,17 @@ void GeoViewerWidget::RenderOpenScenarioOverlay(QPainter& painter,
 }
 
 void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
+  if (!gl_renderer_) return;
+
   QVector3D world_pos;
   std::optional<PickResult> picked_idx;
-
   QString type_str, id_str, name_str;
 
-  float mouse_x = (2.0f * x) / viewport_size_.width() - 1.0f;
-  float mouse_y = 1.0f - (2.0f * y) / viewport_size_.height();
-  QMatrix4x4 inv_mvp = (proj_ * GetViewMatrix()).inverted();
+  QSize viewport = gl_renderer_->GetViewportSize();
+  float mouse_x = (2.0f * x) / viewport.width() - 1.0f;
+  float mouse_y = 1.0f - (2.0f * y) / viewport.height();
+  QMatrix4x4 inv_mvp =
+      (gl_renderer_->GetProjectionMatrix() * GetViewMatrix()).inverted();
   QVector4D ro4 = inv_mvp * QVector4D(mouse_x, mouse_y, -1.0f, 1.0f);
   QVector4D re4 = inv_mvp * QVector4D(mouse_x, mouse_y, 1.0f, 1.0f);
   ro4 /= ro4.w();
@@ -2092,11 +1750,13 @@ void GeoViewerWidget::SearchObject(LayerType type, const QString& id_str) {
 
   UpdateHighlight(target_start_vertex, type);
 
-  if (highlight_mgr_ && highlight_mgr_->cur_start < highlight_mgr_->cur_end) {
+  if (!gl_renderer_) return;
+  auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+  if (highlight_mgr && highlight_mgr->cur_start < highlight_mgr->cur_end) {
     double cx = 0, cy = 0, cz = 0;
     int count = 0;
-    for (size_t i = highlight_mgr_->cur_start;
-         i < highlight_mgr_->cur_end && i < target_mesh->vertices.size(); i++) {
+    for (size_t i = highlight_mgr->cur_start;
+         i < highlight_mgr->cur_end && i < target_mesh->vertices.size(); i++) {
       cx += target_mesh->vertices[i][0];
       cy += target_mesh->vertices[i][1];
       cz += target_mesh->vertices[i][2];
@@ -2230,8 +1890,10 @@ std::vector<uint32_t> GeoViewerWidget::CollectIndicesForCachedElements(
     LayerType type, const std::vector<SceneCachedElement>& elements,
     const std::vector<uint32_t>& source_indices,
     const std::function<bool(const SceneCachedElement&)>& predicate) const {
+  if (!gl_renderer_) return {};
   return CollectSceneIndices(elements, source_indices,
-                             layers_[(int)type].vertex_offset, predicate);
+                             gl_renderer_->GetLayerVertexOffset(type),
+                             predicate);
 }
 
 const odr::Mesh3D* GeoViewerWidget::MeshForLayer(LayerType type) const {
@@ -2281,16 +1943,18 @@ bool GeoViewerWidget::IsTrianglePickVisible(LayerType type,
 void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
                                           LayerType type, bool with_neighbors,
                                           size_t reference_vertex) {
-  if (!highlight_mgr_) return;
+  if (!gl_renderer_) return;
+  auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+  if (!highlight_mgr) return;
 
-  highlight_mgr_->cur_layer = type;
-  highlight_mgr_->bounds_valid = false;
+  highlight_mgr->cur_layer = type;
+  highlight_mgr->bounds_valid = false;
 
   const odr::Mesh3D* mesh = MeshForLayer(type);
 
   // Calculate highlighted bounding box
   if (mesh && !indices.empty()) {
-    const size_t v_offset = layers_[(int)type].vertex_offset;
+    const size_t v_offset = gl_renderer_->GetLayerVertexOffset(type);
     QVector3D min_b(std::numeric_limits<float>::max(),
                     std::numeric_limits<float>::max(),
                     std::numeric_limits<float>::max());
@@ -2310,15 +1974,15 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
       max_b.setZ(std::max(max_b.z(), static_cast<float>(v[2])));
     }
     if (min_b.x() <= max_b.x()) {
-      highlight_mgr_->bounds_valid = true;
-      highlight_mgr_->min_bound = min_b;
-      highlight_mgr_->max_bound = max_b;
+      highlight_mgr->bounds_valid = true;
+      highlight_mgr->min_bound = min_b;
+      highlight_mgr->max_bound = max_b;
     }
   }
 
   // Upload primary highlight
   makeCurrent();
-  highlight_mgr_->UploadHighlight(indices);
+  highlight_mgr->UploadHighlight(indices);
 
   // Neighbor highlight
   if (with_neighbors && type == LayerType::kLanes && routing_graph_) {
@@ -2335,7 +1999,8 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
     neighbors.insert(neighbors.end(), succs.begin(), succs.end());
     neighbors.insert(neighbors.end(), preds.begin(), preds.end());
 
-    const size_t lane_v_offset = layers_[(int)LayerType::kLanes].vertex_offset;
+    const size_t lane_v_offset =
+        gl_renderer_->GetLayerVertexOffset(LayerType::kLanes);
     for (const auto& neighbor_key : neighbors) {
       auto item_itr = lane_element_index_by_key_.find(neighbor_key);
       if (item_itr != lane_element_index_by_key_.end()) {
@@ -2349,17 +2014,17 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
         }
       }
     }
-    highlight_mgr_->UploadNeighborHighlight(n_indices);
+    highlight_mgr->UploadNeighborHighlight(n_indices);
   } else {
     // Clear neighbor highlights
-    highlight_mgr_->UploadNeighborHighlight({});
+    highlight_mgr->UploadNeighborHighlight({});
   }
   doneCurrent();
 
-  if (!highlight_mgr_->HasHighlight()) {
-    highlight_mgr_->cur_start = SIZE_MAX;
-    highlight_mgr_->cur_end = 0;
-    highlight_mgr_->bounds_valid = false;
+  if (!highlight_mgr->HasHighlight()) {
+    highlight_mgr->cur_start = SIZE_MAX;
+    highlight_mgr->cur_end = 0;
+    highlight_mgr->bounds_valid = false;
   }
   update();
 }
@@ -2505,10 +2170,13 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
   std::string road_id_str = road_id.toStdString();
   std::string element_id_str = element_id.toStdString();
 
+  if (!gl_renderer_) return;
+  auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+
   const size_t target_start_vertex =
-      highlight_mgr_ ? highlight_mgr_->cur_start : SIZE_MAX;
+      highlight_mgr ? highlight_mgr->cur_start : SIZE_MAX;
   const LayerType layer_type =
-      highlight_mgr_ ? highlight_mgr_->cur_layer : LayerType::kCount;
+      highlight_mgr ? highlight_mgr->cur_layer : LayerType::kCount;
   const odr::Mesh3D* target_mesh = nullptr;
 
   if (layer_type == LayerType::kLanes)
@@ -2519,14 +2187,14 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
            layer_type == LayerType::kSignalSigns)
     target_mesh = &network_mesh_.road_signals_mesh;
 
-  if (highlight_mgr_ && highlight_mgr_->bounds_valid) {
-    camera_.SetTarget((highlight_mgr_->min_bound + highlight_mgr_->max_bound) *
+  if (highlight_mgr && highlight_mgr->bounds_valid) {
+    camera_.SetTarget((highlight_mgr->min_bound + highlight_mgr->max_bound) *
                       0.5f);
     camera_.SetPitch(-60.0f);
     camera_.SetYaw(45.0f);
     camera_.SetDistance(
         qMax(20.0f,
-             (highlight_mgr_->max_bound - highlight_mgr_->min_bound).length() *
+             (highlight_mgr->max_bound - highlight_mgr->min_bound).length() *
                  1.8f));
     update();
     return;
@@ -2788,7 +2456,8 @@ bool GeoViewerWidget::IsJunctionVisible(const QString& group_id,
 
 void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
                                             const QMatrix4x4& view_proj) {
-  if (!layers_[(int)LayerType::kJunctions].visible) return;
+  if (!gl_renderer_ || !gl_renderer_->IsLayerVisible(LayerType::kJunctions))
+    return;
   if (junction_cluster_result_.groups.empty()) return;
 
   QPen ringPen(QColor(255, 200, 60, 220));

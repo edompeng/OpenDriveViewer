@@ -4,7 +4,6 @@
 #include <QTimer>
 #include <atomic>
 #include <memory>
-#include <thread>
 #include "src/core/map_loader.h"
 
 class AsyncMapLoader : public QObject {

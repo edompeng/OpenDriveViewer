@@ -1,7 +1,6 @@
 #include "src/logic/camera_controller.h"
 
 #include <QtMath>
-#include <algorithm>
 
 QMatrix4x4 CameraController::GetViewMatrix() const {
   const float yaw_rad = qDegreesToRadians(yaw_);

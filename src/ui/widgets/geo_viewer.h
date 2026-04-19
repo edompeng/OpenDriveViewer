@@ -12,56 +12,36 @@
 #include <QMatrix4x4>
 #include <QMenu>
 #include <QMouseEvent>
-#include <QOpenGLExtraFunctions>
 #include <QOpenGLWidget>
 #include <QString>
 #include <QVector3D>
 #include <QWheelEvent>
 #include <array>
 #include <atomic>
-#include <cmath>
 #include <cstdint>
 #include <functional>
-#include <future>
-#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
-#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "src/logic/camera_controller.h"
-#include "src/logic/highlight_manager.h"
-#include "src/logic/measure_tool_controller.h"
-#include "src/logic/open_scenario_parser.h"
-#include "src/logic/routing_buffer_manager.h"
-#include "src/core/scene_geometry_types.h"
 #include "src/core/junction_grouping.h"
 #include "src/core/scene_enums.h"
+#include "src/core/scene_geometry_types.h"
+#include "src/logic/camera_controller.h"
+#include "src/logic/measure_tool_controller.h"
+#include "src/logic/open_scenario_parser.h"
+#include "src/ui/render/gl_renderer.h"
 #include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
 #include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
 
 using LanesMesh = odr::LanesMesh;
 class QPainter;
 
-/// @brief Single layer OpenGL mesh descriptor (Data Class)
-struct MeshLayer {
-  GLuint ebo = 0;
-  size_t index_count = 0;
-  bool visible = true;
-  GLenum draw_mode = GL_TRIANGLES;
-  QVector3D color{0.75f, 0.75f, 0.75f};
-  float alpha = 1.0f;
-  float polygon_offset_factor = 0.0f;
-  float polygon_offset_units = 0.0f;
-  size_t vertex_offset = 0;
-  std::vector<SceneMeshChunk> chunks;
-};
-
 class RoutingWidget;
 
-class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
+class GeoViewerWidget : public QOpenGLWidget {
   Q_OBJECT
 
  public:
@@ -233,24 +213,15 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void ClearRoutingPaths();
 
  private:
-  // ---- Rendering ----
-  GLuint vao_, vbo_;
-  GLuint shader_program_;
-  QMatrix4x4 proj_;
-  QSize viewport_size_;
-
-  // ---- Layers ----
-  static constexpr int kLayerCount = static_cast<int>(LayerType::kCount);
-  MeshLayer layers_[kLayerCount];
+  // ---- OpenGL Renderer (all GL operations delegated here) ----
+  std::unique_ptr<geoviewer::render::GlRenderer> gl_renderer_;
 
   // ---- Delegated Components (SRP split) ----
   CameraController camera_;
-  std::unique_ptr<HighlightManager> highlight_mgr_;
   std::unique_ptr<MeasureToolController> measure_ctrl_;
-  GLuint measure_vao_ = 0;
-  GLuint measure_vbo_ = 0;
+
   void UpdateMeasureBuffers();
-  std::unique_ptr<RoutingBufferManager> routing_buf_mgr_;
+  void UpdateUserPointsBuffers();
 
   // ---- Map Data ----
   std::shared_ptr<odr::OpenDriveMap> map_;
@@ -374,12 +345,6 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
   void ComputeLaneLines(const odr::LanesMesh& mesh);
   void ReloadMeshData();
   void CalculateMeshCenter();
-  bool InitializeRendering();
-  bool InitShaders();
-  void InitBuffers();
-  void UpdateUserPointsBuffers();
-  bool CheckShaderErrors(GLuint shader, std::string type);
-  bool CheckProgramErrors(GLuint program);
 
   // ---- User Annotation Points ----
   struct UserPoint {
@@ -397,8 +362,6 @@ class GeoViewerWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions {
     QVector3D color;
   };
   std::vector<UserPoint> user_points_;
-  GLuint user_points_vao_ = 0;
-  GLuint user_points_vbo_ = 0;
   int user_points_batch_depth_ = 0;
   bool user_points_batch_dirty_ = false;
   bool user_points_batch_buffer_dirty_ = false;

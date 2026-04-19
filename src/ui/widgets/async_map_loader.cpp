@@ -1,6 +1,5 @@
 #include "src/ui/widgets/async_map_loader.h"
 
-#include <thread>
 #include <utility>
 #include "src/core/thread_pool.h"
 

@@ -2,13 +2,14 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//bazel:qt.bzl", "QT_COPTS")
 
 cc_library(
-    name = "renderer",
-    srcs = ["scene_renderer.cpp"],
-    hdrs = ["scene_renderer.h"],
+    name = "render",
+    srcs = ["gl_renderer.cpp"],
+    hdrs = ["gl_renderer.h"],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",
         "//src/core",
+        "//src/logic",
     ],
 )

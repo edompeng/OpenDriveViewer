@@ -2,7 +2,6 @@
 add_library(GeoViewerUIWidgets SHARED
   geo_viewer.cpp geo_viewer.h
   geo_viewer_scene.cpp
-  geo_viewer_widget.cpp geo_viewer_widget.h
   floating_panel_widget.cpp floating_panel_widget.h
   layer_control_widget.cpp layer_control_widget.h
   open_scenario_widget.cpp open_scenario_widget.h
@@ -23,6 +22,6 @@ target_link_libraries(GeoViewerUIWidgets PUBLIC
     Qt6::OpenGL
     Qt6::OpenGLWidgets
     GeoViewerCore
-    GeoViewerRenderer
+    GeoViewerGlRenderer
     GeoViewerLogic
 )
