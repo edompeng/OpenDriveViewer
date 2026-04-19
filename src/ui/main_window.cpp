@@ -1,19 +1,23 @@
 #include "src/ui/main_window.h"
 #include <QApplication>
 #include <QCheckBox>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMimeData>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QTimer>
 #include <QToolBar>
 #include <QTranslator>
+#include <QUrl>
 #include <QWidget>
-#include "src/ui/widgets/layer_control_widget.h"
 #include "src/core/coordinate_mode_policy.h"
 #include "src/logic/input_parsing.h"
+#include "src/ui/widgets/layer_control_widget.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   translator_ = new QTranslator(this);
@@ -28,6 +32,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   SetupToolbar();
   SetupConnections();
 
+  setAcceptDrops(true);
   UpdateWindowTitle();
 }
 
@@ -125,9 +130,11 @@ void MainWindow::changeEvent(QEvent* event) {
 void MainWindow::RetranslateUi() {
   // Update main window elements
   load_action_->setText(tr("Load .xodr"));
+  load_action_->setToolTip(tr("Open an OpenDRIVE map file"));
   panels_btn_->setText(tr("Windows"));
   lang_btn_->setText(tr("Language"));
   measure_action_->setText(tr("Measure"));
+  measure_action_->setToolTip(tr("Measure distance between points"));
   UpdateWindowTitle();
 
   if (coord_mode_ == CoordinateMode::kWGS84) {
@@ -163,6 +170,17 @@ void MainWindow::RetranslateUi() {
 
   // Update Language menu
   lang_menu_->setTitle(tr("Language"));
+
+  // Ensure sub-panels are notified (though changeEvent handles this usually,
+  // explicit call ensures consistency)
+  if (layer_control_)
+    QMetaObject::invokeMethod(layer_control_, "RetranslateUi");
+  if (routing_panel_)
+    QMetaObject::invokeMethod(routing_panel_, "RetranslateUi");
+  if (favorites_panel_)
+    QMetaObject::invokeMethod(favorites_panel_, "RetranslateUi");
+  if (coordinate_points_panel_)
+    QMetaObject::invokeMethod(coordinate_points_panel_, "RetranslateUi");
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
@@ -455,4 +473,36 @@ void MainWindow::ApplyCoordinateModePolicy(bool georeference_valid) {
   coordinate_points_panel_->SetCoordinateMode(coord_mode_);
   view_->SetCoordinateMode(coord_mode_);
   RetranslateUi();
+}
+void MainWindow::dragEnterEvent(QDragEnterEvent* event) {
+  if (event->mimeData()->hasUrls()) {
+    QList<QUrl> urls = event->mimeData()->urls();
+    for (const QUrl& url : urls) {
+      if (url.isLocalFile()) {
+        QString path = url.toLocalFile();
+        if (path.endsWith(".xodr", Qt::CaseInsensitive) ||
+            path.endsWith(".xml", Qt::CaseInsensitive)) {
+          event->acceptProposedAction();
+          return;
+        }
+      }
+    }
+  }
+}
+
+void MainWindow::dropEvent(QDropEvent* event) {
+  if (event->mimeData()->hasUrls()) {
+    QList<QUrl> urls = event->mimeData()->urls();
+    for (const QUrl& url : urls) {
+      if (url.isLocalFile()) {
+        QString path = url.toLocalFile();
+        if (path.endsWith(".xodr", Qt::CaseInsensitive) ||
+            path.endsWith(".xml", Qt::CaseInsensitive)) {
+          StartMapLoad(path);
+          event->acceptProposedAction();
+          return;
+        }
+      }
+    }
+  }
 }

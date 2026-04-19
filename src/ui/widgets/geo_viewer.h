@@ -212,6 +212,7 @@ class GeoViewerWidget : public QOpenGLWidget {
   std::vector<std::size_t> junction_vertex_group_indices_;
 
   std::unordered_set<std::string> hidden_elements_;
+  std::map<LayerType, bool> layer_visibility_cache_;
   bool right_hand_traffic_ = true;
   CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
   bool georeference_valid_ = false;

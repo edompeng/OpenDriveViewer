@@ -20,6 +20,15 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
     : QOpenGLWidget(parent), right_hand_traffic_(true) {
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
+
+  // Initialize visibility cache with defaults
+  for (int i = 0; i < static_cast<int>(LayerType::kCount); ++i) {
+    layer_visibility_cache_[static_cast<LayerType>(i)] = true;
+  }
+  // Junctions and Signal Signs are hidden by default in UI
+  layer_visibility_cache_[LayerType::kJunctions] = false;
+  layer_visibility_cache_[LayerType::kSignalSigns] = false;
+  layer_visibility_cache_[LayerType::kObjects] = false;
 }
 
 GeoViewerWidget::~GeoViewerWidget() {
@@ -62,19 +71,24 @@ void GeoViewerWidget::EndUserPointsBatch() {
 }
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
-  if (!gl_renderer_) return;
   if (type >= LayerType::kLanes && type < LayerType::kCount) {
-    auto* highlight_mgr = gl_renderer_->GetHighlightManager();
-    if (!visible && highlight_mgr && highlight_mgr->cur_layer == type) {
-      ClearHighlight();
+    layer_visibility_cache_[type] = visible;
+    if (gl_renderer_) {
+      auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+      if (!visible && highlight_mgr && highlight_mgr->cur_layer == type) {
+        ClearHighlight();
+      }
+      gl_renderer_->SetLayerVisible(type, visible);
+      update();
     }
-    gl_renderer_->SetLayerVisible(type, visible);
-    update();
   }
 }
 
 bool GeoViewerWidget::IsLayerVisible(LayerType type) const {
-  if (!gl_renderer_) return false;
+  if (!gl_renderer_) {
+    auto it = layer_visibility_cache_.find(type);
+    return (it != layer_visibility_cache_.end()) ? it->second : false;
+  }
   return gl_renderer_->IsLayerVisible(type);
 }
 
@@ -553,6 +567,11 @@ void GeoViewerWidget::initializeGL() {
   if (!gl_renderer_->Initialize()) {
     qCritical() << "Failed to initialize GlRenderer";
     return;
+  }
+
+  // Apply cached visibility
+  for (const auto& [type, visible] : layer_visibility_cache_) {
+    gl_renderer_->SetLayerVisible(type, visible);
   }
 
   measure_ctrl_ = std::make_unique<MeasureToolController>(this);

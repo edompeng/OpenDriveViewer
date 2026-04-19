@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   QSurfaceFormat::setDefaultFormat(format);
 
   MainWindow w;
-  w.resize(1280, 850);
+  w.resize(1465, 880);
   w.show();
   return app.exec();
 }

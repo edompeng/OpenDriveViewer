@@ -1,5 +1,7 @@
 #include "src/core/coordinate_util.h"
-
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
 #include <iostream>
 #include <stdexcept>
 
@@ -34,6 +36,16 @@ void CoordinateUtil::Init(const std::string& georeference,
   if (xodr_proj_ctx_ == nullptr) {
     throw std::runtime_error("Failed to create PROJ context");
   }
+
+#ifdef Q_OS_MAC
+  // For macOS App Bundle, look for PROJ data in Resources
+  QString appDir = QCoreApplication::applicationDirPath();
+  QString projPath = QDir(appDir).filePath("../Resources/proj");
+  if (QFile::exists(projPath)) {
+    const char* paths[] = {projPath.toUtf8().constData()};
+    proj_context_set_search_paths(xodr_proj_ctx_, 1, paths);
+  }
+#endif
 
   static const std::string kToProj = "+proj=longlat +datum=WGS84 +no_defs";
 

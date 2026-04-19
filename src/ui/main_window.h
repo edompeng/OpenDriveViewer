@@ -37,6 +37,8 @@ class MainWindow : public QMainWindow {
  protected:
   void resizeEvent(QResizeEvent *event) override;
   void changeEvent(QEvent *event) override;
+  void dragEnterEvent(QDragEnterEvent *event) override;
+  void dropEvent(QDropEvent *event) override;
 
  private:
   void SetupPanels();

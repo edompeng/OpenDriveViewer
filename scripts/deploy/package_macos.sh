@@ -6,6 +6,7 @@ BINARY_NAME="OpenDriveViewer"
 TARGET="//src/app:OpenDriveViewer"
 DIST_DIR="dist/mac"
 APP_BUNDLE="${DIST_DIR}/${BINARY_NAME}.app"
+DMG_FILE="${DIST_DIR}/${BINARY_NAME}.dmg"
 
 # --- Check Environment ---
 if [ -z "$QT6_ROOT" ]; then
@@ -26,7 +27,7 @@ fi
 
 # --- Setup Bundle ---
 echo "Preparing App Bundle..."
-rm -rf "${APP_BUNDLE}"
+rm -rf "${DIST_DIR}"
 mkdir -p "${APP_BUNDLE}/Contents/MacOS"
 mkdir -p "${APP_BUNDLE}/Contents/Resources"
 mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
@@ -43,56 +44,47 @@ echo "Running macdeployqt..."
 "${MACDEPLOYQT}" "${APP_BUNDLE}" -verbose=1
 
 # Strip all dylibs/frameworks in the bundle to reduce size
-find "${APP_BUNDLE}/Contents/Frameworks" -type f -name "*.dylib" -exec strip -x {} +
-
-# Helper function for realpath (readlink -f is not portable on macOS)
-get_realpath() {
-    python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1"
-}
+find "${APP_BUNDLE}/Contents/Frameworks" -type f -name "*.dylib" -exec strip -x {} + 2>/dev/null || true
 
 # --- Handle PROJ ---
 echo "Bundling PROJ..."
-# Copy PROJ library (find the actual dylib, resolve symlinks)
-PROJ_LIB_SRC=$(get_realpath "${PROJ_ROOT}/lib/libproj.dylib")
-PROJ_LIB_NAME=$(basename "${PROJ_LIB_SRC}")
-cp "${PROJ_LIB_SRC}" "${APP_BUNDLE}/Contents/Frameworks/"
-chmod +w "${APP_BUNDLE}/Contents/Frameworks/${PROJ_LIB_NAME}"
-strip -x "${APP_BUNDLE}/Contents/Frameworks/${PROJ_LIB_NAME}"
+# Detect exact PROJ linkage path from binary
+PROJ_LIB_ORIGINAL=$(otool -L "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}" | grep libproj | awk '{print $1}' | xargs)
 
-# Fixup libproj ID and refs
-install_name_tool -id "@executable_path/../Frameworks/${PROJ_LIB_NAME}" "${APP_BUNDLE}/Contents/Frameworks/${PROJ_LIB_NAME}"
-install_name_tool -change "${PROJ_LIB_SRC}" "@executable_path/../Frameworks/${PROJ_LIB_NAME}" "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
+if [ -n "$PROJ_LIB_ORIGINAL" ]; then
+    echo "Found libproj linkage at: $PROJ_LIB_ORIGINAL"
+    
+    # Use global PROJ_ROOT to find the actual library file to copy
+    # We look for the base name but prefer the one matching the original path suffix if possible
+    PROJ_LIB_NAME=$(basename "$PROJ_LIB_ORIGINAL")
+    PROJ_LIB_REAL_PATH=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "${PROJ_ROOT}/lib/${PROJ_LIB_NAME}")
+    
+    cp "${PROJ_LIB_REAL_PATH}" "${APP_BUNDLE}/Contents/Frameworks/${PROJ_LIB_NAME}"
+    chmod +w "${APP_BUNDLE}/Contents/Frameworks/${PROJ_LIB_NAME}"
+    
+    # Fixup libproj ID and refs
+    install_name_tool -id "@executable_path/../Frameworks/${PROJ_LIB_NAME}" "${APP_BUNDLE}/Contents/Frameworks/${PROJ_LIB_NAME}"
+    install_name_tool -change "${PROJ_LIB_ORIGINAL}" "@executable_path/../Frameworks/${PROJ_LIB_NAME}" "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
+else
+    echo "Warning: libproj linkage not found in binary. Linking might be static or missing."
+fi
 
-# Copy PROJ data files (being selective to save space)
+# Copy PROJ data files
 mkdir -p "${APP_BUNDLE}/Contents/Resources/proj"
-# Essential databases and config
 cp "${PROJ_ROOT}/share/proj/proj.db" "${APP_BUNDLE}/Contents/Resources/proj/"
 cp "${PROJ_ROOT}/share/proj/proj.ini" "${APP_BUNDLE}/Contents/Resources/proj/"
 # Other small metadata/jsons
 find "${PROJ_ROOT}/share/proj/" -maxdepth 1 -type f -not -name "*.tif" -not -name "*.tiff" -not -name "*.gtiff" -exec cp {} "${APP_BUNDLE}/Contents/Resources/proj/" \;
 
-# Note: Many PROJ geoid grid files (.tif) are huge (100MB+ each). 
-# We exclude them by default above. If specific grids are needed, 
-# they should be manually added.
-
-# Create a shell wrapper or Info.plist to set PROJ_LIB
-# For simplicity, we create a script that sets the env var
-cat > "${APP_BUNDLE}/Contents/MacOS/launcher.sh" <<EOF
-#!/bin/bash
-DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-export PROJ_LIB="\$DIR/../Resources/proj"
-exec "\$DIR/${BINARY_NAME}" "\$@"
-EOF
-chmod +x "${APP_BUNDLE}/Contents/MacOS/launcher.sh"
-
-# Create Info.plist
+# --- Metadata ---
+echo "Updating Info.plist..."
 cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>launcher.sh</string>
+    <string>${BINARY_NAME}</string>
     <key>CFBundleIconFile</key>
     <string></string>
     <key>CFBundleIdentifier</key>
@@ -105,13 +97,37 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
     <string>0.1.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
 </dict>
 </plist>
 EOF
 
 # --- Code Signing (Crucial for Apple Silicon) ---
-echo "Re-signing bundle..."
-# Ad-hoc sign everything to fix broken signatures after install_name_tool/macdeployqt
-codesign --force --deep --sign - "${APP_BUNDLE}"
+echo "Deep-signing bundle..."
+# Signing inside-out is more robust than --deep
+# Find all dylibs and frameworks in the entire bundle and sign them first
+find "${APP_BUNDLE}/Contents" -type f \( -name "*.dylib" -o -name "*.framework" -o -perm +111 \) -not -path "*/MacOS/*" -exec codesign --force --sign - {} \;
+# Sign the main app bundle last
+codesign --force --sign - "${APP_BUNDLE}"
 
-echo "Done! Package is available at ${APP_BUNDLE}"
+# Verify signature
+echo "Verifying signature..."
+codesign --verify --verbose "${APP_BUNDLE}"
+
+# --- Create DMG ---
+echo "Creating DMG..."
+rm -f "${DMG_FILE}"
+# Create a temporary folder for the DMG content to avoids including script artifacts if any
+DMG_TEMP="dist/dmg_temp"
+rm -rf "${DMG_TEMP}"
+mkdir -p "${DMG_TEMP}"
+ln -s /Applications "${DMG_TEMP}/Applications"
+cp -R "${APP_BUNDLE}" "${DMG_TEMP}/"
+
+hdiutil create -volname "${BINARY_NAME}" -srcfolder "${DMG_TEMP}" -ov -format UDZO "${DMG_FILE}"
+rm -rf "${DMG_TEMP}"
+
+echo "Done! DMG is available at ${DMG_FILE}"

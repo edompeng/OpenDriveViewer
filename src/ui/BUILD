@@ -25,5 +25,6 @@ cc_library(
         "//src/logic",
         "//src/ui/render",
         "//src/ui/widgets",
+        "//translations:qrc_translations",
     ],
 )

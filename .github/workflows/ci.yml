@@ -145,8 +145,7 @@ jobs:
         run: |
           chmod +x scripts/deploy/package_macos.sh
           ./scripts/deploy/package_macos.sh
-          # Create DMG
-          ${{ env.QT_ROOT_DIR }}/bin/macdeployqt dist/mac/OpenDriveViewer.app -dmg
+          # The script produces dist/mac/OpenDriveViewer.dmg, move it to root for upload
           mv dist/mac/OpenDriveViewer.dmg ${{ github.workspace }}/${{ matrix.artifact_name }}
 
       - name: Package (Windows)
