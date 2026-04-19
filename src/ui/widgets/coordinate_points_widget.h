@@ -6,9 +6,9 @@
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "src/core/scene_enums.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/geo_viewer.h"
-#include "src/core/scene_enums.h"
 
 /// @brief Coordinate points management panel
 ///

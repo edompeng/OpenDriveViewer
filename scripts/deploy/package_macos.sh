@@ -105,13 +105,17 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-# --- Code Signing (Crucial for Apple Silicon) ---
-echo "Deep-signing bundle..."
-# Signing inside-out is more robust than --deep
-# Find all dylibs and frameworks in the entire bundle and sign them first
-find "${APP_BUNDLE}/Contents" -type f \( -name "*.dylib" -o -name "*.framework" -o -perm +111 \) -not -path "*/MacOS/*" -exec codesign --force --sign - {} \;
-# Sign the main app bundle last
-codesign --force --sign - "${APP_BUNDLE}"
+# Signing inside-out is mandatory for Apple Silicon
+echo "Signing components..."
+# 1. Sign Frameworks (as bundles)
+find "${APP_BUNDLE}/Contents/Frameworks" -name "*.framework" -type d -exec codesign --force --sign - --timestamp=none {} \; 2>/dev/null || true
+# 2. Sign standalone dylibs (regular files only, skip symlinks)
+find "${APP_BUNDLE}/Contents/Frameworks" "${APP_BUNDLE}/Contents/PlugIns" -name "*.dylib" -type f -exec codesign --force --sign - --timestamp=none {} \; 2>/dev/null || true
+# 3. Sign any other executable or plugin files
+find "${APP_BUNDLE}/Contents/PlugIns" -type f -not -name "*.dylib" -exec codesign --force --sign - --timestamp=none {} \; 2>/dev/null || true
+# 4. Sign the main binary and the app bundle
+codesign --force --sign - --timestamp=none "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
+codesign --force --sign - --timestamp=none "${APP_BUNDLE}"
 
 # Verify signature
 echo "Verifying signature..."

@@ -13,6 +13,7 @@ cc_library(
     srcs = [
         "main_window.cpp",
         ":moc_files",
+        "//translations:OpenDriveViewer_translations",
     ],
     hdrs = [
         "main_window.h",
@@ -25,6 +26,5 @@ cc_library(
         "//src/logic",
         "//src/ui/render",
         "//src/ui/widgets",
-        "//translations:qrc_translations",
     ],
 )

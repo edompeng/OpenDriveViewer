@@ -10,14 +10,14 @@ qt_add_translations(OpenDriveViewer
   RESOURCE_PREFIX "/i18n"
 )
 
-# Enable automatic lupdate on each build to capture new strings
-qt_add_lupdate(OpenDriveViewer
-  TS_FILES
-  ${CMAKE_SOURCE_DIR}/translations/geoviewer_zh_CN.ts
-  ${CMAKE_SOURCE_DIR}/translations/geoviewer_en_US.ts
-)
-# Ensure the lupdate target is created and captured
-add_dependencies(OpenDriveViewer OpenDriveViewer_lupdate)
+# Automatic lupdate is disabled to prevent accidental wiping of .ts files.
+# Run lupdate manually or configure it to scan all sub-libraries if needed.
+# qt_add_lupdate(OpenDriveViewer
+#   TS_FILES
+#   ${CMAKE_SOURCE_DIR}/translations/geoviewer_zh_CN.ts
+#   ${CMAKE_SOURCE_DIR}/translations/geoviewer_en_US.ts
+# )
+# add_dependencies(OpenDriveViewer OpenDriveViewer_lupdate)
 
 target_include_directories(OpenDriveViewer PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(OpenDriveViewer PRIVATE

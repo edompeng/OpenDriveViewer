@@ -11,9 +11,9 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
-#include "src/ui/widgets/layer_tree_model.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/geo_viewer.h"
+#include "src/ui/widgets/layer_tree_model.h"
 
 class LayerControlWidget : public FloatingPanelWidget {
   Q_OBJECT

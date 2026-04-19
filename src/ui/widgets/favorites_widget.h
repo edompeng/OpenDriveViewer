@@ -9,9 +9,9 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
+#include "src/logic/favorites_store.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/geo_viewer.h"
-#include "src/logic/favorites_store.h"
 
 class FavoritesWidget : public FloatingPanelWidget {
   Q_OBJECT

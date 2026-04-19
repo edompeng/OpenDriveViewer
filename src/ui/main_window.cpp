@@ -13,7 +13,6 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QTranslator>
-#include <QUrl>
 #include <QWidget>
 #include "src/core/coordinate_mode_policy.h"
 #include "src/logic/input_parsing.h"
@@ -170,17 +169,6 @@ void MainWindow::RetranslateUi() {
 
   // Update Language menu
   lang_menu_->setTitle(tr("Language"));
-
-  // Ensure sub-panels are notified (though changeEvent handles this usually,
-  // explicit call ensures consistency)
-  if (layer_control_)
-    QMetaObject::invokeMethod(layer_control_, "RetranslateUi");
-  if (routing_panel_)
-    QMetaObject::invokeMethod(routing_panel_, "RetranslateUi");
-  if (favorites_panel_)
-    QMetaObject::invokeMethod(favorites_panel_, "RetranslateUi");
-  if (coordinate_points_panel_)
-    QMetaObject::invokeMethod(coordinate_points_panel_, "RetranslateUi");
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event) {

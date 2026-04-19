@@ -34,7 +34,7 @@ echo '</RCC>' >> $@
 
 # Bundle generated .qrc into resource wrapper
 qt_resource(
-    name = "qrc_translations",
+    name = "OpenDriveViewer_translations",
     qrc_file = ":gen_translations_qrc",
     deps = [":qm_outputs"],
 )

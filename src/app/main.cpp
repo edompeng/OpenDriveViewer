@@ -5,6 +5,7 @@
 #include "src/ui/main_window.h"
 
 int main(int argc, char **argv) {
+  Q_INIT_RESOURCE(OpenDriveViewer_translations);
   QApplication app(argc, argv);
 
   // Set default language to Simplified Chinese if not specified

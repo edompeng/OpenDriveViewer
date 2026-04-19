@@ -10,6 +10,7 @@
 #include <QResizeEvent>
 #include <QStatusBar>
 #include <vector>
+#include "src/core/scene_enums.h"
 #include "src/ui/widgets/async_map_loader.h"
 #include "src/ui/widgets/coordinate_points_widget.h"
 #include "src/ui/widgets/favorites_widget.h"
@@ -17,7 +18,6 @@
 #include "src/ui/widgets/layer_control_widget.h"
 #include "src/ui/widgets/loading_progress_widget.h"
 #include "src/ui/widgets/routing_widget.h"
-#include "src/core/scene_enums.h"
 
 class MainWindow : public QMainWindow {
   Q_OBJECT

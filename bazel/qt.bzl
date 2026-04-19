@@ -8,8 +8,8 @@ Both are set once in .bazelrc.user; BUILD files import derived constants
 from this file.
 """
 
-load("@qt6_config//:defs.bzl", _QT6_ROOT = "QT6_ROOT", _QT_COPTS = "QT_COPTS", _QT_MODULES = "QT_MODULES")
 load("@proj_config//:defs.bzl", _PROJ_COPTS = "PROJ_COPTS", _PROJ_ROOT = "PROJ_ROOT")
+load("@qt6_config//:defs.bzl", _QT6_ROOT = "QT6_ROOT", _QT_COPTS = "QT_COPTS", _QT_MODULES = "QT_MODULES")
 
 # Re-export for use in BUILD files.
 QT6_ROOT = _QT6_ROOT
@@ -73,9 +73,9 @@ def qt_resource(name, qrc_file, deps = [], qt_tool = "//bazel:qt_tool_wrapper"):
         tools = [qt_tool],
         local = 1,
         cmd = ("export QT6_ROOT='{qt6_root}' && export TOOL=$$(pwd)/$(location {tool}) && " +
-              "export OUT=$$(pwd)/$(@D)/{name}.cpp && " +
-              "cd $$(dirname $(location {qrc})) && " +
-              "$$TOOL rcc -name {name} $$(basename $(location {qrc})) -o $$OUT").format(
+               "export OUT=$$(pwd)/$(@D)/{name}.cpp && " +
+               "cd $$(dirname $(location {qrc})) && " +
+               "$$TOOL rcc -name {name} $$(basename $(location {qrc})) -o $$OUT").format(
             qt6_root = QT6_ROOT,
             tool = qt_tool,
             qrc = qrc_file,

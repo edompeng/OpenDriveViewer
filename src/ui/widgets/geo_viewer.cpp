@@ -10,11 +10,11 @@
 #include <QStringList>
 #include <algorithm>
 #include <future>
-#include "src/logic/scene_index_builder.h"
-#include "src/logic/spatial_grid_index.h"
 #include "src/core/coordinate_util.h"
 #include "src/core/thread_pool.h"
 #include "src/core/viewer_text_util.h"
+#include "src/logic/scene_index_builder.h"
+#include "src/logic/spatial_grid_index.h"
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
     : QOpenGLWidget(parent), right_hand_traffic_(true) {
@@ -359,8 +359,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
                               const odr::Mesh3D* base_mesh) {
     if (!base_mesh) return;
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
-        elements, original_indices,
-        gl_renderer_->GetLayerVertexOffset(type),
+        elements, original_indices, gl_renderer_->GetLayerVertexOffset(type),
         *base_mesh, [this](const SceneCachedElement& element) {
           if (hidden_elements_.count(element.road_key)) return false;
           if (!element.group_key.empty() &&
@@ -401,8 +400,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
         junction_element_items_, junction_mesh_.indices,
         gl_renderer_->GetLayerVertexOffset(LayerType::kJunctions),
-        junction_mesh_,
-        [this](const SceneCachedElement& element) {
+        junction_mesh_, [this](const SceneCachedElement& element) {
           // Check group-level visibility (JG:group_id)
           if (hidden_elements_.count(element.road_key)) return false;
 
@@ -504,8 +502,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
   {
     std::vector<uint32_t> solid_indices;
     std::vector<uint32_t> dashed_indices;
-    size_t v_offset =
-        gl_renderer_->GetLayerVertexOffset(LayerType::kLanes);
+    size_t v_offset = gl_renderer_->GetLayerVertexOffset(LayerType::kLanes);
 
     for (const auto& el : outline_element_items_) {
       if (hidden_elements_.count(el.road_key)) continue;
@@ -515,9 +512,9 @@ void GeoViewerWidget::UpdateMeshIndices() {
       auto& target = el.is_dashed ? dashed_indices : solid_indices;
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 2; ++k) {
-          target.push_back(
-              static_cast<uint32_t>(lane_outline_indices_[range.start * 2 + k]) +
-              static_cast<uint32_t>(v_offset));
+          target.push_back(static_cast<uint32_t>(
+                               lane_outline_indices_[range.start * 2 + k]) +
+                           static_cast<uint32_t>(v_offset));
         }
       }
     }
@@ -525,9 +522,9 @@ void GeoViewerWidget::UpdateMeshIndices() {
     auto SetupLineLayer = [&](LayerType t,
                               const std::vector<uint32_t>& indices) {
       gl_renderer_->SetLayerChunks(
-          t, BuildSceneMeshChunks(
-                 indices, gl_renderer_->GetLayerVertexOffset(t),
-                 network_mesh_.lanes_mesh));
+          t,
+          BuildSceneMeshChunks(indices, gl_renderer_->GetLayerVertexOffset(t),
+                               network_mesh_.lanes_mesh));
       gl_renderer_->UploadLayerIndices(t, indices);
     };
     SetupLineLayer(LayerType::kLaneLines, solid_indices);
@@ -537,7 +534,8 @@ void GeoViewerWidget::UpdateMeshIndices() {
   // Reference Lines
   {
     std::vector<uint32_t> ref_line_indices;
-    bool layer_visible = gl_renderer_->IsLayerVisible(LayerType::kReferenceLines);
+    bool layer_visible =
+        gl_renderer_->IsLayerVisible(LayerType::kReferenceLines);
     for (const auto& [road_id, road] : map_->id_to_road) {
       if (layer_visible && IsElementActuallyVisible(road_id, "refline", "")) {
         if (road_ref_line_vert_ranges_.count(road_id)) {
@@ -777,7 +775,7 @@ void GeoViewerWidget::ClearHighlight() {
   if (!gl_renderer_) return;
   auto* highlight_mgr = gl_renderer_->GetHighlightManager();
   if (highlight_mgr && (highlight_mgr->HasHighlight() ||
-                         highlight_mgr->HasNeighborHighlight())) {
+                        highlight_mgr->HasNeighborHighlight())) {
     highlight_mgr->Clear();
     update();
   }
@@ -1283,8 +1281,6 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
 
   SetHighlightIndices(indices, type, type == LayerType::kLanes, vert_idx);
 }
-
-
 
 void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
   if (!gl_renderer_) return;
@@ -1911,10 +1907,9 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
                       0.5f);
     camera_.SetPitch(-60.0f);
     camera_.SetYaw(45.0f);
-    camera_.SetDistance(
-        qMax(20.0f,
-             (highlight_mgr->max_bound - highlight_mgr->min_bound).length() *
-                 1.8f));
+    camera_.SetDistance(qMax(
+        20.0f,
+        (highlight_mgr->max_bound - highlight_mgr->min_bound).length() * 1.8f));
     update();
     return;
   }
