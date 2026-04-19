@@ -44,7 +44,15 @@ enable_testing()
 add_definitions(-DPROJ_NEW_API)
 
 # --- Subdirectories ---
-add_subdirectory(third_party/Catch2)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
+)
+# For Windows: prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
 add_subdirectory(third_party/pugixml)
 add_subdirectory(third_party/libOpenDRIVE)
 add_subdirectory(src)
@@ -57,7 +65,7 @@ macro(add_geoviewer_test name)
     GeoViewerCore 
     GeoViewerLogic
     GeoViewerUIWidgets
-    Catch2::Catch2WithMain 
+    gtest_main 
     Qt6::Gui
   )
   target_compile_definitions(${name} PRIVATE

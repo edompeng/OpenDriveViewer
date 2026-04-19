@@ -1,9 +1,7 @@
 #include "src/logic/routing_logic.h"
+#include <gtest/gtest.h>
 
-#include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
-
-TEST_CASE("Routing logic builds route history without duplicate road runs",
-          "[routing-logic]") {
+TEST(RoutingLogicTest, BuildsRouteHistoryWithoutDuplicateRoadRuns) {
   std::vector<odr::LaneKey> path = {
       odr::LaneKey("r1", 0.0, 1),
       odr::LaneKey("r1", 10.0, 1),
@@ -11,8 +9,8 @@ TEST_CASE("Routing logic builds route history without duplicate road runs",
   };
 
   const RouteHistoryEntry entry = BuildRouteHistoryEntry("A", "B", path);
-  CHECK(entry.display_name == "A -> B");
-  REQUIRE(entry.road_sequence.size() == 2);
-  CHECK(entry.road_sequence[0] == "r1");
-  CHECK(entry.road_sequence[1] == "r2");
+  EXPECT_EQ(entry.display_name, "A -> B");
+  ASSERT_EQ(entry.road_sequence.size(), 2);
+  EXPECT_EQ(entry.road_sequence[0], "r1");
+  EXPECT_EQ(entry.road_sequence[1], "r2");
 }

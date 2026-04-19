@@ -1,26 +1,22 @@
 #include "src/logic/measure_tool_controller.h"
-
-#include <catch2/catch_approx.hpp>
-#include <catch2/catch_test_macros.hpp>
+#include <gtest/gtest.h>
 
 // ============================================================
 // MeasureToolController - Initial State
 // ============================================================
 
-TEST_CASE("MeasureToolController - default construction has sane values",
-          "[measure_tool]") {
+TEST(MeasureToolControllerTest, DefaultConstructionHasSaneValues) {
   MeasureToolController ctrl;
-  CHECK(ctrl.IsActive() == false);
-  CHECK(ctrl.Points().empty() == true);
-  CHECK(ctrl.TotalDistance() == Catch::Approx(0.0));
+  EXPECT_FALSE(ctrl.IsActive());
+  EXPECT_TRUE(ctrl.Points().empty());
+  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
 }
 
 // ============================================================
 // MeasureToolController - State Control
 // ============================================================
 
-TEST_CASE("MeasureToolController - SetActive updates state and emits signal",
-          "[measure_tool]") {
+TEST(MeasureToolControllerTest, SetActiveUpdatesStateAndEmitsSignal) {
   MeasureToolController ctrl;
   int emitCount = 0;
   bool lastEmittedVal = false;
@@ -31,28 +27,25 @@ TEST_CASE("MeasureToolController - SetActive updates state and emits signal",
                    });
 
   ctrl.SetActive(true);
-  CHECK(ctrl.IsActive() == true);
-  REQUIRE(emitCount == 1);
-  CHECK(lastEmittedVal == true);
+  EXPECT_TRUE(ctrl.IsActive());
+  ASSERT_EQ(emitCount, 1);
+  EXPECT_TRUE(lastEmittedVal);
 
   // Calling with same state should not emit signal
   ctrl.SetActive(true);
-  REQUIRE(emitCount == 1);
+  ASSERT_EQ(emitCount, 1);
 
   ctrl.SetActive(false);
-  CHECK(ctrl.IsActive() == false);
-  REQUIRE(emitCount == 2);
-  CHECK(lastEmittedVal == false);
+  EXPECT_FALSE(ctrl.IsActive());
+  ASSERT_EQ(emitCount, 2);
+  EXPECT_FALSE(lastEmittedVal);
 }
 
 // ============================================================
 // MeasureToolController - Points & Distance
 // ============================================================
 
-TEST_CASE(
-    "MeasureToolController - AddPoint updates points, distance, and emits "
-    "signals",
-    "[measure_tool]") {
+TEST(MeasureToolControllerTest, AddPointUpdatesPointsDistanceAndEmitsSignals) {
   MeasureToolController ctrl;
 
   int distanceEmitCount = 0;
@@ -68,26 +61,25 @@ TEST_CASE(
                    [&]() { pointsEmitCount++; });
 
   ctrl.AddPoint(QVector3D(0.0f, 0.0f, 0.0f));
-  CHECK(ctrl.Points().size() == 1);
-  CHECK(ctrl.TotalDistance() == Catch::Approx(0.0));
-  REQUIRE(distanceEmitCount == 1);
-  CHECK(lastDistance == Catch::Approx(0.0));
-  REQUIRE(pointsEmitCount == 1);
+  EXPECT_EQ(ctrl.Points().size(), 1);
+  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
+  ASSERT_EQ(distanceEmitCount, 1);
+  EXPECT_FLOAT_EQ(lastDistance, 0.0f);
+  ASSERT_EQ(pointsEmitCount, 1);
 
   ctrl.AddPoint(QVector3D(10.0f, 0.0f, 0.0f));
-  CHECK(ctrl.Points().size() == 2);
-  CHECK(ctrl.TotalDistance() == Catch::Approx(10.0));
-  REQUIRE(distanceEmitCount == 2);
-  CHECK(lastDistance == Catch::Approx(10.0));
-  REQUIRE(pointsEmitCount == 2);
+  EXPECT_EQ(ctrl.Points().size(), 2);
+  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 10.0f);
+  ASSERT_EQ(distanceEmitCount, 2);
+  EXPECT_FLOAT_EQ(lastDistance, 10.0f);
+  ASSERT_EQ(pointsEmitCount, 2);
 
   ctrl.AddPoint(QVector3D(10.0f, 10.0f, 0.0f));
-  CHECK(ctrl.Points().size() == 3);
-  CHECK(ctrl.TotalDistance() == Catch::Approx(20.0));
+  EXPECT_EQ(ctrl.Points().size(), 3);
+  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 20.0f);
 }
 
-TEST_CASE("MeasureToolController - ClearPoints removes all and emits signals",
-          "[measure_tool]") {
+TEST(MeasureToolControllerTest, ClearPointsRemovesAllAndEmitsSignals) {
   MeasureToolController ctrl;
   ctrl.AddPoint(QVector3D(0.0f, 0.0f, 0.0f));
   ctrl.AddPoint(QVector3D(10.0f, 0.0f, 0.0f));
@@ -105,9 +97,9 @@ TEST_CASE("MeasureToolController - ClearPoints removes all and emits signals",
                    [&]() { pointsEmitCount++; });
 
   ctrl.ClearPoints();
-  CHECK(ctrl.Points().empty() == true);
-  CHECK(ctrl.TotalDistance() == Catch::Approx(0.0));
-  REQUIRE(distanceEmitCount == 1);
-  CHECK(lastDistance == Catch::Approx(0.0));
-  REQUIRE(pointsEmitCount == 1);
+  EXPECT_TRUE(ctrl.Points().empty());
+  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
+  ASSERT_EQ(distanceEmitCount, 1);
+  EXPECT_FLOAT_EQ(lastDistance, 0.0f);
+  ASSERT_EQ(pointsEmitCount, 1);
 }

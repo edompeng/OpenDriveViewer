@@ -1,16 +1,13 @@
-#include <catch2/catch_test_macros.hpp>
-
+#include <gtest/gtest.h>
 #include "src/core/coordinate_mode_policy.h"
 
-TEST_CASE("CoordinateModePolicy - WGS84 allowed only with valid georeference",
-          "[coordinate-mode]") {
-  CHECK(IsWgs84ModeAllowed(true));
-  CHECK_FALSE(IsWgs84ModeAllowed(false));
+TEST(CoordinateModePolicyTest, Wgs84AllowedOnlyWithValidGeoreference) {
+  EXPECT_TRUE(IsWgs84ModeAllowed(true));
+  EXPECT_FALSE(IsWgs84ModeAllowed(false));
 }
 
-TEST_CASE("CoordinateModePolicy - default mode follows georeference validity",
-          "[coordinate-mode]") {
-  CHECK(ResolveDefaultCoordinateMode(true) == CoordinateMode::kWGS84);
-  CHECK(ResolveDefaultCoordinateMode(false) == CoordinateMode::kLocal);
+TEST(CoordinateModePolicyTest, DefaultModeFollowsGeoreferenceValidity) {
+  EXPECT_EQ(ResolveDefaultCoordinateMode(true), CoordinateMode::kWGS84);
+  EXPECT_EQ(ResolveDefaultCoordinateMode(false), CoordinateMode::kLocal);
 }
 

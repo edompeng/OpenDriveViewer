@@ -1,31 +1,29 @@
 #include "src/core/project_context.h"
-#include <catch2/catch_test_macros.hpp>
+#include <gtest/gtest.h>
 #include <string>
 
 using namespace geoviewer::core;
 
-TEST_CASE("ProjectContext Singleton and Map State", "[core]") {
+TEST(ProjectContextTest, MapPathUpdates) {
     ProjectContext& context = ProjectContext::Instance();
+    bool called = false;
+    std::string new_path = "/path/to/map.xodr";
     
-    SECTION("Map Path Updates") {
-        bool called = false;
-        std::string new_path = "/path/to/map.xodr";
-        
-        context.OnMapChanged([&](const std::string& p) {
-            called = true;
-            CHECK(p == new_path);
-        });
-        
-        context.SetMapPath(new_path);
-        CHECK(context.MapPath() == new_path);
-        CHECK(called == true);
-    }
+    context.OnMapChanged([&](const std::string& p) {
+        called = true;
+        EXPECT_EQ(p, new_path);
+    });
     
-    SECTION("Layer Visibility") {
-        context.SetLayerVisible(LayerType::kLanes, false);
-        CHECK(context.IsLayerVisible(LayerType::kLanes) == false);
-        
-        context.SetLayerVisible(LayerType::kLanes, true);
-        CHECK(context.IsLayerVisible(LayerType::kLanes) == true);
-    }
+    context.SetMapPath(new_path);
+    EXPECT_EQ(context.MapPath(), new_path);
+    EXPECT_TRUE(called);
+}
+
+TEST(ProjectContextTest, LayerVisibility) {
+    ProjectContext& context = ProjectContext::Instance();
+    context.SetLayerVisible(LayerType::kLanes, false);
+    EXPECT_FALSE(context.IsLayerVisible(LayerType::kLanes));
+    
+    context.SetLayerVisible(LayerType::kLanes, true);
+    EXPECT_TRUE(context.IsLayerVisible(LayerType::kLanes));
 }

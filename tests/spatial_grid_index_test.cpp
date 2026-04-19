@@ -1,7 +1,5 @@
 #include "src/logic/spatial_grid_index.h"
-
-#include "third_party/Catch2/src/catch2/catch_approx.hpp"
-#include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
+#include <gtest/gtest.h>
 
 namespace {
 
@@ -18,24 +16,23 @@ odr::Mesh3D MakeSingleTriangleMesh() {
 
 }  // namespace
 
-TEST_CASE("Spatial grid builder places triangles into boxes",
-          "[spatial-grid]") {
+TEST(SpatialGridIndexTest, SpatialGridBuilderPlacesTrianglesIntoBoxes) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
   const auto boxes =
       BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 1, {}}}, 2);
 
-  REQUIRE(boxes.size() == 4);
+  ASSERT_EQ(boxes.size(), 4);
   bool found_triangle = false;
   for (const auto& box : boxes) {
     if (!box.triangle_indices.empty()) {
       found_triangle = true;
-      CHECK((box.triangle_indices.front() >> 28) == 1);
+      EXPECT_EQ((box.triangle_indices.front() >> 28), 1);
     }
   }
-  CHECK(found_triangle);
+  EXPECT_TRUE(found_triangle);
 }
 
-TEST_CASE("Spatial pick returns nearest visible triangle", "[spatial-grid]") {
+TEST(SpatialGridIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
   const auto boxes =
       BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 2, {}}}, 2);
@@ -48,29 +45,27 @@ TEST_CASE("Spatial pick returns nearest visible triangle", "[spatial-grid]") {
       [](uint32_t layer_tag) { return layer_tag == 2; },
       [](uint32_t, uint32_t, size_t) { return true; });
 
-  REQUIRE(result.has_value());
-  CHECK(result->layer_tag == 2);
-  CHECK(result->vertex_index == 0);
-  CHECK(result->distance == Catch::Approx(1.0f));
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->layer_tag, 2);
+  EXPECT_EQ(result->vertex_index, 0);
+  EXPECT_NEAR(result->distance, 1.0f, 1e-5f);
 }
 
-TEST_CASE("Screen ray builder converts viewport position to world ray",
-          "[spatial-grid]") {
+TEST(SpatialGridIndexTest, ScreenRayBuilderConvertsViewportPositionToWorldRay) {
   QVector3D origin;
   QVector3D direction;
   BuildRayFromScreenPoint(50, 50, QSize(100, 100), QMatrix4x4(), origin,
                           direction);
 
-  CHECK(origin.x() == Catch::Approx(0.0f));
-  CHECK(origin.y() == Catch::Approx(0.0f));
-  CHECK(origin.z() == Catch::Approx(-1.0f));
-  CHECK(direction.x() == Catch::Approx(0.0f));
-  CHECK(direction.y() == Catch::Approx(0.0f));
-  CHECK(direction.z() == Catch::Approx(1.0f));
+  EXPECT_NEAR(origin.x(), 0.0f, 1e-5f);
+  EXPECT_NEAR(origin.y(), 0.0f, 1e-5f);
+  EXPECT_NEAR(origin.z(), -1.0f, 1e-5f);
+  EXPECT_NEAR(direction.x(), 0.0f, 1e-5f);
+  EXPECT_NEAR(direction.y(), 0.0f, 1e-5f);
+  EXPECT_NEAR(direction.z(), 1.0f, 1e-5f);
 }
 
-TEST_CASE("RaycastAllHits returns single hit on one triangle",
-          "[spatial-grid]") {
+TEST(SpatialGridIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
   const auto boxes =
       BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 2, {}}}, 2);
@@ -83,13 +78,12 @@ TEST_CASE("RaycastAllHits returns single hit on one triangle",
       [](uint32_t layer_tag) { return layer_tag == 2; },
       [](uint32_t, uint32_t, size_t) { return true; });
 
-  REQUIRE(hits.size() == 1);
-  CHECK(hits[0].layer_tag == 2);
-  CHECK(hits[0].distance == Catch::Approx(1.0f));
+  ASSERT_EQ(hits.size(), 1);
+  EXPECT_EQ(hits[0].layer_tag, 2);
+  EXPECT_NEAR(hits[0].distance, 1.0f, 1e-5f);
 }
 
-TEST_CASE("RaycastAllHits returns multiple hits on stacked triangles",
-          "[spatial-grid]") {
+TEST(SpatialGridIndexTest, RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) {
   // Create two triangles at different Y heights (stacked vertically)
   odr::Mesh3D mesh;
   mesh.vertices = {
@@ -116,11 +110,11 @@ TEST_CASE("RaycastAllHits returns multiple hits on stacked triangles",
       [](uint32_t layer_tag) { return layer_tag == 1; },
       [](uint32_t, uint32_t, size_t) { return true; });
 
-  REQUIRE(hits.size() == 2);
+  ASSERT_EQ(hits.size(), 2);
   // Closest hit is the top triangle (Y=5, distance=5)
-  CHECK(hits[0].distance == Catch::Approx(5.0f));
-  CHECK(hits[0].position.y() == Catch::Approx(5.0f));
+  EXPECT_NEAR(hits[0].distance, 5.0f, 1e-5f);
+  EXPECT_NEAR(hits[0].position.y(), 5.0f, 1e-5f);
   // Second hit is the bottom triangle (Y=0, distance=10)
-  CHECK(hits[1].distance == Catch::Approx(10.0f));
-  CHECK(hits[1].position.y() == Catch::Approx(0.0f));
+  EXPECT_NEAR(hits[1].distance, 10.0f, 1e-5f);
+  EXPECT_NEAR(hits[1].position.y(), 0.0f, 1e-5f);
 }

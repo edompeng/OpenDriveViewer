@@ -1,147 +1,131 @@
 #include "src/logic/input_parsing.h"
-
-#include <catch2/catch_approx.hpp>
-#include <catch2/catch_test_macros.hpp>
+#include <gtest/gtest.h>
 
 // ============================================================
 // CoordinateInputParser::ParseUserPoints
 // ============================================================
 
-TEST_CASE("ParseUserPoints - empty input returns empty vector",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_EmptyInputReturnsEmptyVector) {
   const auto result = CoordinateInputParser::ParseUserPoints("");
-  REQUIRE(result.empty());
+  EXPECT_TRUE(result.empty());
 }
 
-TEST_CASE("ParseUserPoints - single 2D point parsed correctly",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_Single2DPointParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073");
-  REQUIRE(result.size() == 1);
-  CHECK(result[0].x == Catch::Approx(116.3912));
-  CHECK(result[0].y == Catch::Approx(39.9073));
-  CHECK(!result[0].z.has_value());
+  ASSERT_EQ(result.size(), 1);
+  EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
+  EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
+  EXPECT_FALSE(result[0].z.has_value());
 }
 
-TEST_CASE("ParseUserPoints - 2D point with parentheses parsed correctly",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_2DPointWithParenthesesParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("(116.3912, 39.9073)");
-  REQUIRE(result.size() == 1);
-  CHECK(result[0].x == Catch::Approx(116.3912));
-  CHECK(result[0].y == Catch::Approx(39.9073));
+  ASSERT_EQ(result.size(), 1);
+  EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
+  EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
 }
 
-TEST_CASE("ParseUserPoints - 3D point with altitude parsed correctly",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_3DPointWithAltitudeParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073, 50.5");
-  REQUIRE(result.size() == 1);
-  CHECK(result[0].x == Catch::Approx(116.3912));
-  CHECK(result[0].y == Catch::Approx(39.9073));
-  REQUIRE(result[0].z.has_value());
-  CHECK(*result[0].z == Catch::Approx(50.5));
+  ASSERT_EQ(result.size(), 1);
+  EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
+  EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
+  ASSERT_TRUE(result[0].z.has_value());
+  EXPECT_FLOAT_EQ(*result[0].z, 50.5f);
 }
 
-TEST_CASE("ParseUserPoints - multiple points separated by semicolons",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_MultiplePointsSeparatedBySemicolons) {
   const auto result = CoordinateInputParser::ParseUserPoints(
       "1.0, 2.0; 3.0, 4.0; 5.0, 6.0, 7.0");
-  REQUIRE(result.size() == 3);
-  CHECK(result[0].x == Catch::Approx(1.0));
-  CHECK(result[1].x == Catch::Approx(3.0));
-  CHECK(result[2].x == Catch::Approx(5.0));
-  CHECK(!result[0].z.has_value());
-  CHECK(!result[1].z.has_value());
-  REQUIRE(result[2].z.has_value());
-  CHECK(*result[2].z == Catch::Approx(7.0));
+  ASSERT_EQ(result.size(), 3);
+  EXPECT_FLOAT_EQ(result[0].x, 1.0f);
+  EXPECT_FLOAT_EQ(result[1].x, 3.0f);
+  EXPECT_FLOAT_EQ(result[2].x, 5.0f);
+  EXPECT_FALSE(result[0].z.has_value());
+  EXPECT_FALSE(result[1].z.has_value());
+  ASSERT_TRUE(result[2].z.has_value());
+  EXPECT_FLOAT_EQ(*result[2].z, 7.0f);
 }
 
-TEST_CASE("ParseUserPoints - invalid text returns empty vector",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_InvalidTextReturnsEmptyVector) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("not a coordinate");
-  REQUIRE(result.empty());
+  EXPECT_TRUE(result.empty());
 }
 
-TEST_CASE("ParseUserPoints - partial invalid is skipped", "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseUserPoints_PartialInvalidIsSkipped) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("1.0, 2.0; bad; 3.0, 4.0");
-  REQUIRE(result.size() == 2);
+  EXPECT_EQ(result.size(), 2);
 }
 
 // ============================================================
 // CoordinateInputParser::ParseJumpLocation
 // ============================================================
 
-TEST_CASE("ParseJumpLocation - empty input returns nullopt",
-          "[input-parsing]") {
-  CHECK(!CoordinateInputParser::ParseJumpLocation("").has_value());
+TEST(CoordinateInputParserTest, ParseJumpLocation_EmptyInputReturnsNullopt) {
+  EXPECT_FALSE(CoordinateInputParser::ParseJumpLocation("").has_value());
 }
 
-TEST_CASE("ParseJumpLocation - comma-separated 2D coordinate",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseJumpLocation_CommaSeparated2DCoordinate) {
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912,39.9073");
-  REQUIRE(result.has_value());
-  CHECK(result->x == Catch::Approx(116.3912));
-  CHECK(result->y == Catch::Approx(39.9073));
-  CHECK(result->z == Catch::Approx(0.0));
+  ASSERT_TRUE(result.has_value());
+  EXPECT_FLOAT_EQ(result->x, 116.3912f);
+  EXPECT_FLOAT_EQ(result->y, 39.9073f);
+  EXPECT_FLOAT_EQ(result->z, 0.0f);
 }
 
-TEST_CASE("ParseJumpLocation - space-separated 2D coordinate",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseJumpLocation_SpaceSeparated2DCoordinate) {
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912 39.9073");
-  REQUIRE(result.has_value());
-  CHECK(result->x == Catch::Approx(116.3912));
-  CHECK(result->y == Catch::Approx(39.9073));
+  ASSERT_TRUE(result.has_value());
+  EXPECT_FLOAT_EQ(result->x, 116.3912f);
+  EXPECT_FLOAT_EQ(result->y, 39.9073f);
 }
 
-TEST_CASE("ParseJumpLocation - 3D coordinate with altitude",
-          "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseJumpLocation_3DCoordinateWithAltitude) {
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912, 39.9073, 100.0");
-  REQUIRE(result.has_value());
-  CHECK(result->x == Catch::Approx(116.3912));
-  CHECK(result->y == Catch::Approx(39.9073));
-  CHECK(result->z == Catch::Approx(100.0));
+  ASSERT_TRUE(result.has_value());
+  EXPECT_FLOAT_EQ(result->x, 116.3912f);
+  EXPECT_FLOAT_EQ(result->y, 39.9073f);
+  EXPECT_FLOAT_EQ(result->z, 100.0f);
 }
 
-TEST_CASE("ParseJumpLocation - more than 3 components returns nullopt",
-          "[input-parsing]") {
-  CHECK(!CoordinateInputParser::ParseJumpLocation("1,2,3,4").has_value());
+TEST(CoordinateInputParserTest, ParseJumpLocation_MoreThan3ComponentsReturnsNullopt) {
+  EXPECT_FALSE(CoordinateInputParser::ParseJumpLocation("1,2,3,4").has_value());
 }
 
-TEST_CASE("ParseJumpLocation - invalid text returns nullopt",
-          "[input-parsing]") {
-  CHECK(!CoordinateInputParser::ParseJumpLocation("abc def").has_value());
+TEST(CoordinateInputParserTest, ParseJumpLocation_InvalidTextReturnsNullopt) {
+  EXPECT_FALSE(CoordinateInputParser::ParseJumpLocation("abc def").has_value());
 }
 
 // ============================================================
 // CoordinateInputParser::ParseLaneKey
 // ============================================================
 
-TEST_CASE("ParseLaneKey - valid format road/s0/lane_id", "[input-parsing]") {
+TEST(CoordinateInputParserTest, ParseLaneKey_ValidFormat) {
   const auto result =
       CoordinateInputParser::ParseLaneKey("road_42 / 15.5 / -1");
-  REQUIRE(result.has_value());
-  CHECK(result->road_id == "road_42");
-  CHECK(result->lanesection_s0 == Catch::Approx(15.5));
-  CHECK(result->lane_id == -1);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->road_id, "road_42");
+  EXPECT_FLOAT_EQ(result->lanesection_s0, 15.5f);
+  EXPECT_EQ(result->lane_id, -1);
 }
 
-TEST_CASE("ParseLaneKey - wrong number of components returns nullopt",
-          "[input-parsing]") {
-  CHECK(!CoordinateInputParser::ParseLaneKey("road/15.5").has_value());
-  CHECK(!CoordinateInputParser::ParseLaneKey("road/15.5/-1/extra").has_value());
+TEST(CoordinateInputParserTest, ParseLaneKey_WrongNumberOfComponentsReturnsNullopt) {
+  EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/15.5").has_value());
+  EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/15.5/-1/extra").has_value());
 }
 
-TEST_CASE("ParseLaneKey - non-numeric s0 returns nullopt", "[input-parsing]") {
-  CHECK(!CoordinateInputParser::ParseLaneKey("road/abc/-1").has_value());
+TEST(CoordinateInputParserTest, ParseLaneKey_NonNumericS0ReturnsNullopt) {
+  EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/abc/-1").has_value());
 }
 
-TEST_CASE("ParseLaneKey - non-integer lane_id returns nullopt",
-          "[input-parsing]") {
-  CHECK(!CoordinateInputParser::ParseLaneKey("road/15.5/abc").has_value());
+TEST(CoordinateInputParserTest, ParseLaneKey_NonIntegerLaneIdReturnsNullopt) {
+  EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/15.5/abc").has_value());
 }

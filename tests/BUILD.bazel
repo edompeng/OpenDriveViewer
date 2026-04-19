@@ -6,7 +6,7 @@ COMMON_DEPS = [
     "//src/core:core",
     "//src/logic:logic",
     "//src/ui/widgets:widgets",
-    "//third_party/Catch2:catch2_main",
+    "@googletest//:gtest_main",
 ]
 
 COMMON_DEFINES = ["GEOVIEWER_SOURCE_DIR=\\\".\\\""]

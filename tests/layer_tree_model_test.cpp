@@ -1,6 +1,5 @@
 #include "src/ui/widgets/layer_tree_model.h"
-
-#include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
+#include <gtest/gtest.h>
 #include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
 
 #include <fstream>
@@ -57,40 +56,35 @@ std::string FindTestData(const std::string& filename) {
 }
 } // namespace
 
-TEST_CASE("Layer tree full id builder maps node types consistently",
-          "[layer-tree-model]") {
-  CHECK(BuildLayerTreeFullId("r1", TreeNodeType::kRoad, "r1") == "R:r1");
-  CHECK(BuildLayerTreeFullId("r1", TreeNodeType::kLane, "0:1") ==
-        "E:r1:lane:0:1");
-  CHECK(BuildLayerTreeFullId("jg", TreeNodeType::kJunction, "j1") == "J:jg:j1");
+TEST(LayerTreeModelTest, FullIdBuilderMapsNodeTypesConsistently) {
+  EXPECT_EQ(BuildLayerTreeFullId("r1", TreeNodeType::kRoad, "r1"), "R:r1");
+  EXPECT_EQ(BuildLayerTreeFullId("r1", TreeNodeType::kLane, "0:1"), "E:r1:lane:0:1");
+  EXPECT_EQ(BuildLayerTreeFullId("jg", TreeNodeType::kJunction, "j1"), "J:jg:j1");
 }
 
-TEST_CASE("Layer tree check state reflects hidden descendants",
-          "[layer-tree-model]") {
+TEST(LayerTreeModelTest, CheckStateReflectsHiddenDescendants) {
   RoadSnapshot road;
   road.road_id = "r1";
   road.lanes.push_back({"0:1", "lane", TreeNodeType::kLane});
   std::unordered_set<std::string> hidden = {"E:r1:lane:0:1"};
-  CHECK(ComputeRoadCheckState(road, hidden) == Qt::PartiallyChecked);
+  EXPECT_EQ(ComputeRoadCheckState(road, hidden), Qt::PartiallyChecked);
 
   JunctionGroupSnapshot group;
   group.group_id = "jg1";
   group.junction_ids = {"j1"};
   hidden = {"J:jg1:j1"};
-  CHECK(ComputeJunctionGroupCheckState(group, hidden) == Qt::PartiallyChecked);
+  EXPECT_EQ(ComputeJunctionGroupCheckState(group, hidden), Qt::PartiallyChecked);
 }
 
-TEST_CASE("Layer tree snapshot builder creates roads and junction groups",
-          "[layer-tree-model]") {
+TEST(LayerTreeModelTest, SnapshotBuilderCreatesRoadsAndJunctionGroups) {
   const std::string map_path = FindTestData("data/test2.xodr");
   odr::OpenDriveMap map(map_path);
   const JunctionClusterResult result = JunctionClusterUtil::Analyze(map);
   const auto snapshot = BuildLayerTreeSnapshot(
       std::make_shared<odr::OpenDriveMap>(map_path), result);
 
-  REQUIRE(snapshot);
-  CHECK(snapshot->junction_count ==
-        static_cast<int>(map.id_to_junction.size()));
-  CHECK_FALSE(snapshot->roads.empty());
-  CHECK_FALSE(snapshot->junction_groups.empty());
+  ASSERT_TRUE(snapshot);
+  EXPECT_EQ(snapshot->junction_count, static_cast<int>(map.id_to_junction.size()));
+  EXPECT_FALSE(snapshot->roads.empty());
+  EXPECT_FALSE(snapshot->junction_groups.empty());
 }

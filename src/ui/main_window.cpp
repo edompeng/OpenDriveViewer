@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   QString locale = QLocale::system().name();
   if (locale.isEmpty()) locale = "zh_CN";
   if (!translator_->load(":/i18n/geoviewer_" + locale + ".qm")) {
-    translator_->load(":/i18n/geoviewer_zh_CN.qm");
+    (void)translator_->load(":/i18n/geoviewer_zh_CN.qm");
   }
   qApp->installTranslator(translator_);
 
@@ -122,7 +122,8 @@ void MainWindow::ChangeLanguage(const QString& locale) {
     }
   }
   // The LanguageChange event is triggered by qApp->installTranslator
-  // but if it's already installed, we might need to manually trigger or re-install
+  // but if it's already installed, we might need to manually trigger or
+  // re-install
   qApp->removeTranslator(translator_);
   qApp->installTranslator(translator_);
 }
