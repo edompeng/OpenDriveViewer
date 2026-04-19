@@ -1,4 +1,4 @@
-#include "src/app/highlight_manager.h"
+#include "src/logic/highlight_manager.h"
 
 HighlightManager::HighlightManager(QOpenGLExtraFunctions* functions)
     : gl_(functions) {}

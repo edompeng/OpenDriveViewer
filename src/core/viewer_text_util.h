@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "src/utility/scene_enums.h"
+#include "src/core/scene_enums.h"
 #include "Lane.h"
 #include "RoutingGraph.h"
 

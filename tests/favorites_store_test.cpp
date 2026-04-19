@@ -1,4 +1,4 @@
-#include "src/utility/favorites_store.h"
+#include "src/logic/favorites_store.h"
 
 #include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
 

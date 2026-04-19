@@ -1,4 +1,4 @@
-#include "src/utility/input_parsing.h"
+#include "src/logic/input_parsing.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>

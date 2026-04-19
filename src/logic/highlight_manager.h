@@ -9,8 +9,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "src/app/scene_geometry_types.h"
-#include "src/utility/scene_enums.h"
+#include "src/core/scene_geometry_types.h"
+#include "src/core/scene_enums.h"
 
 /// @brief 封装单层 EBO 高亮状态（SRP - 只存储一个 EBO 的状态）
 struct HighlightBuffer {

@@ -1,12 +1,46 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
+
+qt_moc_genrule(
+    name = "moc_files",
+    headers = ["measure_tool_controller.h"],
+)
 
 cc_library(
     name = "logic",
-    srcs = ["scene_manager.cpp"],
-    hdrs = ["scene_manager.h"],
+    srcs = [
+        "camera_controller.cpp",
+        "favorites_store.cpp",
+        "highlight_manager.cpp",
+        "input_parsing.cpp",
+        "measure_tool_controller.cpp",
+        "open_scenario_parser.cpp",
+        "routing_buffer_manager.cpp",
+        "routing_logic.cpp",
+        "scene_index_builder.cpp",
+        "scene_manager.cpp",
+        "spatial_grid_index.cpp",
+        ":moc_files",
+    ],
+    hdrs = [
+        "camera_controller.h",
+        "favorites_store.h",
+        "highlight_manager.h",
+        "input_parsing.h",
+        "measure_tool_controller.h",
+        "open_scenario_parser.h",
+        "routing_buffer_manager.h",
+        "routing_logic.h",
+        "scene_index_builder.h",
+        "scene_manager.h",
+        "spatial_grid_index.h",
+    ],
+    copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
+        "//bazel:qt6",
         "//src/core:core",
         "//third_party/libOpenDRIVE:opendrive",
+        "//third_party/pugixml",
     ],
 )

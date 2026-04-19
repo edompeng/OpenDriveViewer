@@ -1,4 +1,4 @@
-#include "src/app/layer_tree_model.h"
+#include "src/ui/widgets/layer_tree_model.h"
 
 #include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
 #include "third_party/libOpenDRIVE/include/OpenDriveMap.h"

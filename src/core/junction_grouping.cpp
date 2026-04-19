@@ -1,4 +1,4 @@
-#include "src/utility/junction_grouping.h"
+#include "src/core/junction_grouping.h"
 
 #include <algorithm>
 #include <cmath>

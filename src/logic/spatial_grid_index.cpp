@@ -1,4 +1,4 @@
-#include "src/app/spatial_grid_index.h"
+#include "src/logic/spatial_grid_index.h"
 
 #include <algorithm>
 #include <limits>

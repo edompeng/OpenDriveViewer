@@ -1,4 +1,4 @@
-#include "src/utility/input_parsing.h"
+#include "src/logic/input_parsing.h"
 
 #include <algorithm>
 #include <cctype>

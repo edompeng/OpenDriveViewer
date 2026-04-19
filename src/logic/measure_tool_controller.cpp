@@ -1,4 +1,4 @@
-#include "src/app/measure_tool_controller.h"
+#include "src/logic/measure_tool_controller.h"
 
 MeasureToolController::MeasureToolController(QObject* parent)
     : QObject(parent) {}

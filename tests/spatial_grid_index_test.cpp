@@ -1,4 +1,4 @@
-#include "src/app/spatial_grid_index.h"
+#include "src/logic/spatial_grid_index.h"
 
 #include "third_party/Catch2/src/catch2/catch_approx.hpp"
 #include "third_party/Catch2/src/catch2/catch_test_macros.hpp"

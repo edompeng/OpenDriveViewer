@@ -2,8 +2,8 @@
 
 #include <memory>
 #include <string>
-#include "src/utility/junction_grouping.h"
-#include "src/utility/scene_enums.h"
+#include "src/core/junction_grouping.h"
+#include "src/core/scene_enums.h"
 #include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
 
 namespace odr {

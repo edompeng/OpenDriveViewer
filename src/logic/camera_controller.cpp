@@ -1,4 +1,4 @@
-#include "src/app/camera_controller.h"
+#include "src/logic/camera_controller.h"
 
 #include <QtMath>
 #include <algorithm>

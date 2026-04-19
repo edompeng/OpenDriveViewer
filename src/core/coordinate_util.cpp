@@ -1,4 +1,4 @@
-#include "src/utility/coordinate_util.h"
+#include "src/core/coordinate_util.h"
 
 #include <iostream>
 #include <stdexcept>

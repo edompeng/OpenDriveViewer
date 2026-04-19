@@ -1,4 +1,4 @@
-#include "src/app/open_scenario_parser.h"
+#include "src/logic/open_scenario_parser.h"
 
 #include <QFileInfo>
 #include <functional>

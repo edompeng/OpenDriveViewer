@@ -1,4 +1,4 @@
-#include "src/app/camera_controller.h"
+#include "src/logic/camera_controller.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>

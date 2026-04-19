@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 
-#include "src/utility/scene_enums.h"
+#include "src/core/scene_enums.h"
 
 namespace geoviewer::renderer {
 

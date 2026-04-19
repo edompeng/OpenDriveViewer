@@ -2,8 +2,8 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <vector>
-#include "src/utility/input_parsing.h"
-#include "src/utility/routing_logic.h"
+#include "src/logic/input_parsing.h"
+#include "src/logic/routing_logic.h"
 #include "third_party/libOpenDRIVE/include/RoutingGraph.h"
 
 RoutingWidget::RoutingWidget(GeoViewerWidget* viewer, QWidget* parent)

@@ -31,14 +31,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "src/app/camera_controller.h"
-#include "src/app/highlight_manager.h"
-#include "src/app/measure_tool_controller.h"
-#include "src/app/open_scenario_parser.h"
-#include "src/app/routing_buffer_manager.h"
-#include "src/app/scene_geometry_types.h"
-#include "src/utility/junction_grouping.h"
-#include "src/utility/scene_enums.h"
+#include "src/logic/camera_controller.h"
+#include "src/logic/highlight_manager.h"
+#include "src/logic/measure_tool_controller.h"
+#include "src/logic/open_scenario_parser.h"
+#include "src/logic/routing_buffer_manager.h"
+#include "src/core/scene_geometry_types.h"
+#include "src/core/junction_grouping.h"
+#include "src/core/scene_enums.h"
 #include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
 #include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
 

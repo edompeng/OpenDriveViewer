@@ -1,4 +1,4 @@
-#include "src/utility/viewer_text_util.h"
+#include "src/core/viewer_text_util.h"
 
 #include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
 

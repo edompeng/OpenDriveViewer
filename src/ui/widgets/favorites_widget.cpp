@@ -1,6 +1,6 @@
 #include "src/ui/widgets/favorites_widget.h"
 #include <QDebug>
-#include "src/utility/viewer_text_util.h"
+#include "src/core/viewer_text_util.h"
 
 FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {

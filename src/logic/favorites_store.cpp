@@ -1,4 +1,4 @@
-#include "src/utility/favorites_store.h"
+#include "src/logic/favorites_store.h"
 
 bool FavoritesStore::Add(const std::string& road_id, TreeNodeType type,
                          const std::string& element_id,

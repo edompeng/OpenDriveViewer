@@ -12,8 +12,8 @@
 #include <QTranslator>
 #include <QWidget>
 #include "src/ui/widgets/layer_control_widget.h"
-#include "src/utility/coordinate_mode_policy.h"
-#include "src/utility/input_parsing.h"
+#include "src/core/coordinate_mode_policy.h"
+#include "src/logic/input_parsing.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   translator_ = new QTranslator(this);

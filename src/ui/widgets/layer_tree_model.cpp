@@ -1,6 +1,6 @@
-#include "src/app/layer_tree_model.h"
+#include "src/ui/widgets/layer_tree_model.h"
 
-#include "src/utility/viewer_text_util.h"
+#include "src/core/viewer_text_util.h"
 
 std::shared_ptr<LayerTreeSnapshot> BuildLayerTreeSnapshot(
     const std::shared_ptr<odr::OpenDriveMap>& map,

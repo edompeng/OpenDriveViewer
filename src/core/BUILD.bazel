@@ -1,11 +1,32 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS")
 
 cc_library(
     name = "core",
-    srcs = ["project_context.cpp"],
-    hdrs = ["project_context.h"],
+    srcs = [
+        "coordinate_util.cpp",
+        "junction_grouping.cpp",
+        "map_loader.cpp",
+        "project_context.cpp",
+        "thread_pool.cpp",
+        "viewer_text_util.cpp",
+    ],
+    hdrs = [
+        "coordinate_mode_policy.h",
+        "coordinate_util.h",
+        "junction_grouping.h",
+        "map_loader.h",
+        "project_context.h",
+        "scene_enums.h",
+        "scene_geometry_types.h",
+        "thread_pool.h",
+        "viewer_text_util.h",
+    ],
+    copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//src/utility:geoviewer_utility_core",
+        "//bazel:qt6",
+        "//bazel:proj",
+        "//third_party/libOpenDRIVE:opendrive",
     ],
 )

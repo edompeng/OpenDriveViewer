@@ -54,9 +54,9 @@ macro(add_geoviewer_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(${name} PRIVATE 
-    GeoViewerUtility 
     GeoViewerCore 
     GeoViewerLogic
+    GeoViewerUIWidgets
     Catch2::Catch2WithMain 
     Qt6::Gui
   )

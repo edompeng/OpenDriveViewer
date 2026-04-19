@@ -8,7 +8,7 @@
 #include <QShowEvent>
 #include <QToolButton>
 
-#include "src/utility/input_parsing.h"
+#include "src/logic/input_parsing.h"
 
 CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
                                                QWidget* parent)

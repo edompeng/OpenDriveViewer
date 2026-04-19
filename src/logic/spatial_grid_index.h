@@ -5,7 +5,7 @@
 #include <functional>
 #include <optional>
 #include <vector>
-#include "src/app/scene_geometry_types.h"
+#include "src/core/scene_geometry_types.h"
 #include "third_party/libOpenDRIVE/include/Mesh.h"
 
 struct SceneMeshLayerView {

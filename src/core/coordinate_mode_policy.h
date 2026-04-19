@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/utility/scene_enums.h"
+#include "src/core/scene_enums.h"
 
 inline bool IsWgs84ModeAllowed(bool georeference_valid) {
   return georeference_valid;

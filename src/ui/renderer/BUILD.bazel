@@ -9,6 +9,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",
-        "//src/utility:geoviewer_utility_core",
+        "//src/core",
     ],
 )

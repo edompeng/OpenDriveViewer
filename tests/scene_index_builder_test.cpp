@@ -1,4 +1,4 @@
-#include "src/app/scene_index_builder.h"
+#include "src/logic/scene_index_builder.h"
 
 #include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
 

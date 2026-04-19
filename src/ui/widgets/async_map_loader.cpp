@@ -1,8 +1,8 @@
-#include "src/app/async_map_loader.h"
+#include "src/ui/widgets/async_map_loader.h"
 
 #include <thread>
 #include <utility>
-#include "src/utility/thread_pool.h"
+#include "src/core/thread_pool.h"
 
 AsyncMapLoader::AsyncMapLoader(std::unique_ptr<IMapSceneLoader> loader,
                                QObject* parent)

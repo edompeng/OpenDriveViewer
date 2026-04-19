@@ -5,7 +5,7 @@
 #include <atomic>
 #include <memory>
 #include <thread>
-#include "src/utility/map_loader.h"
+#include "src/core/map_loader.h"
 
 class AsyncMapLoader : public QObject {
   Q_OBJECT

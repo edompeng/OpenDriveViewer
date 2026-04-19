@@ -1,4 +1,4 @@
-#include "src/utility/routing_logic.h"
+#include "src/logic/routing_logic.h"
 
 #include "third_party/Catch2/src/catch2/catch_test_macros.hpp"
 

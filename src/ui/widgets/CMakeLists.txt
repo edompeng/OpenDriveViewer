@@ -10,6 +10,8 @@ add_library(GeoViewerUIWidgets SHARED
   routing_widget.cpp routing_widget.h
   loading_progress_widget.cpp loading_progress_widget.h
   favorites_widget.cpp favorites_widget.h
+  async_map_loader.cpp async_map_loader.h
+  layer_tree_model.cpp layer_tree_model.h
 )
 
 target_include_directories(GeoViewerUIWidgets PUBLIC
@@ -23,6 +25,4 @@ target_link_libraries(GeoViewerUIWidgets PUBLIC
     GeoViewerCore
     GeoViewerRenderer
     GeoViewerLogic
-    GeoViewerUtility
-    GeoViewerAppCore
 )

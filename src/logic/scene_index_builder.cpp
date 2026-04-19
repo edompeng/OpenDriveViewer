@@ -1,4 +1,4 @@
-#include "src/app/scene_index_builder.h"
+#include "src/logic/scene_index_builder.h"
 
 #include <algorithm>
 

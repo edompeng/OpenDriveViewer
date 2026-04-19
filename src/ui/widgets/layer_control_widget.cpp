@@ -7,8 +7,8 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <thread>
-#include "src/utility/thread_pool.h"
-#include "src/app/layer_tree_model.h"
+#include "src/core/thread_pool.h"
+#include "src/ui/widgets/layer_tree_model.h"
 
 namespace {
 QTreeWidgetItem* CreateRootItem(QTreeWidget* parent) {

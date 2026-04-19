@@ -3,8 +3,8 @@
 #include <future>
 #include <tuple>
 #include <vector>
-#include "src/utility/thread_pool.h"
-#include "src/utility/viewer_text_util.h"
+#include "src/core/thread_pool.h"
+#include "src/core/viewer_text_util.h"
 
 namespace {
 

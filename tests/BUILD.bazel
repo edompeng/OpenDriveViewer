@@ -1,69 +1,58 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
 load("//bazel:qt.bzl", "QT_COPTS")
 
-COMMON_COPTS = []
-
-COMMON_DEFINES = [
-    "GEOVIEWER_SOURCE_DIR=\\\".\\\"",
+COMMON_DEPS = [
+    "//bazel:qt6",
+    "//src/core:core",
+    "//src/logic:logic",
+    "//src/ui/widgets:widgets",
+    "//third_party/Catch2:catch2_main",
 ]
+
+COMMON_DEFINES = ["GEOVIEWER_SOURCE_DIR=\\\".\\\""]
+COMMON_DATA = ["//:test_data"]
 
 cc_test(
     name = "ViewerCoreTests",
     srcs = [
-        "camera_controller_test.cpp",
-        "favorites_store_test.cpp",
-        "input_parsing_test.cpp",
-        "layer_tree_model_test.cpp",
-        "routing_logic_test.cpp",
         "scene_index_builder_test.cpp",
         "spatial_grid_index_test.cpp",
         "viewer_text_util_test.cpp",
+        "favorites_store_test.cpp",
+        "routing_logic_test.cpp",
+        "layer_tree_model_test.cpp",
+        "input_parsing_test.cpp",
+        "camera_controller_test.cpp",
     ],
-    copts = COMMON_COPTS + QT_COPTS,
+    copts = QT_COPTS,
     defines = COMMON_DEFINES,
-    data = ["//:test_data"],
-    deps = [
-        "//src/app:app_core",
-        "//src/utility:geoviewer_utility_core",
-        "//third_party/Catch2:catch2_main",
-    ],
+    data = COMMON_DATA,
+    deps = COMMON_DEPS,
+)
+
+cc_test(
+    name = "ProjectContextTests",
+    srcs = ["project_context_test.cpp"],
+    copts = QT_COPTS,
+    defines = COMMON_DEFINES,
+    data = COMMON_DATA,
+    deps = COMMON_DEPS,
 )
 
 cc_test(
     name = "CoordinateModePolicyTests",
-    srcs = [
-        "coordinate_mode_policy_test.cpp",
-    ],
-    copts = COMMON_COPTS + QT_COPTS,
+    srcs = ["coordinate_mode_policy_test.cpp"],
+    copts = QT_COPTS,
     defines = COMMON_DEFINES,
-    deps = [
-        "//src/utility:geoviewer_utility_core",
-        "//third_party/Catch2:catch2_main",
-    ],
+    data = COMMON_DATA,
+    deps = COMMON_DEPS,
 )
 
 cc_test(
     name = "MeasureToolTests",
-    srcs = [
-        "measure_tool_controller_test.cpp",
-    ],
-    copts = COMMON_COPTS + QT_COPTS,
+    srcs = ["measure_tool_controller_test.cpp"],
+    copts = QT_COPTS,
     defines = COMMON_DEFINES,
-    deps = [
-        "//src/app:app",
-        "//src/utility:geoviewer_utility_core",
-        "//third_party/Catch2:catch2_main",
-    ],
-)
-cc_test(
-    name = "ProjectContextTests",
-    srcs = [
-        "project_context_test.cpp",
-    ],
-    copts = COMMON_COPTS + QT_COPTS,
-    defines = COMMON_DEFINES,
-    deps = [
-        "//src/core:core",
-        "//third_party/Catch2:catch2_main",
-    ],
+    data = COMMON_DATA,
+    deps = COMMON_DEPS,
 )

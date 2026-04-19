@@ -1,4 +1,4 @@
-#include "src/app/measure_tool_controller.h"
+#include "src/logic/measure_tool_controller.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>

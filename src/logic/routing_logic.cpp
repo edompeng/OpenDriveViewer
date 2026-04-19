@@ -1,6 +1,6 @@
-#include "src/utility/routing_logic.h"
+#include "src/logic/routing_logic.h"
 
-#include "src/utility/viewer_text_util.h"
+#include "src/core/viewer_text_util.h"
 
 RouteHistoryEntry BuildRouteHistoryEntry(
     const std::string& start, const std::string& end,

@@ -10,5 +10,5 @@ target_link_libraries(GeoViewerRenderer PUBLIC
     Qt6::Widgets
     Qt6::OpenGL
     Qt6::OpenGLWidgets
-    GeoViewerUtilityCore
+    GeoViewerCore
 )

@@ -10,11 +10,11 @@
 #include <QStringList>
 #include <algorithm>
 #include <future>
-#include "src/app/scene_index_builder.h"
-#include "src/app/spatial_grid_index.h"
-#include "src/utility/coordinate_util.h"
-#include "src/utility/thread_pool.h"
-#include "src/utility/viewer_text_util.h"
+#include "src/logic/scene_index_builder.h"
+#include "src/logic/spatial_grid_index.h"
+#include "src/core/coordinate_util.h"
+#include "src/core/thread_pool.h"
+#include "src/core/viewer_text_util.h"
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
     : QOpenGLWidget(parent),

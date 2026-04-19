@@ -1,92 +1,13 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
-load("//bazel:qt.bzl", "PROJ_COPTS", "QT_COPTS", "qt_moc_genrule")
-
-COMMON_COPTS = []
-
-MOC_HEADERS = [
-    "async_map_loader.h",
-    "measure_tool_controller.h",
-]
-
-qt_moc_genrule(
-    name = "moc_files",
-    headers = MOC_HEADERS,
-)
-
-cc_library(
-    name = "app_core",
-    srcs = [
-        "camera_controller.cpp",
-        "highlight_manager.cpp",
-        "layer_tree_model.cpp",
-        "measure_tool_controller.cpp",
-        "open_scenario_parser.cpp",
-        "routing_buffer_manager.cpp",
-        "scene_index_builder.cpp",
-        "spatial_grid_index.cpp",
-        ":moc_files",
-    ],
-    hdrs = [
-        "async_map_loader.h",
-        "camera_controller.h",
-        "highlight_manager.h",
-        "layer_tree_model.h",
-        "measure_tool_controller.h",
-        "open_scenario_parser.h",
-        "routing_buffer_manager.h",
-        "scene_geometry_types.h",
-        "scene_index_builder.h",
-        "spatial_grid_index.h",
-    ],
-    copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        "//bazel:qt6",
-        "//src/utility:geoviewer_utility",
-        "//third_party/libOpenDRIVE:opendrive",
-        "//third_party/pugixml",
-    ],
-)
-
-cc_library(
-    name = "app",
-    srcs = [
-        "async_map_loader.cpp",
-    ],
-    hdrs = [
-        "async_map_loader.h",
-    ],
-    copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        ":app_core",
-        "//bazel:qt6",
-        "//src/utility:geoviewer_utility",
-        "//third_party/libOpenDRIVE:opendrive",
-    ],
-)
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//bazel:qt.bzl", "QT_COPTS")
 
 cc_binary(
     name = "OpenDriveViewer",
-    srcs = [
-        "main.cpp",
-        "//translations:qrc_translations",
-    ],
-    copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
-    linkopts = select({
-        "@platforms//os:windows": [
-            "/SUBSYSTEM:WINDOWS",
-            "/ENTRY:mainCRTStartup",
-        ],
-        "@platforms//os:macos": [
-            "-Wl,-framework,CoreFoundation",
-        ],
-        "//conditions:default": [],
-    }),
-    visibility = ["//visibility:public"],
+    srcs = ["main.cpp"],
+    copts = QT_COPTS,
     deps = [
-        ":app",
         "//bazel:qt6",
         "//src/ui:main_window",
+        "//src/ui/widgets",
     ],
 )

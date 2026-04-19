@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "src/utility/coordinate_mode_policy.h"
+#include "src/core/coordinate_mode_policy.h"
 
 TEST_CASE("CoordinateModePolicy - WGS84 allowed only with valid georeference",
           "[coordinate-mode]") {
