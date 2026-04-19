@@ -67,6 +67,15 @@ jobs:
           cache: true
           cache-key-prefix: qt-${{ matrix.os }}
 
+      - name: Cache vcpkg dependencies
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
+
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
