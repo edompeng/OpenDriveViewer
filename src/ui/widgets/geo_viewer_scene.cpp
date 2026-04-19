@@ -39,8 +39,6 @@ void GeoViewerWidget::SetMapAndMesh(
   map_ = std::move(map);
   if (!map_) {
     ResetSceneData();
-    ResolveOpenScenarioData();
-    emit OpenScenarioDataChanged();
     doneCurrent();
     if (had_user_points) {
       ClearUserPoints();
@@ -72,9 +70,6 @@ void GeoViewerWidget::SetMapAndMesh(
   UpdateMeshIndices();
   ApplyDefaultLayerStyles();
   FinalizeSceneUpdate();
-  ResolveOpenScenarioData();
-  emit OpenScenarioDataChanged();
-
   doneCurrent();
   if (had_user_points) {
     ClearUserPoints();

@@ -216,10 +216,6 @@
         <translation type="vanished">图层控制</translation>
     </message>
     <message>
-        <source>OpenSCENARIO</source>
-        <translation type="vanished">仿真场景</translation>
-    </message>
-    <message>
         <source>Routing</source>
         <translation type="vanished">路径规划</translation>
     </message>
@@ -258,37 +254,6 @@
     <message>
         <source>Jumped to: %1, %2, %3</source>
         <translation type="vanished">跳转至: %1, %2, %3</translation>
-    </message>
-</context>
-<context>
-    <name>OpenScenarioWidget</name>
-    <message>
-        <source>&lt;b&gt;OpenSCENARIO&lt;/b&gt;</source>
-        <translation type="vanished">&lt;b&gt;仿真场景&lt;/b&gt;</translation>
-    </message>
-    <message>
-        <source>Load .xosc</source>
-        <translation type="vanished">加载 .xosc</translation>
-    </message>
-    <message>
-        <source>Remove selected</source>
-        <translation type="vanished">移除选中</translation>
-    </message>
-    <message>
-        <source>Hide</source>
-        <translation type="vanished">隐藏</translation>
-    </message>
-    <message>
-        <source>Show</source>
-        <translation type="vanished">显示</translation>
-    </message>
-    <message>
-        <source>Remove file</source>
-        <translation type="vanished">移除文件</translation>
-    </message>
-    <message>
-        <source>Jump to entity</source>
-        <translation type="vanished">跳转到实体</translation>
     </message>
 </context>
 <context>

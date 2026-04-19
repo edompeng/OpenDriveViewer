@@ -31,7 +31,6 @@
 #include "src/core/scene_geometry_types.h"
 #include "src/logic/camera_controller.h"
 #include "src/logic/measure_tool_controller.h"
-#include "src/logic/open_scenario_parser.h"
 #include "src/ui/render/gl_renderer.h"
 #include "third_party/libOpenDRIVE/include/OpenDriveMap.h"
 #include "third_party/libOpenDRIVE/include/RoadNetworkMesh.h"
@@ -141,35 +140,6 @@ class GeoViewerWidget : public QOpenGLWidget {
                         const QString& element_id);
   void ClearHighlight();
 
-  // ---------- OpenScenario ----------
-  struct OpenScenarioEntitySnapshot {
-    QString name;
-    QString object_type;
-    bool visible = true;
-    bool has_position = false;
-    QString position_desc;
-  };
-
-  struct OpenScenarioFileSnapshot {
-    QString file_id;
-    QString file_name;
-    QString file_path;
-    QString version;
-    bool visible = true;
-    std::vector<OpenScenarioEntitySnapshot> entities;
-  };
-
-  bool LoadOpenScenarioFile(const QString& file_path, QString* error_message);
-  bool RemoveOpenScenarioFile(const QString& file_id);
-  std::vector<OpenScenarioFileSnapshot> OpenScenarioSnapshots() const;
-  void SetOpenScenarioFileVisible(const QString& file_id, bool visible);
-  void SetOpenScenarioEntityVisible(const QString& file_id,
-                                    const QString& entity_name, bool visible);
-  void HighlightOpenScenarioEntity(const QString& file_id,
-                                   const QString& entity_name);
-  void CenterOnOpenScenarioEntity(const QString& file_id,
-                                  const QString& entity_name);
-
  signals:
   void HoverInfoChanged(double x, double y, double z, double lon, double lat,
                         double alt, const QString& type_str,
@@ -183,7 +153,6 @@ class GeoViewerWidget : public QOpenGLWidget {
   void ElementVisibilityChanged(const QString& id, bool visible);
   void TotalDistanceChanged(double distance);
   void MeasureModeChanged(bool active);
-  void OpenScenarioDataChanged();
   void UserPointsChanged();
 
  protected:
@@ -286,18 +255,8 @@ class GeoViewerWidget : public QOpenGLWidget {
   QVector3D LocalToRendererPoint(const odr::Vec3D& point) const;
   QVector3D JunctionGroupCenter(const JunctionClusterGroup& group) const;
   void RenderJunctionOverlay(QPainter& painter, const QMatrix4x4& view_proj);
-  void RenderOpenScenarioOverlay(QPainter& painter,
-                                 const QMatrix4x4& view_proj);
   bool IsJunctionVisible(const QString& group_id,
                          const QString& junction_id = QString()) const;
-  std::optional<QVector3D> ResolveOpenScenarioPosition(
-      const OpenScenarioPosition& pos) const;
-  QString DescribeOpenScenarioPosition(const OpenScenarioPosition& pos) const;
-  double ResolveLaneCenterT(const odr::Road& road, double s, int lane_id,
-                            double offset) const;
-  void ResolveOpenScenarioData();
-  QString BuildOpenScenarioEntityKey(const QString& file_id,
-                                     const QString& entity_name) const;
   const odr::Mesh3D* MeshForLayer(LayerType type) const;
   bool IsTrianglePickVisible(LayerType type, uint32_t triangle_index,
                              size_t vertex_index) const;
@@ -366,24 +325,4 @@ class GeoViewerWidget : public QOpenGLWidget {
   bool user_points_batch_dirty_ = false;
   bool user_points_batch_buffer_dirty_ = false;
   void CommitUserPointsChange(bool buffer_dirty);
-
-  // ---- OpenScenario Internal State ----
-  struct OpenScenarioEntityState {
-    OpenScenarioEntity source;
-    bool visible = true;
-    bool has_position = false;
-    QVector3D position;
-    std::vector<QVector3D> trajectory;
-    QString position_desc;
-  };
-
-  struct OpenScenarioFileState {
-    QString file_id;
-    bool visible = true;
-    OpenScenarioFile source;
-    std::vector<OpenScenarioEntityState> entities;
-  };
-
-  std::vector<OpenScenarioFileState> open_scenarios_;
-  QString hovered_open_scenario_entity_key_;
 };

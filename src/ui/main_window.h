@@ -17,7 +17,6 @@
 #include "src/ui/widgets/layer_control_widget.h"
 #include "src/ui/widgets/loading_progress_widget.h"
 #include "src/ui/widgets/routing_widget.h"
-#include "src/ui/widgets/open_scenario_widget.h"
 #include "src/core/scene_enums.h"
 
 class MainWindow : public QMainWindow {
@@ -53,7 +52,6 @@ class MainWindow : public QMainWindow {
   QLineEdit *jump_to_coords_edit_;
   QStatusBar *status_;
   LayerControlWidget *layer_control_;
-  OpenScenarioWidget *open_scenario_panel_;
   RoutingWidget *routing_panel_;
   FavoritesWidget *favorites_panel_;
   CoordinatePointsWidget *coordinate_points_panel_;

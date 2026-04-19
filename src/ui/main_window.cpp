@@ -146,12 +146,11 @@ void MainWindow::RetranslateUi() {
   // Update Panel menu
   panels_menu_->setTitle(tr("Panels"));
   auto actions = panels_menu_->actions();
-  if (actions.size() >= 5) {
+  if (actions.size() >= 4) {
     actions[0]->setText(tr("Layer Control"));
-    actions[1]->setText(tr("OpenSCENARIO"));
-    actions[2]->setText(tr("Routing"));
-    actions[3]->setText(tr("Favorites"));
-    actions[4]->setText(tr("Coordinate Inputs"));
+    actions[1]->setText(tr("Routing"));
+    actions[2]->setText(tr("Favorites"));
+    actions[3]->setText(tr("Coordinate Inputs"));
   }
 
   // Update Layer checkboxes
@@ -178,9 +177,7 @@ void MainWindow::SetupPanels() {
   layer_control_->move(20, 20);
   layer_control_->show();
 
-  open_scenario_panel_ = new OpenScenarioWidget(view_, view_);
-  open_scenario_panel_->move(290, 20);
-  open_scenario_panel_->hide();
+  layer_control_->show();
 
   routing_panel_ = new RoutingWidget(view_, view_);
   routing_panel_->move(20, 530);
@@ -223,7 +220,6 @@ void MainWindow::SetupToolbar() {
             [this, w](bool checked) { ToggleWidgetVisibility(w, checked); });
   };
   addToggle(tr("Layer Control"), layer_control_);
-  addToggle(tr("OpenSCENARIO"), open_scenario_panel_);
   addToggle(tr("Routing"), routing_panel_);
   addToggle(tr("Favorites"), favorites_panel_);
   addToggle(tr("Coordinate Inputs"), coordinate_points_panel_);

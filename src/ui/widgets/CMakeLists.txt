@@ -4,7 +4,6 @@ add_library(GeoViewerUIWidgets SHARED
   geo_viewer_scene.cpp
   floating_panel_widget.cpp floating_panel_widget.h
   layer_control_widget.cpp layer_control_widget.h
-  open_scenario_widget.cpp open_scenario_widget.h
   coordinate_points_widget.cpp coordinate_points_widget.h
   routing_widget.cpp routing_widget.h
   loading_progress_widget.cpp loading_progress_widget.h

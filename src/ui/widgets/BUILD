@@ -11,7 +11,6 @@ qt_moc_genrule(
         "geo_viewer.h",
         "layer_control_widget.h",
         "loading_progress_widget.h",
-        "open_scenario_widget.h",
         "routing_widget.h",
     ],
 )
@@ -28,7 +27,6 @@ cc_library(
         "layer_control_widget.cpp",
         "layer_tree_model.cpp",
         "loading_progress_widget.cpp",
-        "open_scenario_widget.cpp",
         "routing_widget.cpp",
         ":moc_files",
     ],
@@ -41,7 +39,6 @@ cc_library(
         "layer_control_widget.h",
         "layer_tree_model.h",
         "loading_progress_widget.h",
-        "open_scenario_widget.h",
         "routing_widget.h",
     ],
     copts = QT_COPTS,
