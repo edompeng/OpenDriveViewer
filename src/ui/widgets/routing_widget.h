@@ -3,18 +3,15 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QPushButton>
-#include <QToolButton>
-#include <QVBoxLayout>
-#include <QWidget>
-#include "src/app/geo_viewer.h"
-
-#include <QLabel>
 #include <QMouseEvent>
 #include <QPoint>
 #include <QPushButton>
+#include <QToolButton>
 #include <QTreeWidget>
-#include "src/app/floating_panel_widget.h"
+#include <QVBoxLayout>
+#include <QWidget>
+#include "src/ui/widgets/floating_panel_widget.h"
+#include "src/ui/widgets/geo_viewer.h"
 
 class RoutingWidget : public FloatingPanelWidget {
   Q_OBJECT

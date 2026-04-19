@@ -1,4 +1,4 @@
-#include "src/app/floating_panel_widget.h"
+#include "src/ui/widgets/floating_panel_widget.h"
 #include <QCoreApplication>
 #include <algorithm>
 

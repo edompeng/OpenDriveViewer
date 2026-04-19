@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <QLocale>
 #include <QTranslator>
-#include "src/app/main_window.h"
+#include "src/ui/main_window.h"
 
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   QSurfaceFormat::setDefaultFormat(format);
 
   MainWindow w;
-  w.resize(1280, 800);
+  w.resize(1280, 850);
   w.show();
   return app.exec();
 }

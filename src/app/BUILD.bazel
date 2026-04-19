@@ -5,16 +5,7 @@ COMMON_COPTS = []
 
 MOC_HEADERS = [
     "async_map_loader.h",
-    "coordinate_points_widget.h",
-    "favorites_widget.h",
-    "floating_panel_widget.h",
-    "geo_viewer.h",
-    "layer_control_widget.h",
-    "loading_progress_widget.h",
-    "main_window.h",
     "measure_tool_controller.h",
-    "open_scenario_widget.h",
-    "routing_widget.h",
 ]
 
 qt_moc_genrule(
@@ -26,13 +17,23 @@ cc_library(
     name = "app_core",
     srcs = [
         "camera_controller.cpp",
+        "highlight_manager.cpp",
         "layer_tree_model.cpp",
+        "measure_tool_controller.cpp",
+        "open_scenario_parser.cpp",
+        "routing_buffer_manager.cpp",
         "scene_index_builder.cpp",
         "spatial_grid_index.cpp",
+        ":moc_files",
     ],
     hdrs = [
+        "async_map_loader.h",
         "camera_controller.h",
+        "highlight_manager.h",
         "layer_tree_model.h",
+        "measure_tool_controller.h",
+        "open_scenario_parser.h",
+        "routing_buffer_manager.h",
         "scene_geometry_types.h",
         "scene_index_builder.h",
         "spatial_grid_index.h",
@@ -41,8 +42,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",
-        "//src/utility:geoviewer_utility_core",
+        "//src/utility:geoviewer_utility",
         "//third_party/libOpenDRIVE:opendrive",
+        "//third_party/pugixml",
     ],
 )
 
@@ -50,37 +52,9 @@ cc_library(
     name = "app",
     srcs = [
         "async_map_loader.cpp",
-        "coordinate_points_widget.cpp",
-        "favorites_widget.cpp",
-        "floating_panel_widget.cpp",
-        "geo_viewer.cpp",
-        "geo_viewer_scene.cpp",
-        "highlight_manager.cpp",
-        "layer_control_widget.cpp",
-        "loading_progress_widget.cpp",
-        "main_window.cpp",
-        "measure_tool_controller.cpp",
-        "open_scenario_parser.cpp",
-        "open_scenario_widget.cpp",
-        "routing_buffer_manager.cpp",
-        "routing_widget.cpp",
-        ":moc_files",
     ],
     hdrs = [
         "async_map_loader.h",
-        "coordinate_points_widget.h",
-        "favorites_widget.h",
-        "floating_panel_widget.h",
-        "geo_viewer.h",
-        "highlight_manager.h",
-        "layer_control_widget.h",
-        "loading_progress_widget.h",
-        "main_window.h",
-        "measure_tool_controller.h",
-        "open_scenario_parser.h",
-        "open_scenario_widget.h",
-        "routing_buffer_manager.h",
-        "routing_widget.h",
     ],
     copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
     visibility = ["//visibility:public"],
@@ -89,7 +63,6 @@ cc_library(
         "//bazel:qt6",
         "//src/utility:geoviewer_utility",
         "//third_party/libOpenDRIVE:opendrive",
-        "//third_party/pugixml:pugixml",
     ],
 )
 
@@ -100,11 +73,6 @@ cc_binary(
         "//translations:qrc_translations",
     ],
     copts = COMMON_COPTS + PROJ_COPTS + QT_COPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        ":app",
-        "//bazel:qt6",
-    ],
     linkopts = select({
         "@platforms//os:windows": [
             "/SUBSYSTEM:WINDOWS",
@@ -115,4 +83,10 @@ cc_binary(
         ],
         "//conditions:default": [],
     }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":app",
+        "//bazel:qt6",
+        "//src/ui:main_window",
+    ],
 )

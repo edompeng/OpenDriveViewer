@@ -1,4 +1,4 @@
-#include "src/app/geo_viewer.h"
+#include "src/ui/widgets/geo_viewer.h"
 
 #include <QtConcurrent>
 #include <tuple>

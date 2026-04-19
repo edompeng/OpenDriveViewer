@@ -3,7 +3,7 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QVBoxLayout>
-#include "src/app/floating_panel_widget.h"
+#include "src/ui/widgets/floating_panel_widget.h"
 
 class LoadingProgressWidget : public FloatingPanelWidget {
   Q_OBJECT

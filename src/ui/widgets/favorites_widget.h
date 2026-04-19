@@ -5,14 +5,13 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
-#include "src/app/floating_panel_widget.h"
-#include "src/app/geo_viewer.h"
+#include "src/ui/widgets/floating_panel_widget.h"
+#include "src/ui/widgets/geo_viewer.h"
 #include "src/utility/favorites_store.h"
-
-#include <QMouseEvent>
 
 class FavoritesWidget : public FloatingPanelWidget {
   Q_OBJECT

@@ -1,4 +1,4 @@
-#include "src/app/coordinate_points_widget.h"
+#include "src/ui/widgets/coordinate_points_widget.h"
 
 #include <QCheckBox>
 #include <QColorDialog>

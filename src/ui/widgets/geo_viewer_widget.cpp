@@ -5,24 +5,19 @@
 namespace geoviewer::ui::widgets {
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
-    : QOpenGLWidget(parent), renderer_(std::make_unique<renderer::SceneRenderer>()) {
+    : QOpenGLWidget(parent),
+      renderer_(std::make_unique<renderer::SceneRenderer>()) {
   setMouseTracking(true);
   SetupSignals();
 }
 
 GeoViewerWidget::~GeoViewerWidget() = default;
 
-void GeoViewerWidget::initializeGL() {
-  renderer_->Initialize();
-}
+void GeoViewerWidget::initializeGL() { renderer_->Initialize(); }
 
-void GeoViewerWidget::resizeGL(int w, int h) {
-  renderer_->Resize(w, h);
-}
+void GeoViewerWidget::resizeGL(int w, int h) { renderer_->Resize(w, h); }
 
-void GeoViewerWidget::paintGL() {
-  renderer_->Render();
-}
+void GeoViewerWidget::paintGL() { renderer_->Render(); }
 
 void GeoViewerWidget::mousePressEvent(QMouseEvent* event) {
   // Handle camera rotation start or selection
@@ -41,7 +36,7 @@ void GeoViewerWidget::wheelEvent(QWheelEvent* event) {
 
 void GeoViewerWidget::SetupSignals() {
   auto& context = core::ProjectContext::Instance();
-  
+
   context.OnLayerVisibilityChanged([this](LayerType type, bool visible) {
     renderer_->SetLayerVisible(type, visible);
     update();

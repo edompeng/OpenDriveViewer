@@ -3,22 +3,28 @@ load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
 
 qt_moc_genrule(
     name = "moc_files",
-    headers = ["widgets/geo_viewer_widget.h"],
+    headers = [
+        "main_window.h",
+    ],
 )
 
 cc_library(
-    name = "ui",
+    name = "main_window",
     srcs = [
-        "widgets/geo_viewer_widget.cpp",
+        "main_window.cpp",
         ":moc_files",
     ],
-    hdrs = ["widgets/geo_viewer_widget.h"],
+    hdrs = [
+        "main_window.h",
+    ],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",
-        "//src/core:core",
-        "//src/renderer:renderer",
-        "//src/logic:logic",
+        "//src/core",
+        "//src/logic",
+        "//src/renderer",
+        "//src/ui/widgets",
+        "//src/app:app",
     ],
 )

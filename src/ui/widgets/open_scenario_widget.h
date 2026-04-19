@@ -8,8 +8,8 @@
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QWidget>
-#include "src/app/floating_panel_widget.h"
-#include "src/app/geo_viewer.h"
+#include "src/ui/widgets/floating_panel_widget.h"
+#include "src/ui/widgets/geo_viewer.h"
 
 class OpenScenarioWidget : public FloatingPanelWidget {
   Q_OBJECT

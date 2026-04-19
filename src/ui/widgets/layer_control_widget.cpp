@@ -1,4 +1,4 @@
-#include "src/app/layer_control_widget.h"
+#include "src/ui/widgets/layer_control_widget.h"
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -178,9 +178,10 @@ void LayerControlWidget::PopulateTopLevelItems() {
   };
 
   auto* junction_root = CreateRootItem(tree_);
-  junction_root->setText(0, tr("Junctions (%1 groups / %2 junctions)")
-                               .arg((int)tree_snapshot_->junction_groups.size())
-                               .arg(tree_snapshot_->junction_count));
+  junction_root->setText(0,
+                         tr("Junctions (%1 groups / %2 junctions)")
+                             .arg((int)tree_snapshot_->junction_groups.size())
+                             .arg(tree_snapshot_->junction_count));
   junction_root->setData(0, Qt::UserRole, (int)TreeNodeType::kJunctionGroup);
   junction_root->setData(0, Qt::UserRole + 1, "__junction_root__");
   // The state will be computed from children via UpdateParentCheckState below
@@ -285,7 +286,8 @@ void LayerControlWidget::PopulateRoadChildren(QTreeWidgetItem* road_item,
     group_item->setCheckState(0, groupVisible ? Qt::Checked : Qt::Unchecked);
     items_by_full_id_.insert(groupFullId, group_item);
     for (const auto& entry : entries) {
-      const QString full_id = BuildFullId(road_id, entry.type, entry.element_id);
+      const QString full_id =
+          BuildFullId(road_id, entry.type, entry.element_id);
       auto* child = CreateChildItem(group_item);
       child->setText(0, entry.label);
       child->setData(0, Qt::UserRole, (int)entry.type);
@@ -627,7 +629,8 @@ void LayerControlWidget::HandleSearch() {
                    TreeNodeType::kRoad) {
           road_item = road_item->parent();
         }
-        if (road_item) road_id = road_item->data(0, Qt::UserRole + 1).toString();
+        if (road_item)
+          road_id = road_item->data(0, Qt::UserRole + 1).toString();
       }
       if (!road_id.isEmpty()) {
         viewer_->CenterOnElement(road_id, type, id);
@@ -681,7 +684,8 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   } else if (selected == addFav) {
     QString road_id = GetRoadId(item);
     QString element_id = item->data(0, Qt::UserRole + 1).toString();
-    emit viewer_->AddFavoriteRequested(road_id, type, element_id, item->text(0));
+    emit viewer_->AddFavoriteRequested(road_id, type, element_id,
+                                       item->text(0));
   } else if (selected == setStart || selected == setEnd) {
     QString road_id = GetRoadId(item);
     QString data_str = item->data(0, Qt::UserRole + 1).toString();
@@ -715,7 +719,8 @@ void LayerControlWidget::mouseReleaseEvent(QMouseEvent* event) {
   FloatingPanelWidget::mouseReleaseEvent(event);
 }
 
-void LayerControlWidget::SelectElement(const QString& road_id, TreeNodeType type,
+void LayerControlWidget::SelectElement(const QString& road_id,
+                                       TreeNodeType type,
                                        const QString& element_id) {
   EnsureItemMaterialized(road_id, type, element_id);
   const QString full_id = BuildFullId(road_id, type, element_id);

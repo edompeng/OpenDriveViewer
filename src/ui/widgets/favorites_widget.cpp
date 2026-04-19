@@ -1,4 +1,4 @@
-#include "src/app/favorites_widget.h"
+#include "src/ui/widgets/favorites_widget.h"
 #include <QDebug>
 #include "src/utility/viewer_text_util.h"
 

@@ -1,4 +1,4 @@
-#include "src/app/routing_widget.h"
+#include "src/ui/widgets/routing_widget.h"
 #include <QDebug>
 #include <QMessageBox>
 #include <vector>
@@ -173,7 +173,7 @@ void RoutingWidget::HandleCalculate() {
     root_item->setData(0, Qt::UserRole, route_id);
     root_item->setCheckState(0, Qt::Checked);
     root_item->setFlags(root_item->flags() | Qt::ItemIsUserCheckable |
-                       Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+                        Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 
     for (const auto& road_id : entry.road_sequence) {
       auto* child = new QTreeWidgetItem(root_item);
@@ -190,7 +190,8 @@ void RoutingWidget::HandleHistoryItemChanged(QTreeWidgetItem* item,
                                              int column) {
   if (column == 0 && item->parent() == nullptr) {
     int route_id = item->data(0, Qt::UserRole).toInt();
-    viewer_->SetRoutingPathVisible(route_id, item->checkState(0) == Qt::Checked);
+    viewer_->SetRoutingPathVisible(route_id,
+                                   item->checkState(0) == Qt::Checked);
   }
 }
 

@@ -1,4 +1,4 @@
-#include "src/app/main_window.h"
+#include "src/ui/main_window.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QFileDialog>
@@ -11,7 +11,7 @@
 #include <QToolBar>
 #include <QTranslator>
 #include <QWidget>
-#include "src/app/layer_control_widget.h"
+#include "src/ui/widgets/layer_control_widget.h"
 #include "src/utility/coordinate_mode_policy.h"
 #include "src/utility/input_parsing.h"
 

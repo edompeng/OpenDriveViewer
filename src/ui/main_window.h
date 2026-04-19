@@ -11,17 +11,16 @@
 #include <QStatusBar>
 #include <vector>
 #include "src/app/async_map_loader.h"
-#include "src/app/coordinate_points_widget.h"
-#include "src/app/favorites_widget.h"
-#include "src/app/geo_viewer.h"
-#include "src/app/layer_control_widget.h"
-#include "src/app/loading_progress_widget.h"
-#include "src/app/open_scenario_widget.h"
-#include "src/app/routing_widget.h"
+#include "src/ui/widgets/coordinate_points_widget.h"
+#include "src/ui/widgets/favorites_widget.h"
+#include "src/ui/widgets/geo_viewer.h"
+#include "src/ui/widgets/layer_control_widget.h"
+#include "src/ui/widgets/loading_progress_widget.h"
+#include "src/ui/widgets/routing_widget.h"
+#include "src/ui/widgets/open_scenario_widget.h"
 #include "src/utility/scene_enums.h"
 
 class MainWindow : public QMainWindow {
-
   Q_OBJECT
  public:
   MainWindow(QWidget *parent = nullptr);
@@ -61,7 +60,7 @@ class MainWindow : public QMainWindow {
   LoadingProgressWidget *load_progress_ = nullptr;
   QString current_map_path_;
   QString pending_map_path_;
-  QAction* measure_action_;
+  QAction *measure_action_;
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
 

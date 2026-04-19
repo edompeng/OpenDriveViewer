@@ -1,4 +1,4 @@
-#include "src/app/loading_progress_widget.h"
+#include "src/ui/widgets/loading_progress_widget.h"
 #include <QHBoxLayout>
 #include <QPainter>
 

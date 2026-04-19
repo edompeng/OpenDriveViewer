@@ -1,4 +1,4 @@
-#include "src/app/open_scenario_widget.h"
+#include "src/ui/widgets/open_scenario_widget.h"
 
 #include <QFileDialog>
 #include <QHBoxLayout>
