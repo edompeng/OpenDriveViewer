@@ -3,8 +3,6 @@ add_library(GeoViewerUtilityCore SHARED
   favorites_store.cpp
   input_parsing.cpp
   junction_grouping.cpp
-  layer_tree_model.cpp
-  open_scenario_parser.cpp
   routing_logic.cpp
   viewer_text_util.cpp
 )
