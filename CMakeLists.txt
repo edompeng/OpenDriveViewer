@@ -3,8 +3,8 @@ project(OpenDriveViewer LANGUAGES CXX)
 
 # --- Platform & Toolchain ---
 if(MSVC)
-  add_compile_options(/Zc:__cplusplus /utf-8 /W3)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  add_compile_options(/Zc:__cplusplus /utf-8 /W3 /wd4005)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES)
 else()
   add_compile_options(-Wall -Wextra)
 endif()
@@ -22,17 +22,36 @@ endif()
 find_package(Qt6 COMPONENTS Widgets Gui OpenGL OpenGLWidgets Concurrent LinguistTools REQUIRED)
 find_package(OpenGL REQUIRED)
 
-# Proj finding with fallback
+# Proj finding with PkgConfig fallback for Linux
 find_package(PROJ CONFIG QUIET)
 if(NOT PROJ_FOUND)
   find_package(PROJ QUIET)
 endif()
 
-# Fallback to PROJ_ROOT if provided
+if(NOT PROJ_FOUND AND NOT WIN32)
+  find_package(PkgConfig QUIET)
+  if(PkgConfig_FOUND)
+    pkg_check_modules(PROJ QUIET proj)
+  endif()
+endif()
+
+# Fallback to PROJ_ROOT if provided or if PkgConfig found it
 if(NOT PROJ_FOUND AND PROJ_ROOT)
   set(PROJ_INCLUDE_DIR "${PROJ_ROOT}/include")
-  set(PROJ_LIBRARY "${PROJ_ROOT}/lib/proj.lib")
-  set(PROJ_FOUND INTERNAL)
+  if(WIN32)
+    set(PROJ_LIBRARY "${PROJ_ROOT}/lib/proj.lib")
+  else()
+    set(PROJ_LIBRARY "${PROJ_ROOT}/lib/libproj.so")
+    if(NOT EXISTS ${PROJ_LIBRARY})
+       set(PROJ_LIBRARY "${PROJ_ROOT}/lib/libproj.dylib")
+    endif()
+  endif()
+  set(PROJ_FOUND TRUE)
+endif()
+
+if(PROJ_FOUND AND NOT PROJ_LIBRARIES AND PROJ_LIBRARY)
+  set(PROJ_LIBRARIES ${PROJ_LIBRARY})
+  set(PROJ_INCLUDE_DIRS ${PROJ_INCLUDE_DIR})
 endif()
 
 # --- Configuration ---

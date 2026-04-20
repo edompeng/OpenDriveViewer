@@ -47,7 +47,7 @@ TEST(SpatialGridIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->layer_tag, 2);
-  EXPECT_EQ(result->vertex_index, 0);
+  EXPECT_EQ(result->vertex_index, std::size_t(0));
   EXPECT_NEAR(result->distance, 1.0f, 1e-5f);
 }
 

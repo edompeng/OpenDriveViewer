@@ -267,7 +267,11 @@ void GeoViewerWidget::BuildSignalElementCache() {
 void GeoViewerWidget::BuildOutlineElementCache() {
   const std::vector<size_t> outline_indices =
       network_mesh_.lanes_mesh.get_lane_outline_indices();
-  lane_outline_indices_.assign(outline_indices.begin(), outline_indices.end());
+  lane_outline_indices_.clear();
+  lane_outline_indices_.reserve(outline_indices.size());
+  for (const auto& idx : outline_indices) {
+    lane_outline_indices_.push_back(static_cast<uint32_t>(idx));
+  }
 
   std::vector<SceneOutlineElement> items;
   std::map<std::tuple<std::string, double, int>, size_t> item_map;

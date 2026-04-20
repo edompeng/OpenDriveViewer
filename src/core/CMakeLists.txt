@@ -18,11 +18,14 @@ target_include_directories(GeoViewerCore PUBLIC
 # PROJ might be found as a target or as variables
 if(TARGET PROJ::proj)
     target_link_libraries(GeoViewerCore PUBLIC PROJ::proj)
-elseif(PROJ_FOUND)
+elseif(PROJ_LIBRARIES)
     target_link_libraries(GeoViewerCore PUBLIC ${PROJ_LIBRARIES})
     target_include_directories(GeoViewerCore PUBLIC ${PROJ_INCLUDE_DIRS})
+elseif(PROJ_LIBRARY)
+    target_link_libraries(GeoViewerCore PUBLIC ${PROJ_LIBRARY})
+    target_include_directories(GeoViewerCore PUBLIC ${PROJ_INCLUDE_DIR})
 else()
-    # Fallback for manual brew setup on Mac
+    # Fallback for manual brew setup on Mac or system paths
     find_library(PROJ_LIB proj)
     if(PROJ_LIB)
         target_link_libraries(GeoViewerCore PUBLIC ${PROJ_LIB})
