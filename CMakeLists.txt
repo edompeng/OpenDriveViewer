@@ -62,9 +62,14 @@ FetchContent_MakeAvailable(pugixml)
 FetchContent_Declare(
   libOpenDRIVE
   URL https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/0.5.0.tar.gz
-  PATCH_COMMAND patch -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/third_party/patches/libOpenDRIVE.patch
 )
 FetchContent_MakeAvailable(libOpenDRIVE)
+
+# Fix for libOpenDRIVE 0.5.0 incorrectly use CMAKE_SOURCE_DIR in its internal CMakeLists.txt
+target_include_directories(OpenDrive PUBLIC 
+    $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/thirdparty>
+)
 
 add_subdirectory(src)
 

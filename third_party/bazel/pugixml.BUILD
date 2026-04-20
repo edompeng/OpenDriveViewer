@@ -6,6 +6,7 @@ cc_library(
         "src/pugiconfig.hpp",
         "src/pugixml.hpp",
     ],
-    includes = ["src"],
+    include_prefix = "pugixml",
+    strip_include_prefix = "src",
     visibility = ["//visibility:public"],
 )

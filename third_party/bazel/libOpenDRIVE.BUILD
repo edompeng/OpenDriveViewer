@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
+
 cc_library(
     name = "opendrive",
     srcs = [
@@ -12,7 +13,6 @@ cc_library(
         "src/Junction.cpp",
         "src/Lane.cpp",
         "src/LaneSection.cpp",
-        "src/Log.cpp",
         "src/Mesh.cpp",
         "src/OpenDriveMap.cpp",
         "src/RefLine.cpp",
@@ -23,10 +23,21 @@ cc_library(
         "src/RoadSignal.cpp",
         "src/RoutingGraph.cpp",
     ],
-    hdrs = glob(["include/**/*.h", "include/**/*.hpp"]),
+    hdrs = glob(
+        [
+            "include/**/*.h",
+            "include/**/*.hpp",
+            "thirdparty/**/*.h",
+            "thirdparty/**/*.hpp",
+        ],
+        allow_empty = True,
+    ),
     copts = ["-I."],
     defines = ["_USE_MATH_DEFINES"],
-    includes = ["include"],
+    includes = [
+        "include",
+        "thirdparty",
+    ],
     visibility = ["//visibility:public"],
-    deps = ["@pugixml//:pugixml"],
+    deps = ["@pugixml"],
 )
