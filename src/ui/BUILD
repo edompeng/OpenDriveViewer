@@ -1,5 +1,5 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
+load("//bazel:geoviewer.bzl", "geoviewer_cc_library")
+load("//bazel:qt.bzl", "qt_moc_genrule")
 
 qt_moc_genrule(
     name = "moc_files",
@@ -8,7 +8,7 @@ qt_moc_genrule(
     ],
 )
 
-cc_library(
+geoviewer_cc_library(
     name = "main_window",
     srcs = [
         "main_window.cpp",
@@ -18,7 +18,6 @@ cc_library(
     hdrs = [
         "main_window.h",
     ],
-    copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",

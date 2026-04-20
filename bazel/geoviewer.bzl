@@ -1,21 +1,21 @@
 load("//bazel:qt.bzl", "QT_COPTS")
 
 def geoviewer_cc_library(name, **kwargs):
-    """A wrapper for cc_library that adds GeoViewer-specific flags.
+    """A wrapper for native.cc_library that adds GeoViewer-specific flags."""
     
-    This ensures that internal libraries are correctly marked with GEOVIEWER_BUILD_LIB
-    on Windows and depend on the unified export header.
-    """
-    copts = kwargs.pop("copts", []) + QT_COPTS
-    local_defines = kwargs.pop("local_defines", []) + select({
+    # Merge copts
+    kwargs["copts"] = kwargs.get("copts", []) + QT_COPTS
+    
+    # Merge local_defines with platform selection
+    kwargs["local_defines"] = kwargs.get("local_defines", []) + select({
         "@platforms//os:windows": ["GEOVIEWER_BUILD_LIB"],
         "//conditions:default": [],
     })
     
+    # Merge dependencies
+    kwargs["deps"] = kwargs.get("deps", []) + ["//src:export_header"]
+    
     native.cc_library(
         name = name,
-        copts = copts,
-        local_defines = local_defines,
-        deps = kwargs.pop("deps", []) + ["//src:export_header"],
         **kwargs
     )
