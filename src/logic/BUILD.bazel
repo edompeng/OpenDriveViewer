@@ -26,6 +26,7 @@ cc_library(
         "favorites_store.h",
         "highlight_manager.h",
         "input_parsing.h",
+        "logic_export.h",
         "measure_tool_controller.h",
         "routing_buffer_manager.h",
         "routing_logic.h",
@@ -37,7 +38,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",
-        "//src/core:core",
+        "//src/core",
         "//third_party/libOpenDRIVE:opendrive",
         "//third_party/pugixml",
     ],

@@ -88,9 +88,21 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libOpenDRIVE)
 
-# Fix for libOpenDRIVE 0.5.0 incorrectly use CMAKE_SOURCE_DIR in its internal CMakeLists.txt
+# Create a compatibility include directory for pugixml to match "pugixml/pugixml.hpp" structure
+set(PUGIXML_COMPAT_DIR "${CMAKE_BINARY_DIR}/pugixml_compat")
+file(MAKE_DIRECTORY "${PUGIXML_COMPAT_DIR}/pugixml")
+configure_file("${pugixml_SOURCE_DIR}/src/pugixml.hpp" "${PUGIXML_COMPAT_DIR}/pugixml/pugixml.hpp" COPYONLY)
+configure_file("${pugixml_SOURCE_DIR}/src/pugiconfig.hpp" "${PUGIXML_COMPAT_DIR}/pugixml/pugiconfig.hpp" COPYONLY)
+
+# Fix for libOpenDRIVE 0.5.0
+target_link_libraries(OpenDrive PUBLIC pugixml-static)
+target_include_directories(OpenDrive SYSTEM BEFORE PUBLIC 
+    $<BUILD_INTERFACE:${PUGIXML_COMPAT_DIR}>
+)
 target_include_directories(OpenDrive SYSTEM PUBLIC 
     $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/include>
+)
+target_include_directories(OpenDrive SYSTEM PRIVATE 
     $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/thirdparty>
 )
 target_compile_options(OpenDrive PRIVATE -w)

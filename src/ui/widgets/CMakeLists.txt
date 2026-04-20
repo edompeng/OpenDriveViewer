@@ -16,6 +16,8 @@ target_include_directories(GeoViewerUIWidgets PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../
 )
 
+target_compile_definitions(GeoViewerUIWidgets PRIVATE GEOVIEWER_WIDGETS_LIB)
+
 target_link_libraries(GeoViewerUIWidgets PUBLIC 
     Qt6::Widgets
     Qt6::OpenGL
@@ -24,3 +26,7 @@ target_link_libraries(GeoViewerUIWidgets PUBLIC
     GeoViewerGlRenderer
     GeoViewerLogic
 )
+
+if(WIN32)
+    target_link_libraries(GeoViewerUIWidgets PRIVATE opengl32)
+endif()

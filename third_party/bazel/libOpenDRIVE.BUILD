@@ -1,6 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 cc_library(
+    name = "earcut",
+    hdrs = ["thirdparty/earcut/earcut.hpp"],
+    strip_include_prefix = "thirdparty",
+)
+
+cc_library(
     name = "opendrive",
     srcs = [
         "src/Geometries/Arc.cpp",
@@ -27,8 +33,6 @@ cc_library(
         [
             "include/**/*.h",
             "include/**/*.hpp",
-            "thirdparty/**/*.h",
-            "thirdparty/**/*.hpp",
         ],
         allow_empty = True,
     ),
@@ -36,11 +40,11 @@ cc_library(
         "-I.",
         "-w",
     ],
+    includes = ["include"],
     local_defines = ["_USE_MATH_DEFINES"],
-    includes = [
-        "include",
-        "thirdparty",
-    ],
     visibility = ["//visibility:public"],
-    deps = ["@pugixml"],
+    deps = [
+        ":earcut",
+        "@pugixml",
+    ],
 )

@@ -40,6 +40,7 @@ cc_library(
         "layer_tree_model.h",
         "loading_progress_widget.h",
         "routing_widget.h",
+        "widgets_export.h",
     ],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],

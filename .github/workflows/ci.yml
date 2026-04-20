@@ -67,6 +67,13 @@ jobs:
           cache: true
           cache-key-prefix: qt-${{ matrix.os }}
 
+      - name: Cache vcpkg tool
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg
+          key: vcpkg-tool-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+
       - name: Cache vcpkg dependencies
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v4
@@ -221,6 +228,13 @@ jobs:
             brew install proj ninja
           fi
 
+      - name: Cache vcpkg tool
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg
+          key: vcpkg-tool-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+
       - name: Cache vcpkg dependencies
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v4
@@ -266,7 +280,7 @@ jobs:
       - name: Cache CMake FetchContent
         uses: actions/cache@v4
         with:
-          path: build/_deps
+          path: ${{ github.workspace }}/cmake_deps
           key: cmake-deps-${{ matrix.os }}-${{ hashFiles('CMakeLists.txt', 'src/CMakeLists.txt') }}
           restore-keys: |
             cmake-deps-${{ matrix.os }}-
@@ -276,6 +290,7 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DFETCHCONTENT_BASE_DIR="${{ github.workspace }}/cmake_deps" \
             -DQT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DPROJ_ROOT="${{ env.PROJ_ROOT }}"
           cmake --build build --config Release

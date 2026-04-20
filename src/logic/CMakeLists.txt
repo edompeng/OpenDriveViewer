@@ -15,6 +15,8 @@ target_include_directories(GeoViewerLogic PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../
 )
 
+target_compile_definitions(GeoViewerLogic PRIVATE GEOVIEWER_LOGIC_LIB)
+
 target_link_libraries(GeoViewerLogic PUBLIC 
     GeoViewerCore
     Qt6::Core Qt6::Gui
