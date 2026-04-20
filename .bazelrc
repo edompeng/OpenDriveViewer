@@ -20,3 +20,13 @@ test --test_output=errors
 # This is where each developer sets QT6_ROOT and PROJ_ROOT for their machine.
 # =============================================================================
 try-import %workspace%/.bazelrc.user
+
+# =============================================================================
+# CI-specific settings (used in GitHub Actions)
+# =============================================================================
+# These are often overridden by command line arguments in ci.yml
+# but provided here for documentation and local CI emulation.
+build:ci --repository_cache=~/.cache/bazel-repo
+build:ci --disk_cache=~/.cache/bazel-disk
+build:ci --keep_going
+test:ci --test_output=errors

@@ -36,7 +36,7 @@ cc_library(
         "-I.",
         "-w",
     ],
-    defines = ["_USE_MATH_DEFINES"],
+    local_defines = ["_USE_MATH_DEFINES"],
     includes = [
         "include",
         "thirdparty",

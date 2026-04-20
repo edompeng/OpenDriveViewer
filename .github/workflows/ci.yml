@@ -104,20 +104,33 @@ jobs:
             echo "PROJ_ROOT=${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}" >> $GITHUB_ENV
           fi
 
+      - name: Cache Bazel
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel-repo
+            ~/.cache/bazel-disk
+          key: bazel-${{ matrix.os }}-${{ hashFiles('**/BUILD.bazel', '**/WORKSPACE*', 'MODULE.bazel', 'bazel/*.bzl', 'third_party/bazel/*.BUILD') }}
+          restore-keys: |
+            bazel-${{ matrix.os }}-
+
       - name: Build with Bazel
         shell: bash
         run: |
+          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            bazel build -c opt //... --config=linux \
+            bazel build -c opt //... $BAZEL_OPTS --config=linux \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            bazel build -c opt //... --config=windows \
+            # Fix path for Windows
+            export BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
+            bazel build -c opt //... $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
           else
-            bazel build -c opt //... --config=macos \
+            bazel build -c opt //... $BAZEL_OPTS --config=macos \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -125,18 +138,19 @@ jobs:
       - name: Test with Bazel
         shell: bash
         run: |
+          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            xvfb-run --auto-servernum bazel test -c opt //... --test_output=errors --config=linux \
+            xvfb-run --auto-servernum bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=linux \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            bazel test -c opt //... --test_output=errors --config=windows \
+            bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
               --test_env=PATH
           else
-            bazel test -c opt //... --test_output=errors --config=macos \
+            bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=macos \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -175,6 +189,66 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ github.workspace }}/${{ matrix.artifact_name }}
           retention-days: 1
+
+  build-cmake:
+    name: CMake Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            qt_version: '6.9.*'
+          - os: macos-14
+            qt_version: '6.9.1'
+          - os: windows-2022
+            qt_version: '6.9.1'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install System Dependencies
+        if: matrix.os != 'windows-2022'
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb libproj-dev
+          else
+            brew install proj ninja
+          fi
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt_version }}
+          cache: true
+
+      - name: Cache CMake FetchContent
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: cmake-deps-${{ matrix.os }}-${{ hashFiles('CMakeLists.txt', 'src/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-deps-${{ matrix.os }}-
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DQT_PATH="${{ env.QT_ROOT_DIR }}"
+          cmake --build build --config Release
+
+      - name: Test
+        shell: bash
+        run: |
+          cd build
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            xvfb-run --auto-servernum ctest -C Release --output-on-failure
+          else
+            ctest -C Release --output-on-failure
+          fi
 
   release:
     name: Publish GitHub Release
