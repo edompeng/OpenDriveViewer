@@ -39,7 +39,7 @@ TEST(SceneIndexBuilderTest, ComputesChunkBoundsFromMeshVertices) {
 
   const auto chunks = BuildSceneMeshChunks(indices, 0, mesh, 6);
 
-  ASSERT_EQ(chunks.size(), 1);
+  ASSERT_EQ(chunks.size(), std::size_t(1));
   EXPECT_EQ(chunks.front().index_offset, 0);
   EXPECT_EQ(chunks.front().index_count, 6);
   EXPECT_FLOAT_EQ(chunks.front().min_bound.x(), 0.0f);
@@ -60,6 +60,6 @@ TEST(SceneIndexBuilderTest, ReturnsIndicesAndChunksTogether) {
 
   const std::vector<uint32_t> expected_indices = {5, 6, 7, 6, 8, 7};
   EXPECT_EQ(result.indices, expected_indices);
-  ASSERT_EQ(result.chunks.size(), 1);
+  ASSERT_EQ(result.chunks.size(), std::size_t(1));
   EXPECT_EQ(result.chunks.front().index_count, 6);
 }

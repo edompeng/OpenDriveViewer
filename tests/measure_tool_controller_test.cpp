@@ -61,21 +61,21 @@ TEST(MeasureToolControllerTest, AddPointUpdatesPointsDistanceAndEmitsSignals) {
                    [&]() { pointsEmitCount++; });
 
   ctrl.AddPoint(QVector3D(0.0f, 0.0f, 0.0f));
-  EXPECT_EQ(ctrl.Points().size(), 1);
+  EXPECT_EQ(ctrl.Points().size(), std::size_t(1));
   EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
   ASSERT_EQ(distanceEmitCount, 1);
   EXPECT_FLOAT_EQ(lastDistance, 0.0f);
   ASSERT_EQ(pointsEmitCount, 1);
 
   ctrl.AddPoint(QVector3D(10.0f, 0.0f, 0.0f));
-  EXPECT_EQ(ctrl.Points().size(), 2);
+  EXPECT_EQ(ctrl.Points().size(), std::size_t(2));
   EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 10.0f);
   ASSERT_EQ(distanceEmitCount, 2);
   EXPECT_FLOAT_EQ(lastDistance, 10.0f);
   ASSERT_EQ(pointsEmitCount, 2);
 
   ctrl.AddPoint(QVector3D(10.0f, 10.0f, 0.0f));
-  EXPECT_EQ(ctrl.Points().size(), 3);
+  EXPECT_EQ(ctrl.Points().size(), std::size_t(3));
   EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 20.0f);
 }
 

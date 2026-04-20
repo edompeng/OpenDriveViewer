@@ -13,7 +13,7 @@ TEST(CoordinateInputParserTest, ParseUserPoints_EmptyInputReturnsEmptyVector) {
 TEST(CoordinateInputParserTest, ParseUserPoints_Single2DPointParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073");
-  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result.size(), std::size_t(1));
   EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
   EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
   EXPECT_FALSE(result[0].z.has_value());
@@ -22,7 +22,7 @@ TEST(CoordinateInputParserTest, ParseUserPoints_Single2DPointParsedCorrectly) {
 TEST(CoordinateInputParserTest, ParseUserPoints_2DPointWithParenthesesParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("(116.3912, 39.9073)");
-  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result.size(), std::size_t(1));
   EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
   EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
 }
@@ -30,7 +30,7 @@ TEST(CoordinateInputParserTest, ParseUserPoints_2DPointWithParenthesesParsedCorr
 TEST(CoordinateInputParserTest, ParseUserPoints_3DPointWithAltitudeParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073, 50.5");
-  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result.size(), std::size_t(1));
   EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
   EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
   ASSERT_TRUE(result[0].z.has_value());
@@ -40,7 +40,7 @@ TEST(CoordinateInputParserTest, ParseUserPoints_3DPointWithAltitudeParsedCorrect
 TEST(CoordinateInputParserTest, ParseUserPoints_MultiplePointsSeparatedBySemicolons) {
   const auto result = CoordinateInputParser::ParseUserPoints(
       "1.0, 2.0; 3.0, 4.0; 5.0, 6.0, 7.0");
-  ASSERT_EQ(result.size(), 3);
+  ASSERT_EQ(result.size(), std::size_t(3));
   EXPECT_FLOAT_EQ(result[0].x, 1.0f);
   EXPECT_FLOAT_EQ(result[1].x, 3.0f);
   EXPECT_FLOAT_EQ(result[2].x, 5.0f);
@@ -59,7 +59,7 @@ TEST(CoordinateInputParserTest, ParseUserPoints_InvalidTextReturnsEmptyVector) {
 TEST(CoordinateInputParserTest, ParseUserPoints_PartialInvalidIsSkipped) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("1.0, 2.0; bad; 3.0, 4.0");
-  EXPECT_EQ(result.size(), 2);
+  EXPECT_EQ(result.size(), std::size_t(2));
 }
 
 // ============================================================

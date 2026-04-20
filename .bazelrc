@@ -3,10 +3,11 @@
 # =============================================================================
 build --cxxopt=-DPROJ_NEW_API
 build --cxxopt=-I.
-build --copt=-Werror
-build --cxxopt=-Werror
 
 # Platform-specific C++ standard flags
+build:linux --copt=-Werror --cxxopt=-Werror
+build:macos --copt=-Werror --cxxopt=-Werror
+build:windows --copt=/WX --cxxopt=/WX
 build:linux --cxxopt=-std=c++17
 build:macos --cxxopt=-std=c++17
 build:windows --cxxopt=/std:c++17

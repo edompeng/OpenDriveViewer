@@ -21,7 +21,7 @@ TEST(SpatialGridIndexTest, SpatialGridBuilderPlacesTrianglesIntoBoxes) {
   const auto boxes =
       BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 1, {}}}, 2);
 
-  ASSERT_EQ(boxes.size(), 4);
+  ASSERT_EQ(boxes.size(), std::size_t(4));
   bool found_triangle = false;
   for (const auto& box : boxes) {
     if (!box.triangle_indices.empty()) {
@@ -78,7 +78,7 @@ TEST(SpatialGridIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
       [](uint32_t layer_tag) { return layer_tag == 2; },
       [](uint32_t, uint32_t, size_t) { return true; });
 
-  ASSERT_EQ(hits.size(), 1);
+  ASSERT_EQ(hits.size(), std::size_t(1));
   EXPECT_EQ(hits[0].layer_tag, 2);
   EXPECT_NEAR(hits[0].distance, 1.0f, 1e-5f);
 }
@@ -110,7 +110,7 @@ TEST(SpatialGridIndexTest, RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) 
       [](uint32_t layer_tag) { return layer_tag == 1; },
       [](uint32_t, uint32_t, size_t) { return true; });
 
-  ASSERT_EQ(hits.size(), 2);
+  ASSERT_EQ(hits.size(), std::size_t(2));
   // Closest hit is the top triangle (Y=5, distance=5)
   EXPECT_NEAR(hits[0].distance, 5.0f, 1e-5f);
   EXPECT_NEAR(hits[0].position.y(), 5.0f, 1e-5f);

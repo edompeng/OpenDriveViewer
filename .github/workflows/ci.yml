@@ -198,10 +198,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
+            vcpkg_triplet: 'x64-linux'
             qt_version: '6.9.*'
           - os: macos-14
+            vcpkg_triplet: 'arm64-osx'
             qt_version: '6.9.1'
           - os: windows-2022
+            vcpkg_triplet: 'x64-windows'
             qt_version: '6.9.1'
     steps:
       - name: Checkout Repository
@@ -218,11 +221,47 @@ jobs:
             brew install proj ninja
           fi
 
+      - name: Cache vcpkg dependencies
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
+
+      - name: Setup vcpkg (Windows only for PROJ)
+        if: matrix.os == 'windows-2022'
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgJsonGlob: '**/vcpkg.json'
+          runVcpkgInstall: true
+        env:
+          VCPKG_DEFAULT_TRIPLET: ${{ matrix.vcpkg_triplet }}
+          VCPKG_INSTALLED_DIR: '${{ github.workspace }}/vcpkg_installed'
+          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+      - name: Setup MSVC
+        if: matrix.os == 'windows-2022'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ matrix.qt_version }}
           cache: true
+
+      - name: Set Environment Variables
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            echo "PROJ_ROOT=/usr" >> $GITHUB_ENV
+          elif [ "${{ matrix.os }}" = "macos-14" ]; then
+            echo "PROJ_ROOT=$(brew --prefix proj)" >> $GITHUB_ENV
+          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+            echo "PROJ_ROOT=${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}" >> $GITHUB_ENV
+          fi
 
       - name: Cache CMake FetchContent
         uses: actions/cache@v4
@@ -237,7 +276,8 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DQT_PATH="${{ env.QT_ROOT_DIR }}"
+            -DQT_PATH="${{ env.QT_ROOT_DIR }}" \
+            -DPROJ_ROOT="${{ env.PROJ_ROOT }}"
           cmake --build build --config Release
 
       - name: Test
