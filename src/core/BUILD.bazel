@@ -21,7 +21,9 @@ cc_library(
         "scene_geometry_types.h",
         "thread_pool.h",
         "viewer_text_util.h",
+        "core_export.h",
     ],
+    local_defines = ["GEOVIEWER_CORE_LIB"],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [

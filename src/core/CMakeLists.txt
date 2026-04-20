@@ -15,6 +15,8 @@ target_include_directories(GeoViewerCore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../
 )
 
+target_compile_definitions(GeoViewerCore PRIVATE GEOVIEWER_CORE_LIB)
+
 # PROJ might be found as a target or as variables
 if(TARGET PROJ::proj)
     target_link_libraries(GeoViewerCore PUBLIC PROJ::proj)

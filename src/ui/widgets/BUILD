@@ -42,6 +42,7 @@ cc_library(
         "routing_widget.h",
         "widgets_export.h",
     ],
+    local_defines = ["GEOVIEWER_WIDGETS_LIB"],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [

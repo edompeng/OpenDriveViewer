@@ -4,7 +4,11 @@ load("//bazel:qt.bzl", "QT_COPTS")
 cc_library(
     name = "render",
     srcs = ["gl_renderer.cpp"],
-    hdrs = ["gl_renderer.h"],
+    hdrs = [
+        "gl_renderer.h",
+        "render_export.h",
+    ],
+    local_defines = ["GEOVIEWER_RENDER_LIB"],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [

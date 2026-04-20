@@ -6,10 +6,11 @@
 #include <vector>
 
 #include "src/core/scene_enums.h"
+#include "src/core/core_export.h"
 
 namespace geoviewer::core {
 
-class ProjectContext {
+class GEOVIEWER_CORE_EXPORT ProjectContext {
  public:
   static ProjectContext& Instance();
 

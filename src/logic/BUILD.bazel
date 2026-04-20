@@ -34,6 +34,7 @@ cc_library(
         "scene_manager.h",
         "spatial_grid_index.h",
     ],
+    local_defines = ["GEOVIEWER_LOGIC_LIB"],
     copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
