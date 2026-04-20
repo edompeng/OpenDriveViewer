@@ -10,4 +10,11 @@ cc_binary(
         "//src/ui:main_window",
         "//src/ui/widgets",
     ],
+    linkopts = select({
+        "@platforms//os:windows": [
+            "/SUBSYSTEM:WINDOWS",
+            "/ENTRY:mainCRTStartup",
+        ],
+        "//conditions:default": [],
+    }),
 )

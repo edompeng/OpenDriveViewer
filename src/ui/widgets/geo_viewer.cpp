@@ -2014,6 +2014,11 @@ void GeoViewerWidget::JumpToLocalLocation(double x, double y, double z) {
   float rz = static_cast<float>(y);
   if (right_hand_traffic_) rz = -rz;
 
+  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
+    qWarning() << "JumpToLocalLocation: Invalid coordinates (NaN or Inf)";
+    return;
+  }
+
   camera_.SetTarget(
       QVector3D(static_cast<float>(x), static_cast<float>(z), rz));
   camera_.SetPitch(-89.0f);  // Look straight down

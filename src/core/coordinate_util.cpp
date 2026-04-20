@@ -77,6 +77,9 @@ void CoordinateUtil::WGS84ToLocal(double* const x, double* const y,
   a.lpz.z = z ? *z : 0.0;
 
   const PJ_COORD b = proj_trans(xodr_pj_, PJ_INV, a);
+  if (b.xyz.x == HUGE_VAL) {
+    throw std::runtime_error("WGS84 to Local conversion failed");
+  }
 
   *x = b.xyz.x - x_offset_;
   *y = b.xyz.y - y_offset_;
@@ -97,6 +100,9 @@ void CoordinateUtil::LocalToWGS84(double* const x, double* const y,
   a.xyz.z = z ? *z : 0.0;
 
   const PJ_COORD b = proj_trans(xodr_pj_, PJ_FWD, a);
+  if (b.lpz.lam == HUGE_VAL) {
+    throw std::runtime_error("Local to WGS84 conversion failed");
+  }
 
   *x = b.lpz.lam;
   *y = b.lpz.phi;
