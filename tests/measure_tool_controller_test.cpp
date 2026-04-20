@@ -9,7 +9,7 @@ TEST(MeasureToolControllerTest, DefaultConstructionHasSaneValues) {
   MeasureToolController ctrl;
   EXPECT_FALSE(ctrl.IsActive());
   EXPECT_TRUE(ctrl.Points().empty());
-  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
+  EXPECT_DOUBLE_EQ(ctrl.TotalDistance(), 0.0);
 }
 
 // ============================================================
@@ -62,21 +62,21 @@ TEST(MeasureToolControllerTest, AddPointUpdatesPointsDistanceAndEmitsSignals) {
 
   ctrl.AddPoint(QVector3D(0.0f, 0.0f, 0.0f));
   EXPECT_EQ(ctrl.Points().size(), std::size_t(1));
-  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
+  EXPECT_DOUBLE_EQ(ctrl.TotalDistance(), 0.0);
   ASSERT_EQ(distanceEmitCount, 1);
-  EXPECT_FLOAT_EQ(lastDistance, 0.0f);
+  EXPECT_DOUBLE_EQ(lastDistance, 0.0);
   ASSERT_EQ(pointsEmitCount, 1);
 
   ctrl.AddPoint(QVector3D(10.0f, 0.0f, 0.0f));
   EXPECT_EQ(ctrl.Points().size(), std::size_t(2));
-  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 10.0f);
+  EXPECT_DOUBLE_EQ(ctrl.TotalDistance(), 10.0);
   ASSERT_EQ(distanceEmitCount, 2);
-  EXPECT_FLOAT_EQ(lastDistance, 10.0f);
+  EXPECT_DOUBLE_EQ(lastDistance, 10.0);
   ASSERT_EQ(pointsEmitCount, 2);
 
   ctrl.AddPoint(QVector3D(10.0f, 10.0f, 0.0f));
   EXPECT_EQ(ctrl.Points().size(), std::size_t(3));
-  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 20.0f);
+  EXPECT_DOUBLE_EQ(ctrl.TotalDistance(), 20.0);
 }
 
 TEST(MeasureToolControllerTest, ClearPointsRemovesAllAndEmitsSignals) {
@@ -98,8 +98,8 @@ TEST(MeasureToolControllerTest, ClearPointsRemovesAllAndEmitsSignals) {
 
   ctrl.ClearPoints();
   EXPECT_TRUE(ctrl.Points().empty());
-  EXPECT_FLOAT_EQ(ctrl.TotalDistance(), 0.0f);
+  EXPECT_DOUBLE_EQ(ctrl.TotalDistance(), 0.0);
   ASSERT_EQ(distanceEmitCount, 1);
-  EXPECT_FLOAT_EQ(lastDistance, 0.0f);
+  EXPECT_DOUBLE_EQ(lastDistance, 0.0);
   ASSERT_EQ(pointsEmitCount, 1);
 }

@@ -3,7 +3,8 @@ project(OpenDriveViewer LANGUAGES CXX)
 
 # --- Platform & Toolchain ---
 if(MSVC)
-  add_compile_options(/Zc:__cplusplus /utf-8 /W3 /wd4005 /wd4267 /FIiterator)
+  # Basic MSVC options that are safe for all targets
+  add_compile_options(/Zc:__cplusplus /utf-8 /wd4005 /wd4267 /FIiterator)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES -DPUGIXML_STATIC)
 else()
   add_compile_options(-Wall -Wextra)
@@ -118,8 +119,15 @@ target_include_directories(OpenDrive SYSTEM PUBLIC
 target_include_directories(OpenDrive SYSTEM PRIVATE 
     $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/thirdparty>
 )
-target_compile_options(OpenDrive PRIVATE -w)
-target_compile_options(pugixml-static PRIVATE -w)
+# Set project-specific compiler options after dependencies
+if(MSVC)
+  add_compile_options(/W3)
+  target_compile_options(OpenDrive PRIVATE /wd9002 /wd9025 /w)
+  target_compile_options(pugixml-static PRIVATE /wd9025 /w)
+else()
+  target_compile_options(OpenDrive PRIVATE -w)
+  target_compile_options(pugixml-static PRIVATE -w)
+endif()
 
 add_subdirectory(src)
 

@@ -14,8 +14,8 @@ TEST(CoordinateInputParserTest, ParseUserPoints_Single2DPointParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073");
   ASSERT_EQ(result.size(), std::size_t(1));
-  EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
-  EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
+  EXPECT_DOUBLE_EQ(result[0].x, 116.3912);
+  EXPECT_DOUBLE_EQ(result[0].y, 39.9073);
   EXPECT_FALSE(result[0].z.has_value());
 }
 
@@ -23,31 +23,31 @@ TEST(CoordinateInputParserTest, ParseUserPoints_2DPointWithParenthesesParsedCorr
   const auto result =
       CoordinateInputParser::ParseUserPoints("(116.3912, 39.9073)");
   ASSERT_EQ(result.size(), std::size_t(1));
-  EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
-  EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
+  EXPECT_DOUBLE_EQ(result[0].x, 116.3912);
+  EXPECT_DOUBLE_EQ(result[0].y, 39.9073);
 }
 
 TEST(CoordinateInputParserTest, ParseUserPoints_3DPointWithAltitudeParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073, 50.5");
   ASSERT_EQ(result.size(), std::size_t(1));
-  EXPECT_FLOAT_EQ(result[0].x, 116.3912f);
-  EXPECT_FLOAT_EQ(result[0].y, 39.9073f);
+  EXPECT_DOUBLE_EQ(result[0].x, 116.3912);
+  EXPECT_DOUBLE_EQ(result[0].y, 39.9073);
   ASSERT_TRUE(result[0].z.has_value());
-  EXPECT_FLOAT_EQ(*result[0].z, 50.5f);
+  EXPECT_DOUBLE_EQ(*result[0].z, 50.5);
 }
 
 TEST(CoordinateInputParserTest, ParseUserPoints_MultiplePointsSeparatedBySemicolons) {
   const auto result = CoordinateInputParser::ParseUserPoints(
       "1.0, 2.0; 3.0, 4.0; 5.0, 6.0, 7.0");
   ASSERT_EQ(result.size(), std::size_t(3));
-  EXPECT_FLOAT_EQ(result[0].x, 1.0f);
-  EXPECT_FLOAT_EQ(result[1].x, 3.0f);
-  EXPECT_FLOAT_EQ(result[2].x, 5.0f);
+  EXPECT_DOUBLE_EQ(result[0].x, 1.0);
+  EXPECT_DOUBLE_EQ(result[1].x, 3.0);
+  EXPECT_DOUBLE_EQ(result[2].x, 5.0);
   EXPECT_FALSE(result[0].z.has_value());
   EXPECT_FALSE(result[1].z.has_value());
   ASSERT_TRUE(result[2].z.has_value());
-  EXPECT_FLOAT_EQ(*result[2].z, 7.0f);
+  EXPECT_DOUBLE_EQ(*result[2].z, 7.0);
 }
 
 TEST(CoordinateInputParserTest, ParseUserPoints_InvalidTextReturnsEmptyVector) {
@@ -74,26 +74,26 @@ TEST(CoordinateInputParserTest, ParseJumpLocation_CommaSeparated2DCoordinate) {
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912,39.9073");
   ASSERT_TRUE(result.has_value());
-  EXPECT_FLOAT_EQ(result->x, 116.3912f);
-  EXPECT_FLOAT_EQ(result->y, 39.9073f);
-  EXPECT_FLOAT_EQ(result->z, 0.0f);
+  EXPECT_DOUBLE_EQ(result->x, 116.3912);
+  EXPECT_DOUBLE_EQ(result->y, 39.9073);
+  EXPECT_DOUBLE_EQ(result->z, 0.0);
 }
 
 TEST(CoordinateInputParserTest, ParseJumpLocation_SpaceSeparated2DCoordinate) {
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912 39.9073");
   ASSERT_TRUE(result.has_value());
-  EXPECT_FLOAT_EQ(result->x, 116.3912f);
-  EXPECT_FLOAT_EQ(result->y, 39.9073f);
+  EXPECT_DOUBLE_EQ(result->x, 116.3912);
+  EXPECT_DOUBLE_EQ(result->y, 39.9073);
 }
 
 TEST(CoordinateInputParserTest, ParseJumpLocation_3DCoordinateWithAltitude) {
   const auto result =
       CoordinateInputParser::ParseJumpLocation("116.3912, 39.9073, 100.0");
   ASSERT_TRUE(result.has_value());
-  EXPECT_FLOAT_EQ(result->x, 116.3912f);
-  EXPECT_FLOAT_EQ(result->y, 39.9073f);
-  EXPECT_FLOAT_EQ(result->z, 100.0f);
+  EXPECT_DOUBLE_EQ(result->x, 116.3912);
+  EXPECT_DOUBLE_EQ(result->y, 39.9073);
+  EXPECT_DOUBLE_EQ(result->z, 100.0);
 }
 
 TEST(CoordinateInputParserTest, ParseJumpLocation_MoreThan3ComponentsReturnsNullopt) {
@@ -113,7 +113,7 @@ TEST(CoordinateInputParserTest, ParseLaneKey_ValidFormat) {
       CoordinateInputParser::ParseLaneKey("road_42 / 15.5 / -1");
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->road_id, "road_42");
-  EXPECT_FLOAT_EQ(result->lanesection_s0, 15.5f);
+  EXPECT_DOUBLE_EQ(result->lanesection_s0, 15.5);
   EXPECT_EQ(result->lane_id, -1);
 }
 
