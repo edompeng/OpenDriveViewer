@@ -26,7 +26,7 @@ TEST(SpatialGridIndexTest, SpatialGridBuilderPlacesTrianglesIntoBoxes) {
   for (const auto& box : boxes) {
     if (!box.triangle_indices.empty()) {
       found_triangle = true;
-      EXPECT_EQ((box.triangle_indices.front() >> 28), 1);
+      EXPECT_EQ((box.triangle_indices.front() >> 28), uint32_t(1));
     }
   }
   EXPECT_TRUE(found_triangle);
