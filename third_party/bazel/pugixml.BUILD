@@ -7,6 +7,7 @@ cc_library(
         "src/pugixml.hpp",
     ],
     copts = ["-w"],
+    defines = ["PUGIXML_STATIC"],
     include_prefix = "pugixml",
     strip_include_prefix = "src",
     visibility = ["//visibility:public"],
