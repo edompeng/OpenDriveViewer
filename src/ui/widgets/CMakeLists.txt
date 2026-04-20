@@ -1,5 +1,5 @@
 
-add_library(GeoViewerUIWidgets SHARED
+add_library(GeoViewerUIWidgets ${LIB_TYPE}
   geo_viewer.cpp geo_viewer.h
   geo_viewer_scene.cpp
   floating_panel_widget.cpp floating_panel_widget.h
@@ -16,7 +16,6 @@ target_include_directories(GeoViewerUIWidgets PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../
 )
 
-target_compile_definitions(GeoViewerUIWidgets PRIVATE GEOVIEWER_WIDGETS_LIB)
 
 target_link_libraries(GeoViewerUIWidgets PUBLIC 
     Qt6::Widgets

@@ -4,13 +4,13 @@
 #include <QVector3D>
 #include <vector>
 
-#include "src/logic/logic_export.h"
+#include "src/geo_viewer_export.h"
 
 /// @brief 测量工具的逻辑与核心状态管理 (SRP)
 ///
 /// 遵循 SRP 原则，该类仅负责点数据的管理、测距状态控制和距离计算，
 /// 不涉及任何硬件或图形 API，保证了纯净的业务模型和极强的可测试性。
-class GEOVIEWER_LOGIC_EXPORT MeasureToolController : public QObject {
+class GEOVIEWER_EXPORT MeasureToolController : public QObject {
   Q_OBJECT
  public:
   explicit MeasureToolController(QObject* parent = nullptr);

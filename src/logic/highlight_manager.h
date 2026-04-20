@@ -10,10 +10,10 @@
 #include <vector>
 
 #include "src/core/scene_enums.h"
-#include "src/logic/logic_export.h"
+#include "src/geo_viewer_export.h"
 
 /// @brief 封装单层 EBO 高亮状态（SRP - 只存储一个 EBO 的状态）
-struct GEOVIEWER_LOGIC_EXPORT HighlightBuffer {
+struct GEOVIEWER_EXPORT HighlightBuffer {
   GLuint ebo = 0;
   size_t count = 0;
 };
@@ -22,7 +22,7 @@ struct GEOVIEWER_LOGIC_EXPORT HighlightBuffer {
 ///
 /// 设计模式: Facade（屏蔽 OpenGL EBO 细节）
 /// 六大原则: SRP（高亮管理与渲染管线解耦）、DIP（通过注入函数访问 GL 上下文）
-class GEOVIEWER_LOGIC_EXPORT HighlightManager {
+class GEOVIEWER_EXPORT HighlightManager {
  public:
   /// @param functions  OpenGL 函数接口（由 QOpenGLWidget 提供）
   explicit HighlightManager(QOpenGLExtraFunctions* functions);

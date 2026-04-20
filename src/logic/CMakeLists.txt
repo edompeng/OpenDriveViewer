@@ -1,4 +1,4 @@
-add_library(GeoViewerLogic SHARED
+add_library(GeoViewerLogic ${LIB_TYPE}
     scene_manager.cpp
     favorites_store.cpp
     input_parsing.cpp
@@ -15,7 +15,6 @@ target_include_directories(GeoViewerLogic PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../
 )
 
-target_compile_definitions(GeoViewerLogic PRIVATE GEOVIEWER_LOGIC_LIB)
 
 target_link_libraries(GeoViewerLogic PUBLIC 
     GeoViewerCore

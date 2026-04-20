@@ -1,4 +1,4 @@
-add_library(GeoViewerCore SHARED
+add_library(GeoViewerCore ${LIB_TYPE}
     project_context.cpp
     coordinate_util.cpp
     map_loader.cpp
@@ -15,7 +15,6 @@ target_include_directories(GeoViewerCore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../
 )
 
-target_compile_definitions(GeoViewerCore PRIVATE GEOVIEWER_CORE_LIB)
 
 # PROJ might be found as a target or as variables
 if(TARGET PROJ::proj)

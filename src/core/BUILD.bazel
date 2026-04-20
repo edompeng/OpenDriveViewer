@@ -1,7 +1,6 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//bazel:qt.bzl", "QT_COPTS")
+load("//bazel:geoviewer.bzl", "geoviewer_cc_library")
 
-cc_library(
+geoviewer_cc_library(
     name = "core",
     srcs = [
         "coordinate_util.cpp",
@@ -21,10 +20,7 @@ cc_library(
         "scene_geometry_types.h",
         "thread_pool.h",
         "viewer_text_util.h",
-        "core_export.h",
     ],
-    local_defines = ["GEOVIEWER_CORE_LIB"],
-    copts = QT_COPTS,
     visibility = ["//visibility:public"],
     deps = [
         "//bazel:qt6",

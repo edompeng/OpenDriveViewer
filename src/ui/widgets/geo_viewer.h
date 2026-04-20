@@ -35,14 +35,14 @@
 #include "OpenDriveMap.h"
 #include "RoadNetworkMesh.h"
 
-#include "src/ui/widgets/widgets_export.h"
+#include "src/geo_viewer_export.h"
 
 using LanesMesh = odr::LanesMesh;
 class QPainter;
 
 class RoutingWidget;
 
-class GEOVIEWER_WIDGETS_EXPORT GeoViewerWidget : public QOpenGLWidget {
+class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   Q_OBJECT
 
  public:

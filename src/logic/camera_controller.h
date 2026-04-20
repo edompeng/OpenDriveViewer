@@ -4,13 +4,13 @@
 #include <QPoint>
 #include <QSize>
 #include <QVector3D>
-#include "src/logic/logic_export.h"
+#include "src/geo_viewer_export.h"
 
 /// @brief 管理3D轨道相机的状态与变换（SRP - 单一职责：相机控制）
 ///
 /// 设计模式: Value Object + 策略组合
 /// 六大原则: SRP（相机逻辑与渲染解耦）、OCP（可通过子类扩展相机类型）
-class GEOVIEWER_LOGIC_EXPORT CameraController {
+class GEOVIEWER_EXPORT CameraController {
  public:
   CameraController() = default;
 

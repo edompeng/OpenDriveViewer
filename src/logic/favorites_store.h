@@ -3,16 +3,16 @@
 #include <string>
 #include <vector>
 #include "src/core/scene_enums.h"
-#include "src/logic/logic_export.h"
+#include "src/geo_viewer_export.h"
 
-struct GEOVIEWER_LOGIC_EXPORT FavoriteEntry {
+struct GEOVIEWER_EXPORT FavoriteEntry {
   std::string road_id;
   TreeNodeType type = TreeNodeType::kRoad;
   std::string element_id;
   std::string display_name;
 };
 
-class GEOVIEWER_LOGIC_EXPORT FavoritesStore {
+class GEOVIEWER_EXPORT FavoritesStore {
  public:
   bool Add(const std::string& road_id, TreeNodeType type,
            const std::string& element_id, const std::string& display_name);

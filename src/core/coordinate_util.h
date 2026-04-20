@@ -2,9 +2,9 @@
 
 #include <proj.h>
 #include <string>
-#include "src/core/core_export.h"
+#include "src/geo_viewer_export.h"
 
-class GEOVIEWER_CORE_EXPORT CoordinateUtil {
+class GEOVIEWER_EXPORT CoordinateUtil {
  public:
   static CoordinateUtil& Instance();
   ~CoordinateUtil();

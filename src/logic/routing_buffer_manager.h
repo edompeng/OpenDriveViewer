@@ -11,7 +11,7 @@
 #include <vector>
 #include "OpenDriveMap.h"
 #include "RoutingGraph.h"
-#include "src/logic/logic_export.h"
+#include "src/geo_viewer_export.h"
 
 /// @brief Manages the GPU buffer lifecycle of routing results (SRP)
 ///
@@ -20,7 +20,7 @@
 ///   SRP - Only responsible for creation/update/destruction of routing
 ///   rendering data DIP - Depends on QOpenGLExtraFunctions abstraction instead
 ///   of concrete GL functions
-class GEOVIEWER_LOGIC_EXPORT RoutingBufferManager {
+class GEOVIEWER_EXPORT RoutingBufferManager {
  public:
   struct RouteRenderData {
     GLuint vao = 0;

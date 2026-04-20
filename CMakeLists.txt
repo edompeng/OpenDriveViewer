@@ -14,6 +14,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+# --- Global Control Macros ---
+if(WIN32)
+   # Use STATIC on Windows for internal libraries to ensure robust linkage with a unified macro.
+   set(LIB_TYPE STATIC CACHE INTERNAL "Library linkage type")
+   add_definitions(-DGEOVIEWER_STATIC)
+else()
+   set(LIB_TYPE SHARED CACHE INTERNAL "Library linkage type")
+endif()
+
 # --- Find Dependencies ---
 # Attempt to use VCPKG if present
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -85,8 +94,12 @@ FetchContent_Declare(
   libOpenDRIVE
   URL https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/0.5.0.tar.gz
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  PATCH_COMMAND ${CMAKE_COMMAND} -E echo "// Patched by GeoViewer" > thirdparty/pugixml/pugixml.cpp
 )
 FetchContent_MakeAvailable(libOpenDRIVE)
+
+# Update the variable name to what FetchContent_MakeAvailable sets (lowercase)
+set(libOpenDRIVE_SOURCE_DIR "${libopendrive_SOURCE_DIR}")
 
 # Create a compatibility include directory for pugixml to match "pugixml/pugixml.hpp" structure
 set(PUGIXML_COMPAT_DIR "${CMAKE_BINARY_DIR}/pugixml_compat")
@@ -100,10 +113,10 @@ target_include_directories(OpenDrive SYSTEM BEFORE PUBLIC
     $<BUILD_INTERFACE:${PUGIXML_COMPAT_DIR}>
 )
 target_include_directories(OpenDrive SYSTEM PUBLIC 
-    $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/include>
 )
 target_include_directories(OpenDrive SYSTEM PRIVATE 
-    $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/thirdparty>
+    $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/thirdparty>
 )
 target_compile_options(OpenDrive PRIVATE -w)
 target_compile_options(pugixml-static PRIVATE -w)

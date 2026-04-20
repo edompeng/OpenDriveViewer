@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "export_header",
+    hdrs = ["geo_viewer_export.h"],
+    defines = select({
+        "@platforms//os:windows": ["GEOVIEWER_STATIC"],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+)

@@ -6,11 +6,11 @@
 
 #include "OpenDriveMap.h"
 #include "RoadNetworkMesh.h"
-#include "src/logic/logic_export.h"
+#include "src/geo_viewer_export.h"
 
 namespace geoviewer::logic {
 
-class GEOVIEWER_LOGIC_EXPORT SceneManager {
+class GEOVIEWER_EXPORT SceneManager {
  public:
   SceneManager();
   ~SceneManager();

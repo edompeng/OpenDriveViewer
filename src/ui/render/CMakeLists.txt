@@ -1,4 +1,4 @@
-add_library(GeoViewerGlRenderer SHARED
+add_library(GeoViewerGlRenderer ${LIB_TYPE}
     gl_renderer.cpp
 )
 
@@ -6,7 +6,6 @@ target_include_directories(GeoViewerGlRenderer PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../
 )
 
-target_compile_definitions(GeoViewerGlRenderer PRIVATE GEOVIEWER_RENDER_LIB)
 
 target_link_libraries(GeoViewerGlRenderer PUBLIC
     Qt6::Widgets

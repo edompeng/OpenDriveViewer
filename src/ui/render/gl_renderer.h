@@ -16,7 +16,7 @@
 #include "src/core/scene_geometry_types.h"
 #include "src/logic/highlight_manager.h"
 #include "src/logic/routing_buffer_manager.h"
-#include "src/ui/render/render_export.h"
+#include "src/geo_viewer_export.h"
 
 namespace geoviewer::render {
 
@@ -43,7 +43,7 @@ struct MeshLayer {
 /// Usage: A single instance is created by the QOpenGLWidget. The widget must
 /// call makeCurrent() before invoking any method that issues GL commands, and
 /// doneCurrent() when finished.
-class GEOVIEWER_RENDER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
+class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
  public:
   GlRenderer();
   ~GlRenderer();

@@ -4,6 +4,8 @@ else()
   add_compile_options(-Werror)
 endif()
 
+add_definitions(-DGEOVIEWER_BUILD_LIB)
+
 add_subdirectory(core)
 add_subdirectory(logic)
 add_subdirectory(app)
