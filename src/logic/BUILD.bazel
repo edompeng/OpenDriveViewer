@@ -1,12 +1,12 @@
-load("//bazel:geoviewer.bzl", "geoviewer_cc_library")
-load("//bazel:qt.bzl", "qt_moc_genrule")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
 
 qt_moc_genrule(
     name = "moc_files",
     headers = ["measure_tool_controller.h"],
 )
 
-geoviewer_cc_library(
+cc_library(
     name = "logic",
     srcs = [
         "camera_controller.cpp",
@@ -33,8 +33,14 @@ geoviewer_cc_library(
         "scene_manager.h",
         "spatial_grid_index.h",
     ],
+    copts = QT_COPTS,
+    local_defines = select({
+        "@platforms//os:windows": ["GEOVIEWER_BUILD_LIB"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [
+        "//src:export_header",
         "//bazel:qt6",
         "//src/core",
         "//third_party/libOpenDRIVE:opendrive",

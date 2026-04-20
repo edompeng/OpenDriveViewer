@@ -1,5 +1,5 @@
-load("//bazel:geoviewer.bzl", "geoviewer_cc_library")
-load("//bazel:qt.bzl", "qt_moc_genrule")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
 
 qt_moc_genrule(
     name = "moc_files",
@@ -15,7 +15,7 @@ qt_moc_genrule(
     ],
 )
 
-geoviewer_cc_library(
+cc_library(
     name = "widgets",
     srcs = [
         "async_map_loader.cpp",
@@ -41,8 +41,14 @@ geoviewer_cc_library(
         "loading_progress_widget.h",
         "routing_widget.h",
     ],
+    copts = QT_COPTS,
+    local_defines = select({
+        "@platforms//os:windows": ["GEOVIEWER_BUILD_LIB"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [
+        "//src:export_header",
         "//bazel:qt6",
         "//src/core",
         "//src/logic",

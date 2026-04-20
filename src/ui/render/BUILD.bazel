@@ -1,13 +1,20 @@
-load("//bazel:geoviewer.bzl", "geoviewer_cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS")
 
-geoviewer_cc_library(
+cc_library(
     name = "render",
     srcs = ["gl_renderer.cpp"],
     hdrs = [
         "gl_renderer.h",
     ],
+    copts = QT_COPTS,
+    local_defines = select({
+        "@platforms//os:windows": ["GEOVIEWER_BUILD_LIB"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
     deps = [
+        "//src:export_header",
         "//bazel:qt6",
         "//src/core",
         "//src/logic",
