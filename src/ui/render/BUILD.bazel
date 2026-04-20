@@ -12,4 +12,8 @@ cc_library(
         "//src/core",
         "//src/logic",
     ],
+    linkopts = select({
+        "@platforms//os:windows": ["-DEFAULTLIB:opengl32.lib"],
+        "//conditions:default": [],
+    }),
 )

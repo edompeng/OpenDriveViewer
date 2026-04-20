@@ -13,3 +13,6 @@ target_link_libraries(GeoViewerGlRenderer PUBLIC
     GeoViewerCore
     GeoViewerLogic
 )
+if(WIN32)
+    target_link_libraries(GeoViewerGlRenderer PRIVATE opengl32)
+endif()
