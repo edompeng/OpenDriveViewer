@@ -46,7 +46,7 @@ TEST(SpatialGridIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
       [](uint32_t, uint32_t, size_t) { return true; });
 
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->layer_tag, 2);
+  EXPECT_EQ(result->layer_tag, uint32_t(2));
   EXPECT_EQ(result->vertex_index, std::size_t(0));
   EXPECT_NEAR(result->distance, 1.0f, 1e-5f);
 }
@@ -79,7 +79,7 @@ TEST(SpatialGridIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
       [](uint32_t, uint32_t, size_t) { return true; });
 
   ASSERT_EQ(hits.size(), std::size_t(1));
-  EXPECT_EQ(hits[0].layer_tag, 2);
+  EXPECT_EQ(hits[0].layer_tag, uint32_t(2));
   EXPECT_NEAR(hits[0].distance, 1.0f, 1e-5f);
 }
 
