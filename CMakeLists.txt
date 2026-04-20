@@ -3,7 +3,7 @@ project(OpenDriveViewer LANGUAGES CXX)
 
 # --- Platform & Toolchain ---
 if(MSVC)
-  add_compile_options(/Zc:__cplusplus /utf-8 /W3 /wd4005)
+  add_compile_options(/Zc:__cplusplus /utf-8 /W3 /wd4005 /wd4267 /FIiterator)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES)
 else()
   add_compile_options(-Wall -Wextra)

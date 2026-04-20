@@ -9,6 +9,7 @@ build:linux --copt=-Werror --cxxopt=-Werror
 build:macos --copt=-Werror --cxxopt=-Werror
 build:windows --copt=/WX --cxxopt=/WX
 build:windows --cxxopt=/wd4005
+build:windows --cxxopt=/wd4267
 build:windows --cxxopt=/FIiterator
 build:linux --cxxopt=-std=c++17
 build:macos --cxxopt=-std=c++17
