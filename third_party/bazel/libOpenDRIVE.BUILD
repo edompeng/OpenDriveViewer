@@ -32,7 +32,10 @@ cc_library(
         ],
         allow_empty = True,
     ),
-    copts = ["-I."],
+    copts = [
+        "-I.",
+        "-w",
+    ],
     defines = ["_USE_MATH_DEFINES"],
     includes = [
         "include",

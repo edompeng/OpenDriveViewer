@@ -1,3 +1,9 @@
+if(MSVC)
+  add_compile_options(/WX)
+else()
+  add_compile_options(-Werror)
+endif()
+
 add_subdirectory(core)
 add_subdirectory(logic)
 add_subdirectory(app)

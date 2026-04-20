@@ -66,10 +66,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libOpenDRIVE)
 
 # Fix for libOpenDRIVE 0.5.0 incorrectly use CMAKE_SOURCE_DIR in its internal CMakeLists.txt
-target_include_directories(OpenDrive PUBLIC 
+target_include_directories(OpenDrive SYSTEM PUBLIC 
     $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${libopendrive_SOURCE_DIR}/thirdparty>
 )
+target_compile_options(OpenDrive PRIVATE -w)
+target_compile_options(pugixml-static PRIVATE -w)
 
 add_subdirectory(src)
 
@@ -84,6 +86,11 @@ macro(add_geoviewer_test name)
     gtest_main 
     Qt6::Gui
   )
+  if(MSVC)
+    target_compile_options(${name} PRIVATE /WX)
+  else()
+    target_compile_options(${name} PRIVATE -Werror)
+  endif()
   target_compile_definitions(${name} PRIVATE
     GEOVIEWER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME ${name} COMMAND ${name})
