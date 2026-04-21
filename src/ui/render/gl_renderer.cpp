@@ -86,12 +86,16 @@ void GlRenderer::GenLayerEbo(LayerType type) {
 void GlRenderer::UploadLayerIndices(LayerType type,
                                     const std::vector<uint32_t>& indices) {
   int idx = static_cast<int>(type);
+  layers_[idx].index_count = indices.size();
+  if (indices.empty()) {
+    return;
+  }
+  
   GenLayerEbo(type);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[idx].ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                static_cast<GLsizeiptr>(indices.size() * sizeof(uint32_t)),
                indices.data(), GL_STATIC_DRAW);
-  layers_[idx].index_count = indices.size();
 }
 
 void GlRenderer::SetLayerVertexOffset(LayerType type, size_t offset) {
@@ -153,6 +157,8 @@ void GlRenderer::SetLayerPolygonOffset(LayerType type, float factor,
 // ============ User Points ============
 
 void GlRenderer::UploadUserPointsData(const std::vector<float>& data) {
+  if (data.empty()) return;
+
   if (!user_points_vao_) {
     glGenVertexArrays(1, &user_points_vao_);
     glGenBuffers(1, &user_points_vbo_);
@@ -173,6 +179,8 @@ void GlRenderer::UploadUserPointsData(const std::vector<float>& data) {
 
 void GlRenderer::UploadMeasurePointsData(
     const std::vector<QVector3D>& points) {
+  if (points.empty()) return;
+
   if (!measure_vao_) {
     glGenVertexArrays(1, &measure_vao_);
     glGenBuffers(1, &measure_vbo_);
