@@ -96,6 +96,7 @@ FetchContent_Declare(
   URL https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/0.5.0.tar.gz
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   PATCH_COMMAND ${CMAKE_COMMAND} -E echo "// Patched by GeoViewer" > thirdparty/pugixml/pugixml.cpp
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/cmake/patch_libopendrive.cmake
 )
 FetchContent_MakeAvailable(libOpenDRIVE)
 
@@ -121,9 +122,8 @@ target_include_directories(OpenDrive SYSTEM PRIVATE
 )
 # Set project-specific compiler options after dependencies
 if(MSVC)
-  add_compile_options(/W3)
-  target_compile_options(OpenDrive PRIVATE /wd9002 /wd9025 /w)
-  target_compile_options(pugixml-static PRIVATE /wd9025 /w)
+  target_compile_options(OpenDrive PRIVATE /w)
+  target_compile_options(pugixml-static PRIVATE /w)
 else()
   target_compile_options(OpenDrive PRIVATE -w)
   target_compile_options(pugixml-static PRIVATE -w)
