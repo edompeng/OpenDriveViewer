@@ -343,9 +343,6 @@ void GeoViewerWidget::SetRightHandTraffic(bool rht) {
 void GeoViewerWidget::UpdateMeshIndices() {
   needs_index_update_ = false;
   if (!map_ || !gl_renderer_) return;
-  
-  bool was_current = (QOpenGLContext::currentContext() == context());
-  if (!was_current) makeCurrent();
 
   static constexpr int kLayerCount = static_cast<int>(LayerType::kCount);
 
@@ -477,6 +474,9 @@ void GeoViewerWidget::UpdateMeshIndices() {
   }));
 
   for (auto& f : futures) f.get();
+
+  bool was_current = (QOpenGLContext::currentContext() == context());
+  if (!was_current) makeCurrent();
 
   for (int type_index = 0; type_index < kLayerCount; ++type_index) {
     auto& data = layerData[type_index];

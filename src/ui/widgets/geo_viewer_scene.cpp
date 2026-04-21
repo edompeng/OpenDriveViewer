@@ -34,12 +34,9 @@ void GeoViewerWidget::SetMapAndMesh(
     const JunctionClusterResult* junction_grouping) {
   const bool had_user_points = !user_points_.empty();
 
-  makeCurrent();
-
   map_ = std::move(map);
   if (!map_) {
     ResetSceneData();
-    doneCurrent();
     if (had_user_points) {
       ClearUserPoints();
     }
@@ -66,11 +63,20 @@ void GeoViewerWidget::SetMapAndMesh(
   RebuildSceneCaches();
   TransformSceneMeshes();
   BuildJunctionPlanes();
-  UploadVertexBufferData(BuildSceneVertexBufferData());
-  UpdateMeshIndices();
+
+  auto vertices = BuildSceneVertexBufferData();
+
+  bool was_current = (QOpenGLContext::currentContext() == context());
+  if (!was_current) makeCurrent();
+
+  UploadVertexBufferData(vertices);
   ApplyDefaultLayerStyles();
+
+  if (!was_current) doneCurrent();
+
+  UpdateMeshIndices();
   FinalizeSceneUpdate();
-  doneCurrent();
+
   if (had_user_points) {
     ClearUserPoints();
   }
@@ -464,9 +470,13 @@ void GeoViewerWidget::FinalizeSceneUpdate() {
 void GeoViewerWidget::ReloadMeshData() {
   if (!map_) return;
 
-  makeCurrent();
   road_ref_line_vert_ranges_.clear();
-  UploadVertexBufferData(BuildSceneVertexBufferData());
+  auto vertices = BuildSceneVertexBufferData();
+
+  bool was_current = (QOpenGLContext::currentContext() == context());
+  if (!was_current) makeCurrent();
+  UploadVertexBufferData(vertices);
+  if (!was_current) doneCurrent();
+
   UpdateMeshIndices();
-  doneCurrent();
 }
