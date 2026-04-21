@@ -34,6 +34,9 @@ elseif(WIN32)
   get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
   set(q_deploy "${QT_BIN_DIR}/windeployqt.exe")
   add_custom_command(TARGET OpenDriveViewer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:OpenDrive>"
+    "$<TARGET_FILE_DIR:OpenDriveViewer>"
     COMMAND "${q_deploy}" --no-translations --no-compiler-runtime
     "$<TARGET_FILE:OpenDriveViewer>"
   )

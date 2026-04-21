@@ -149,6 +149,15 @@ macro(add_geoviewer_test name)
   endif()
   target_compile_definitions(${name} PRIVATE
     GEOVIEWER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+
+  if(WIN32)
+    add_custom_command(TARGET ${name} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "$<TARGET_FILE:OpenDrive>"
+      "$<TARGET_FILE_DIR:${name}>"
+    )
+  endif()
+
   add_test(NAME ${name} COMMAND ${name})
 endmacro()
 
