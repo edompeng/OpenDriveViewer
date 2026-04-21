@@ -131,7 +131,6 @@ jobs:
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
             # Fix path for Windows
-            export MSYS_NO_PATHCONV=1
             export BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
             bazel build -c opt --copt=-Zi --linkopt=-DEBUG //... $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
@@ -152,7 +151,6 @@ jobs:
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            export MSYS_NO_PATHCONV=1
             bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
