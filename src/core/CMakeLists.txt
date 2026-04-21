@@ -5,10 +5,12 @@ add_library(GeoViewerCore ${LIB_TYPE}
     thread_pool.cpp
     viewer_text_util.cpp
     junction_grouping.cpp
+    crash_handler.cpp
     # Headers only
     coordinate_mode_policy.h
     scene_enums.h
     scene_geometry_types.h
+    crash_handler.h
 )
 
 target_include_directories(GeoViewerCore PUBLIC

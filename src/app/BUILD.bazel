@@ -7,6 +7,7 @@ cc_binary(
     copts = QT_COPTS,
     deps = [
         "//bazel:qt6",
+        "//src/core:core",
         "//src/ui:main_window",
         "//src/ui/widgets",
     ],

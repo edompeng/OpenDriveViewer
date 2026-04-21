@@ -5,6 +5,7 @@ cc_library(
     name = "core",
     srcs = [
         "coordinate_util.cpp",
+        "crash_handler.cpp",
         "junction_grouping.cpp",
         "map_loader.cpp",
         "project_context.cpp",
@@ -14,6 +15,7 @@ cc_library(
     hdrs = [
         "coordinate_mode_policy.h",
         "coordinate_util.h",
+        "crash_handler.h",
         "junction_grouping.h",
         "map_loader.h",
         "project_context.h",

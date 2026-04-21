@@ -23,6 +23,7 @@ cc_test(
         "layer_tree_model_test.cpp",
         "input_parsing_test.cpp",
         "camera_controller_test.cpp",
+        "crash_handler_test.cpp",
     ],
     copts = QT_COPTS,
     defines = COMMON_DEFINES,
