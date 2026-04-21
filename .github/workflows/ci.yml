@@ -126,18 +126,18 @@ jobs:
         run: |
           BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            bazel build -c opt //... $BAZEL_OPTS --config=linux \
+            bazel build -c opt --copt=-g --strip=never //... $BAZEL_OPTS --config=linux \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
             # Fix path for Windows
             export BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
-            bazel build -c opt //... $BAZEL_OPTS --config=windows \
+            bazel build -c opt --copt=/Zi --linkopt=/DEBUG //... $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
           else
-            bazel build -c opt //... $BAZEL_OPTS --config=macos \
+            bazel build -c opt --copt=-g --strip=never //... $BAZEL_OPTS --config=macos \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -195,6 +195,16 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ github.workspace }}/${{ matrix.artifact_name }}
+          retention-days: 1
+
+      - name: Upload Symbols Artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbols-${{ matrix.os }}
+          path: |
+            ${{ github.workspace }}/*symbols.zip
+            ${{ github.workspace }}/*symbols.tar.gz
           retention-days: 1
 
   build-cmake:
@@ -289,20 +299,20 @@ jobs:
         shell: bash
         run: |
           cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DFETCHCONTENT_BASE_DIR="${{ github.workspace }}/cmake_deps" \
             -DQT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DPROJ_ROOT="${{ env.PROJ_ROOT }}"
-          cmake --build build --config Release
+          cmake --build build --config RelWithDebInfo
 
       - name: Test
         shell: bash
         run: |
           cd build
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            xvfb-run --auto-servernum ctest -C Release --output-on-failure
+            xvfb-run --auto-servernum ctest -C RelWithDebInfo --output-on-failure
           else
-            ctest -C Release --output-on-failure
+            ctest -C RelWithDebInfo --output-on-failure
           fi
 
   release:

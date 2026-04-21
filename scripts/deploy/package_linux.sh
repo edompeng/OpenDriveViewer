@@ -29,7 +29,15 @@ mkdir -p "${BUNDLE_DIR}/share/proj"
 # Copy binary
 cp "bazel-bin/src/app/${BINARY_NAME}" "${BUNDLE_DIR}/bin/"
 chmod +w "${BUNDLE_DIR}/bin/${BINARY_NAME}"
+
+# Extract symbols
+echo "Extracting debug symbols..."
+objcopy --only-keep-debug "${BUNDLE_DIR}/bin/${BINARY_NAME}" "${DIST_DIR}/${BINARY_NAME}.debug"
 strip --strip-unneeded "${BUNDLE_DIR}/bin/${BINARY_NAME}"
+objcopy --add-gnu-debuglink="${DIST_DIR}/${BINARY_NAME}.debug" "${BUNDLE_DIR}/bin/${BINARY_NAME}"
+
+# Package symbols
+tar -czvf "${BINARY_NAME}_linux_symbols.tar.gz" -C "${DIST_DIR}" "${BINARY_NAME}.debug"
 
 # --- Copy Dependencies ---
 echo "Collecting shared libraries..."

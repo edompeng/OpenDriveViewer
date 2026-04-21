@@ -36,7 +36,14 @@ mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
 cp "bazel-bin/src/app/${BINARY_NAME}" "${APP_BUNDLE}/Contents/MacOS/"
 chmod +w "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
+
+# Extract symbols
+echo "Extracting debug symbols..."
+dsymutil "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}" -o "${DIST_DIR}/${BINARY_NAME}.dSYM"
 strip -x "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
+
+# Package symbols
+cd "${DIST_DIR}" && zip -r "../${BINARY_NAME}_macos_symbols.zip" "${BINARY_NAME}.dSYM" && cd -
 
 # --- Run macdeployqt ---
 echo "Running macdeployqt..."

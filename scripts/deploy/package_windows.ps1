@@ -45,6 +45,16 @@ New-Item -ItemType Directory -Path "${BUNDLE_DIR}\share\proj" | Out-Null
 Copy-Item $BAZEL_BINARY "${BUNDLE_DIR}\bin\"
 Write-Host "  -> Copied $BINARY_NAME.exe"
 
+# Package PDB
+Write-Host "`n=== Extracting Debug Symbols ==="
+$PDB_FILE = "bazel-bin\src\app\${BINARY_NAME}.pdb"
+if (Test-Path $PDB_FILE) {
+    Compress-Archive -Path $PDB_FILE -DestinationPath "${BINARY_NAME}_windows_symbols.zip" -Force
+    Write-Host "  -> Packaged debug symbols"
+} else {
+    Write-Warning "  -> PDB file not found at $PDB_FILE"
+}
+
 # --- Run windeployqt ---
 Write-Host "`n=== Running windeployqt ==="
 & "$WINDEPLOYQT" --dir "${BUNDLE_DIR}\bin" --compiler-runtime "${BUNDLE_DIR}\bin\${BINARY_NAME}.exe"
