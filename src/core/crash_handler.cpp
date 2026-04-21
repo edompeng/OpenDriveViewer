@@ -124,17 +124,17 @@ void PosixSignalHandler(int sig, siginfo_t* /*info*/, void* /*secret*/) {
     }
 
     const char* sig_msg = "Caught signal: ";
-    write(fd, sig_msg, strlen(sig_msg));
+    [[maybe_unused]] auto res1 = write(fd, sig_msg, strlen(sig_msg));
     
     char sig_buf[32];
     size_t sig_pos = 0;
     sig_buf[0] = '\0';
     SafeAppendInt(sig_buf, sig_pos, sizeof(sig_buf), sig);
     SafeAppendChar(sig_buf, sig_pos, sizeof(sig_buf), '\n');
-    write(fd, sig_buf, sig_pos);
+    [[maybe_unused]] auto res2 = write(fd, sig_buf, sig_pos);
 
     const char* trace_msg = "Stack trace:\n";
-    write(fd, trace_msg, strlen(trace_msg));
+    [[maybe_unused]] auto res3 = write(fd, trace_msg, strlen(trace_msg));
 
     void* array[100];
     int size = backtrace(array, 100);
