@@ -132,7 +132,7 @@ jobs:
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
             # Fix path for Windows
             export BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
-            bazel build -c opt --copt=-Zi --linkopt=-DEBUG //... $BAZEL_OPTS --config=windows \
+            bazel build -c opt --copt=-Z7 --linkopt=-DEBUG //... $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
