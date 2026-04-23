@@ -5,3 +5,4 @@ bazel-*
 .bazelrc.user
 MODULE.bazel.lock
 /dist/
+.DS_Store

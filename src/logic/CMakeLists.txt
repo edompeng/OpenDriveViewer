@@ -1,5 +1,4 @@
 add_library(GeoViewerLogic ${LIB_TYPE}
-    scene_manager.cpp
     favorites_store.cpp
     input_parsing.cpp
     routing_logic.cpp

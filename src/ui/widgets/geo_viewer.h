@@ -26,14 +26,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "OpenDriveMap.h"
+#include "RoadNetworkMesh.h"
 #include "src/core/junction_grouping.h"
 #include "src/core/scene_enums.h"
 #include "src/core/scene_geometry_types.h"
 #include "src/logic/camera_controller.h"
 #include "src/logic/measure_tool_controller.h"
 #include "src/ui/render/gl_renderer.h"
-#include "OpenDriveMap.h"
-#include "RoadNetworkMesh.h"
 
 #include "src/geo_viewer_export.h"
 
@@ -50,7 +50,6 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   ~GeoViewerWidget() override;
 
   // ---------- Map Data ----------
-  void SetMap(std::shared_ptr<odr::OpenDriveMap> map);
   void SetMapAndMesh(std::shared_ptr<odr::OpenDriveMap> map,
                      odr::RoadNetworkMesh mesh,
                      const JunctionClusterResult* junction_grouping = nullptr);
@@ -196,7 +195,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
 
   // ---- Map Data ----
   std::shared_ptr<odr::OpenDriveMap> map_;
-  odr::RoadNetworkMesh network_mesh_;
+  std::shared_ptr<odr::RoadNetworkMesh> network_mesh_;
   JunctionClusterResult junction_cluster_result_;
   bool mesh_updated_ = false;
   bool needs_index_update_ = false;
@@ -207,7 +206,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   std::vector<SceneCachedElement> signal_element_items_;
   std::vector<SceneCachedElement> junction_element_items_;
   std::vector<SceneOutlineElement> outline_element_items_;
-  odr::Mesh3D junction_mesh_;
+  std::shared_ptr<odr::Mesh3D> junction_mesh_;
   std::map<std::string, QVector3D> junction_group_centers_;
   std::unordered_map<std::string, std::size_t> junction_group_index_by_id_;
   std::unordered_map<std::string, std::size_t> junction_member_index_by_id_;
@@ -224,7 +223,8 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   std::unordered_map<odr::LaneKey, std::array<size_t, 2>> lane_key_to_interval_;
   std::unordered_map<odr::LaneKey, std::size_t> lane_element_index_by_key_;
   std::unique_ptr<odr::RoutingGraph> routing_graph_;
-
+  std::unordered_map<std::string, std::string> signal_id_to_road_id_;
+  std::string GetRoadIdBySignalId(const std::string& signal_id) const noexcept;
   struct VertRange {
     size_t start;
     size_t count;
@@ -241,11 +241,25 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void PopulateJunctionLookupMaps();
   void PopulateLaneKeyIntervals();
   void RebuildSceneCaches();
-  void BuildLaneElementCache();
-  void BuildRoadmarkElementCache();
-  void BuildObjectElementCache();
-  void BuildSignalElementCache();
-  void BuildOutlineElementCache();
+  struct LaneCacheResult {
+    std::vector<SceneCachedElement> items;
+    std::unordered_map<odr::LaneKey, std::size_t> index_by_key;
+  };
+  struct OutlineCacheResult {
+    std::vector<SceneOutlineElement> items;
+    std::vector<uint32_t> indices;
+  };
+  LaneCacheResult BuildLaneElementCache(
+      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+  std::vector<SceneCachedElement> BuildRoadmarkElementCache(
+      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+  std::vector<SceneCachedElement> BuildObjectElementCache(
+      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+  std::vector<SceneCachedElement> BuildSignalElementCache(
+      const std::shared_ptr<odr::OpenDriveMap> map,
+      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+  OutlineCacheResult BuildOutlineElementCache(
+      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
   void TransformSceneMeshes();
   std::vector<float> BuildSceneVertexBufferData();
   void UploadVertexBufferData(const std::vector<float>& vertices);

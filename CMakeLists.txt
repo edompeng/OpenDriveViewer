@@ -14,14 +14,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set(OUTPUT_BIN_DIR ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_BIN_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_BIN_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_BIN_DIR})
 
 # --- Global Control Macros ---
 if(WIN32)
-   # Use STATIC on Windows for internal libraries to ensure robust linkage with a unified macro.
-   set(LIB_TYPE STATIC CACHE INTERNAL "Library linkage type")
-   add_definitions(-DGEOVIEWER_STATIC)
+  # Use STATIC on Windows for internal libraries to ensure robust linkage with a unified macro.
+  set(LIB_TYPE STATIC CACHE INTERNAL "Library linkage type")
+  add_definitions(-DGEOVIEWER_STATIC)
 else()
-   set(LIB_TYPE SHARED CACHE INTERNAL "Library linkage type")
+  set(LIB_TYPE SHARED CACHE INTERNAL "Library linkage type")
 endif()
 
 # --- Find Dependencies ---
@@ -54,7 +58,7 @@ if(NOT PROJ_FOUND AND PROJ_ROOT)
   else()
     set(PROJ_LIBRARY "${PROJ_ROOT}/lib/libproj.so")
     if(NOT EXISTS ${PROJ_LIBRARY})
-       set(PROJ_LIBRARY "${PROJ_ROOT}/lib/libproj.dylib")
+      set(PROJ_LIBRARY "${PROJ_ROOT}/lib/libproj.dylib")
     endif()
   endif()
   set(PROJ_FOUND TRUE)
@@ -96,7 +100,7 @@ FetchContent_Declare(
   URL https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/0.5.0.tar.gz
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   PATCH_COMMAND ${CMAKE_COMMAND} -E echo "// Patched by GeoViewer" > thirdparty/pugixml/pugixml.cpp
-        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/cmake/patch_libopendrive.cmake
+  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/cmake/patch_libopendrive.cmake
 )
 FetchContent_MakeAvailable(libOpenDRIVE)
 
@@ -111,14 +115,14 @@ configure_file("${pugixml_SOURCE_DIR}/src/pugiconfig.hpp" "${PUGIXML_COMPAT_DIR}
 
 # Fix for libOpenDRIVE 0.5.0
 target_link_libraries(OpenDrive PUBLIC pugixml-static)
-target_include_directories(OpenDrive SYSTEM BEFORE PUBLIC 
-    $<BUILD_INTERFACE:${PUGIXML_COMPAT_DIR}>
+target_include_directories(OpenDrive SYSTEM BEFORE PUBLIC
+  $<BUILD_INTERFACE:${PUGIXML_COMPAT_DIR}>
 )
-target_include_directories(OpenDrive SYSTEM PUBLIC 
-    $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/include>
+target_include_directories(OpenDrive SYSTEM PUBLIC
+  $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/include>
 )
-target_include_directories(OpenDrive SYSTEM PRIVATE 
-    $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/thirdparty>
+target_include_directories(OpenDrive SYSTEM PRIVATE
+  $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/thirdparty>
 )
 # Set project-specific compiler options after dependencies
 if(MSVC)
@@ -135,11 +139,11 @@ add_subdirectory(src)
 macro(add_geoviewer_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(${name} PRIVATE 
-    GeoViewerCore 
+  target_link_libraries(${name} PRIVATE
+    GeoViewerCore
     GeoViewerLogic
     GeoViewerUIWidgets
-    gtest_main 
+    gtest_main
     Qt6::Gui
   )
   if(MSVC)

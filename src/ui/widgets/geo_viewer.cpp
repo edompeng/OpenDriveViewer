@@ -29,6 +29,9 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
   layer_visibility_cache_[LayerType::kJunctions] = false;
   layer_visibility_cache_[LayerType::kSignalSigns] = false;
   layer_visibility_cache_[LayerType::kObjects] = false;
+
+  network_mesh_ = std::make_shared<odr::RoadNetworkMesh>();
+  junction_mesh_ = std::make_shared<odr::Mesh3D>();
 }
 
 GeoViewerWidget::~GeoViewerWidget() {
@@ -342,7 +345,10 @@ void GeoViewerWidget::SetRightHandTraffic(bool rht) {
 
 void GeoViewerWidget::UpdateMeshIndices() {
   needs_index_update_ = false;
-  if (!map_ || !gl_renderer_) return;
+  if (!map_ || !gl_renderer_ || !network_mesh_ || !junction_mesh_) return;
+
+  auto& network_mesh = *network_mesh_;
+  auto& junction_mesh = *junction_mesh_;
 
   static constexpr int kLayerCount = static_cast<int>(LayerType::kCount);
 
@@ -378,18 +384,17 @@ void GeoViewerWidget::UpdateMeshIndices() {
   std::vector<std::future<void>> futures;
   futures.push_back(pool.Enqueue([&]() {
     collectLayerData(LayerType::kLanes, lane_element_items_,
-                     network_mesh_.lanes_mesh.indices,
-                     &network_mesh_.lanes_mesh);
+                     network_mesh.lanes_mesh.indices, &network_mesh.lanes_mesh);
   }));
   futures.push_back(pool.Enqueue([&]() {
     collectLayerData(LayerType::kRoadmarks, roadmark_element_items_,
-                     network_mesh_.roadmarks_mesh.indices,
-                     &network_mesh_.roadmarks_mesh);
+                     network_mesh.roadmarks_mesh.indices,
+                     &network_mesh.roadmarks_mesh);
   }));
   futures.push_back(pool.Enqueue([&]() {
     collectLayerData(LayerType::kObjects, object_element_items_,
-                     network_mesh_.road_objects_mesh.indices,
-                     &network_mesh_.road_objects_mesh);
+                     network_mesh.road_objects_mesh.indices,
+                     &network_mesh.road_objects_mesh);
   }));
   futures.push_back(pool.Enqueue([&]() {
     // Junction groups need a specialized predicate: individual junctions use
@@ -397,9 +402,9 @@ void GeoViewerWidget::UpdateMeshIndices() {
     // We only hide a group's mesh if the group itself is hidden OR ALL its
     // individual junctions are hidden.
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
-        junction_element_items_, junction_mesh_.indices,
+        junction_element_items_, junction_mesh.indices,
         gl_renderer_->GetLayerVertexOffset(LayerType::kJunctions),
-        junction_mesh_, [this](const SceneCachedElement& element) {
+        junction_mesh, [this](const SceneCachedElement& element) {
           // Check group-level visibility (JG:group_id)
           if (hidden_elements_.count(element.road_key)) return false;
 
@@ -443,7 +448,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
-              network_mesh_.road_signals_mesh.indices[range.start * 3 + k] +
+              network_mesh.road_signals_mesh.indices[range.start * 3 + k] +
               static_cast<uint32_t>(v_offset));
         }
       }
@@ -464,7 +469,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
-              network_mesh_.road_signals_mesh.indices[range.start * 3 + k] +
+              network_mesh.road_signals_mesh.indices[range.start * 3 + k] +
               static_cast<uint32_t>(v_offset));
         }
       }
@@ -525,7 +530,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
       gl_renderer_->SetLayerChunks(
           t,
           BuildSceneMeshChunks(indices, gl_renderer_->GetLayerVertexOffset(t),
-                               network_mesh_.lanes_mesh));
+                               network_mesh_->lanes_mesh));
       gl_renderer_->UploadLayerIndices(t, indices);
     };
     SetupLineLayer(LayerType::kLaneLines, solid_indices);
@@ -685,28 +690,28 @@ void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
 
       if (picked_idx->layer == LayerType::kLanes) {
         road_id =
-            QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
-        double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-        int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+            QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));
+        double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
+        int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
         element_id = QString("%1:%2").arg(s0).arg(lane_id);
         node_type = TreeNodeType::kLane;
       } else if (picked_idx->layer == LayerType::kObjects) {
         road_id = QString::fromStdString(
-            network_mesh_.road_objects_mesh.get_road_id(vi));
+            network_mesh_->road_objects_mesh.get_road_id(vi));
         element_id = QString::fromStdString(
-            network_mesh_.road_objects_mesh.get_road_object_id(vi));
+            network_mesh_->road_objects_mesh.get_road_object_id(vi));
         node_type = TreeNodeType::kObject;
       } else if (picked_idx->layer == LayerType::kSignalLights) {
-        road_id = QString::fromStdString(
-            network_mesh_.road_signals_mesh.get_road_id(vi));
         element_id = QString::fromStdString(
-            network_mesh_.road_signals_mesh.get_road_signal_id(vi));
+            network_mesh_->road_signals_mesh.get_road_signal_id(vi));
+        const std::string signal_id = element_id.toStdString();
+        road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
         node_type = TreeNodeType::kLight;
       } else if (picked_idx->layer == LayerType::kSignalSigns) {
-        road_id = QString::fromStdString(
-            network_mesh_.road_signals_mesh.get_road_id(vi));
         element_id = QString::fromStdString(
-            network_mesh_.road_signals_mesh.get_road_signal_id(vi));
+            network_mesh_->road_signals_mesh.get_road_signal_id(vi));
+        const std::string signal_id = element_id.toStdString();
+        road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
         node_type = TreeNodeType::kSign;
       } else if (picked_idx->layer == LayerType::kJunctions) {
         auto group_id = FindJunctionGroupByVertex(vi);
@@ -783,7 +788,8 @@ void GeoViewerWidget::ClearHighlight() {
 }
 
 void GeoViewerWidget::CalculateMeshCenter() {
-  if (network_mesh_.lanes_mesh.vertices.empty()) return;
+  if (!network_mesh_ || network_mesh_->lanes_mesh.vertices.empty()) return;
+  auto& network_mesh = *network_mesh_;
 
   QVector3D minVec(std::numeric_limits<float>::max(),
                    std::numeric_limits<float>::max(),
@@ -792,10 +798,10 @@ void GeoViewerWidget::CalculateMeshCenter() {
                    std::numeric_limits<float>::lowest(),
                    std::numeric_limits<float>::lowest());
 
-  for (size_t i = 0; i < network_mesh_.lanes_mesh.vertices.size(); i++) {
-    const float x = network_mesh_.lanes_mesh.vertices[i][0];
-    const float y = network_mesh_.lanes_mesh.vertices[i][1];
-    const float z = network_mesh_.lanes_mesh.vertices[i][2];
+  for (size_t i = 0; i < network_mesh.lanes_mesh.vertices.size(); i++) {
+    const float x = network_mesh.lanes_mesh.vertices[i][0];
+    const float y = network_mesh.lanes_mesh.vertices[i][1];
+    const float z = network_mesh.lanes_mesh.vertices[i][2];
     minVec.setX(qMin(minVec.x(), x));
     minVec.setY(qMin(minVec.y(), y));
     minVec.setZ(qMin(minVec.z(), z));
@@ -807,19 +813,12 @@ void GeoViewerWidget::CalculateMeshCenter() {
   camera_.FitToScene(minVec, maxVec);
 }
 
-// RayIntersectsTriangle and RayIntersectsAABB migrated to
-// spatial_grid_index.cpp as free functions, no longer members of
-// GeoViewerWidget
-
-// RayIntersectsTriangle and RayIntersectsAABB migrated to
-// spatial_grid_index.cpp as free functions, no longer members of
-// GeoViewerWidget
-
 void GeoViewerWidget::StartSpatialGridBuild() {
+  if (!map_ || !network_mesh_ || !junction_mesh_) return;
   const std::uint64_t generation = ++spatial_grid_generation_;
   auto map = map_;
-  const odr::RoadNetworkMesh* network_mesh = &network_mesh_;
-  const odr::Mesh3D* junction_mesh = &junction_mesh_;
+  auto network_mesh = network_mesh_;
+  auto junction_mesh = junction_mesh_;
   const int grid_resolution = grid_resolution_;
 
   geoviewer::utility::ThreadPool::Instance().Enqueue(
@@ -838,7 +837,7 @@ void GeoViewerWidget::StartSpatialGridBuild() {
 }
 
 void GeoViewerWidget::BuildSpatialGrid() {
-  grid_boxes_ = BuildSpatialGridData(map_, network_mesh_, junction_mesh_,
+  grid_boxes_ = BuildSpatialGridData(map_, *network_mesh_, *junction_mesh_,
                                      grid_resolution_);
   spatial_grid_ready_ = true;
 }
@@ -864,12 +863,11 @@ std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
           SceneMeshLayerView{
               &network_mesh.road_signals_mesh,
               static_cast<uint32_t>(LayerType::kSignalLights),
-              [map, &network_mesh](uint32_t vertex_index) {
-                std::string road_id =
-                    network_mesh.road_signals_mesh.get_road_id(vertex_index);
+              [this, map, &network_mesh](uint32_t vertex_index) {
                 std::string signal_id =
                     network_mesh.road_signals_mesh.get_road_signal_id(
                         vertex_index);
+                std::string road_id = GetRoadIdBySignalId(signal_id);
                 bool is_light = false;
                 if (map && map->id_to_road.count(road_id)) {
                   const auto& road = map->id_to_road.at(road_id);
@@ -888,8 +886,8 @@ std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
 
 std::optional<GeoViewerWidget::PickResult>
 GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
-  if (!gl_renderer_ || network_mesh_.lanes_mesh.vertices.empty() ||
-      !spatial_grid_ready_) {
+  if (!gl_renderer_ || !network_mesh_ ||
+      network_mesh_->lanes_mesh.vertices.empty() || !spatial_grid_ready_) {
     return std::nullopt;
   }
   QVector3D origin;
@@ -1052,34 +1050,35 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
   }
   QString info_text;
 
+  if (!network_mesh_) return;
   if (picked_idx.has_value() && map_) {
     size_t vi = picked_idx->vertex_index;
     if (picked_idx->layer == LayerType::kLanes) {
-      std::string road_id = network_mesh_.lanes_mesh.get_road_id(vi);
+      std::string road_id = network_mesh_->lanes_mesh.get_road_id(vi);
       if (map_->id_to_road.count(road_id)) {
         info_text =
             QString("%1/%2/%3")
                 .arg(road_id.c_str())
-                .arg(network_mesh_.lanes_mesh.get_lanesec_s0(vi), 0, 'f', 2)
-                .arg(network_mesh_.lanes_mesh.get_lane_id(vi));
+                .arg(network_mesh_->lanes_mesh.get_lanesec_s0(vi), 0, 'f', 2)
+                .arg(network_mesh_->lanes_mesh.get_lane_id(vi));
       }
     } else if (picked_idx->layer == LayerType::kRoadmarks) {
-      std::string road_id = network_mesh_.roadmarks_mesh.get_road_id(vi);
+      std::string road_id = network_mesh_->roadmarks_mesh.get_road_id(vi);
       if (map_->id_to_road.count(road_id)) {
         const auto& r = map_->id_to_road.at(road_id);
         std::string road_mark_type =
-            network_mesh_.roadmarks_mesh.get_roadmark_type(vi);
+            network_mesh_->roadmarks_mesh.get_roadmark_type(vi);
         info_text = QString("Roadmark %1 in kRoad %2 (Name: %3)")
                         .arg(road_mark_type.c_str())
                         .arg(road_id.c_str())
                         .arg(r.name.c_str());
       }
     } else if (picked_idx->layer == LayerType::kObjects) {
-      std::string road_id = network_mesh_.road_objects_mesh.get_road_id(vi);
+      std::string road_id = network_mesh_->road_objects_mesh.get_road_id(vi);
       if (map_->id_to_road.count(road_id)) {
         const auto& r = map_->id_to_road.at(road_id);
         std::string object_id =
-            network_mesh_.road_objects_mesh.get_road_object_id(vi);
+            network_mesh_->road_objects_mesh.get_road_object_id(vi);
         if (r.id_to_object.count(object_id)) {
           const auto& obj = r.id_to_object.at(object_id);
           info_text = QString("kObject %1 (Name: %2, Type: %3) in kRoad %4")
@@ -1091,15 +1090,16 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
       }
     } else if (picked_idx->layer == LayerType::kSignalLights ||
                picked_idx->layer == LayerType::kSignalSigns) {
-      std::string road_id = network_mesh_.road_signals_mesh.get_road_id(vi);
+      std::string signal_id =
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi);
+      std::string road_id = GetRoadIdBySignalId(signal_id);
+
       if (map_->id_to_road.count(road_id)) {
         const auto& r = map_->id_to_road.at(road_id);
-        std::string sId =
-            network_mesh_.road_signals_mesh.get_road_signal_id(vi);
-        if (r.id_to_signal.count(sId)) {
-          const auto& sig = r.id_to_signal.at(sId);
+        if (r.id_to_signal.count(signal_id)) {
+          const auto& sig = r.id_to_signal.at(signal_id);
           info_text = QString("Signal %1 (Name: %2, Type: %3) in kRoad %4")
-                          .arg(sId.c_str())
+                          .arg(signal_id.c_str())
                           .arg(sig.name.c_str())
                           .arg(sig.type.c_str())
                           .arg(road_id.c_str());
@@ -1135,29 +1135,29 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
     size_t vi = picked_idx->vertex_index;
     if (picked_idx->layer == LayerType::kLanes) {
       road_id =
-          QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
-      double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-      int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+          QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));
+      double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
+      int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
       group = "lane";
       element_id = QString::fromStdString(FormatSectionValue(s0)) + ":" +
                    QString::number(lane_id);
     } else if (picked_idx->layer == LayerType::kObjects) {
       road_id = QString::fromStdString(
-          network_mesh_.road_objects_mesh.get_road_id(vi));
+          network_mesh_->road_objects_mesh.get_road_id(vi));
       element_id = QString::fromStdString(
-          network_mesh_.road_objects_mesh.get_road_object_id(vi));
+          network_mesh_->road_objects_mesh.get_road_object_id(vi));
       group = "objects";
     } else if (picked_idx->layer == LayerType::kSignalLights) {
-      road_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_id(vi));
-      element_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_signal_id(vi));
+      std::string signal_id =
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi);
+      element_id = QString::fromStdString(signal_id);
+      road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
       group = "lights";
     } else if (picked_idx->layer == LayerType::kSignalSigns) {
-      road_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_id(vi));
-      element_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_signal_id(vi));
+      std::string signal_id =
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi);
+      element_id = QString::fromStdString(signal_id);
+      road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
       group = "signs";
     }
     if (!road_id.isEmpty()) {
@@ -1177,32 +1177,32 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
     size_t vi = picked_idx->vertex_index;
     if (picked_idx->layer == LayerType::kLanes) {
       road_id =
-          QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
-      double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-      int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+          QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));
+      double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
+      int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
       element_id = QString::fromStdString(FormatSectionValue(s0)) + ":" +
                    QString::number(lane_id);
       node_type = TreeNodeType::kLane;
       name = QString("kRoad %1 kLane %2").arg(road_id).arg(element_id);
     } else if (picked_idx->layer == LayerType::kObjects) {
       road_id = QString::fromStdString(
-          network_mesh_.road_objects_mesh.get_road_id(vi));
+          network_mesh_->road_objects_mesh.get_road_id(vi));
       element_id = QString::fromStdString(
-          network_mesh_.road_objects_mesh.get_road_object_id(vi));
+          network_mesh_->road_objects_mesh.get_road_object_id(vi));
       node_type = TreeNodeType::kObject;
       name = QString("kObject %1").arg(element_id);
     } else if (picked_idx->layer == LayerType::kSignalLights) {
-      road_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_id(vi));
-      element_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_signal_id(vi));
+      std::string signal_id =
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi);
+      element_id = QString::fromStdString(signal_id);
+      road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
       node_type = TreeNodeType::kLight;
       name = QString("kLight %1").arg(element_id);
     } else if (picked_idx->layer == LayerType::kSignalSigns) {
-      road_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_id(vi));
-      element_id = QString::fromStdString(
-          network_mesh_.road_signals_mesh.get_road_signal_id(vi));
+      std::string signal_id =
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi);
+      element_id = QString::fromStdString(signal_id);
+      road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
       node_type = TreeNodeType::kSign;
       name = QString("kSign %1").arg(element_id);
     }
@@ -1212,9 +1212,9 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
   } else if (selected == setStartRouting || selected == setEndRouting) {
     size_t vi = picked_idx->vertex_index;
     QString road_id =
-        QString::fromStdString(network_mesh_.lanes_mesh.get_road_id(vi));
-    double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-    int lane_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+        QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));
+    double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
+    int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
     const std::string lane_pos_std =
         BuildLanePosition(road_id.toStdString(), FormatSectionValue(s0),
                           QString::number(lane_id).toStdString());
@@ -1227,27 +1227,28 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
 }
 
 void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
+  if (!network_mesh_) return;
   size_t start = 0, end = 0;
   const odr::Mesh3D* mesh = nullptr;
 
   if (type == LayerType::kLanes) {
-    auto interval = network_mesh_.lanes_mesh.get_idx_interval_lane(vert_idx);
+    auto interval = network_mesh_->lanes_mesh.get_idx_interval_lane(vert_idx);
     start = interval[0];
     end = interval[1];
-    mesh = &network_mesh_.lanes_mesh;
+    mesh = &network_mesh_->lanes_mesh;
   } else if (type == LayerType::kObjects) {
     auto interval =
-        network_mesh_.road_objects_mesh.get_idx_interval_road_object(vert_idx);
+        network_mesh_->road_objects_mesh.get_idx_interval_road_object(vert_idx);
     start = interval[0];
     end = interval[1];
-    mesh = &network_mesh_.road_objects_mesh;
+    mesh = &network_mesh_->road_objects_mesh;
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
     auto interval =
-        network_mesh_.road_signals_mesh.get_idx_interval_signal(vert_idx);
+        network_mesh_->road_signals_mesh.get_idx_interval_signal(vert_idx);
     start = interval[0];
     end = interval[1];
-    mesh = &network_mesh_.road_signals_mesh;
+    mesh = &network_mesh_->road_signals_mesh;
   } else {
     ClearHighlight();
     return;
@@ -1309,9 +1310,9 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
     size_t vi = picked_idx->vertex_index;
 
     if (picked_idx->layer == LayerType::kLanes) {
-      std::string r_id = network_mesh_.lanes_mesh.get_road_id(vi);
-      double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(vi);
-      int l_id = network_mesh_.lanes_mesh.get_lane_id(vi);
+      std::string r_id = network_mesh_->lanes_mesh.get_road_id(vi);
+      double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
+      int l_id = network_mesh_->lanes_mesh.get_lane_id(vi);
 
       type_str = "kLane";
       id_str = QString("%1 / %2 / %3").arg(r_id.c_str()).arg(s0).arg(l_id);
@@ -1331,18 +1332,19 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
       }
       UpdateHighlight(vi, picked_idx->layer);
     } else if (picked_idx->layer == LayerType::kRoadmarks) {
-      std::string r_id = network_mesh_.roadmarks_mesh.get_road_id(vi);
+      std::string r_id = network_mesh_->roadmarks_mesh.get_road_id(vi);
       type_str = "Roadmark";
       id_str = QString::fromStdString(
-          network_mesh_.roadmarks_mesh.get_roadmark_type(vi));
+          network_mesh_->roadmarks_mesh.get_roadmark_type(vi));
       if (map_->id_to_road.count(r_id)) {
         const auto& r = map_->id_to_road.at(r_id);
         name_str = QString("kRoad: %1").arg(r.name.c_str());
       }
       ClearHighlight();
     } else if (picked_idx->layer == LayerType::kObjects) {
-      std::string r_id = network_mesh_.road_objects_mesh.get_road_id(vi);
-      std::string o_id = network_mesh_.road_objects_mesh.get_road_object_id(vi);
+      std::string r_id = network_mesh_->road_objects_mesh.get_road_id(vi);
+      std::string o_id =
+          network_mesh_->road_objects_mesh.get_road_object_id(vi);
       type_str = "kObject";
       if (map_->id_to_road.count(r_id)) {
         const auto& r = map_->id_to_road.at(r_id);
@@ -1360,11 +1362,12 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
       UpdateHighlight(vi, picked_idx->layer);
     } else if (picked_idx->layer == LayerType::kSignalLights ||
                picked_idx->layer == LayerType::kSignalSigns) {
-      std::string r_id = network_mesh_.road_signals_mesh.get_road_id(vi);
-      std::string s_id = network_mesh_.road_signals_mesh.get_road_signal_id(vi);
+      std::string s_id =
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi);
+      std::string r_id = GetRoadIdBySignalId(s_id);
       type_str = picked_idx->layer == LayerType::kSignalLights ? "TrafficLight"
                                                                : "TrafficSign";
-      if (map_->id_to_road.count(r_id)) {
+      if (!r_id.empty() && map_->id_to_road.count(r_id)) {
         const auto& r = map_->id_to_road.at(r_id);
         if (r.id_to_signal.count(s_id)) {
           id_str = QString("%1 (%2)")
@@ -1396,7 +1399,7 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
         }
         auto indices = CollectIndicesForCachedElements(
             LayerType::kJunctions, junction_element_items_,
-            junction_mesh_.indices, [&](const SceneCachedElement& element) {
+            junction_mesh_->indices, [&](const SceneCachedElement& element) {
               return element.element_key == ("JG:" + group_id_str);
             });
         SetHighlightIndices(indices, LayerType::kJunctions);
@@ -1435,21 +1438,20 @@ void GeoViewerWidget::SearchObject(LayerType type, const QString& id_str) {
 
   if (type == LayerType::kLanes) {
     target_start_vertex =
-        find_id_str(network_mesh_.lanes_mesh.road_start_indices);
-    target_mesh = &network_mesh_.lanes_mesh;
+        find_id_str(network_mesh_->lanes_mesh.road_start_indices);
+    target_mesh = &network_mesh_->lanes_mesh;
   } else if (type == LayerType::kObjects) {
     target_start_vertex =
-        find_id_str(network_mesh_.road_objects_mesh.road_object_start_indices);
-    target_mesh = &network_mesh_.road_objects_mesh;
+        find_id_str(network_mesh_->road_objects_mesh.road_object_start_indices);
+    target_mesh = &network_mesh_->road_objects_mesh;
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
     target_start_vertex =
-        find_id_str(network_mesh_.road_signals_mesh.road_signal_start_indices);
-    target_mesh = &network_mesh_.road_signals_mesh;
+        find_id_str(network_mesh_->road_signals_mesh.road_signal_start_indices);
+    target_mesh = &network_mesh_->road_signals_mesh;
     if (target_start_vertex != SIZE_MAX) {
-      std::string r_id =
-          network_mesh_.road_signals_mesh.get_road_id(target_start_vertex);
-      if (map_->id_to_road.count(r_id)) {
+      std::string r_id = GetRoadIdBySignalId(target_id);
+      if (!r_id.empty() && map_->id_to_road.count(r_id)) {
         bool is_light = false;
         auto& r = map_->id_to_road.at(r_id);
         if (r.id_to_signal.count(target_id))
@@ -1489,7 +1491,8 @@ void GeoViewerWidget::SearchObject(LayerType type, const QString& id_str) {
 }
 
 void GeoViewerWidget::BuildJunctionPlanes() {
-  junction_mesh_ = odr::Mesh3D();
+  junction_mesh_ = std::make_shared<odr::Mesh3D>();
+  auto& junction_mesh = *junction_mesh_;
   junction_element_items_.clear();
   junction_group_centers_.clear();
   junction_vertex_group_indices_.clear();
@@ -1544,27 +1547,27 @@ void GeoViewerWidget::BuildJunctionPlanes() {
                 return lhs_angle < rhs_angle;
               });
 
-    const uint32_t base = static_cast<uint32_t>(junction_mesh_.vertices.size());
+    const uint32_t base = static_cast<uint32_t>(junction_mesh.vertices.size());
     QVector3D center_renderer =
         LocalToRendererPoint({centroid[0], centroid[1], centroid[2] + 0.05});
-    junction_mesh_.vertices.push_back(
+    junction_mesh.vertices.push_back(
         {center_renderer.x(), center_renderer.y(), center_renderer.z()});
     junction_vertex_group_indices_.push_back(group_index);
     for (const auto& point : points) {
       QVector3D renderer =
           LocalToRendererPoint({point[0], point[1], point[2] + 0.05});
-      junction_mesh_.vertices.push_back(
+      junction_mesh.vertices.push_back(
           {renderer.x(), renderer.y(), renderer.z()});
       junction_vertex_group_indices_.push_back(group_index);
     }
     junction_group_centers_[group.group_id] = LocalToRendererPoint(centroid);
 
     const uint32_t tri_start =
-        static_cast<uint32_t>(junction_mesh_.indices.size() / 3);
+        static_cast<uint32_t>(junction_mesh.indices.size() / 3);
     for (uint32_t i = 1; i <= points.size(); ++i) {
       const uint32_t next = (i == points.size()) ? 1 : (i + 1);
-      junction_mesh_.indices.insert(junction_mesh_.indices.end(),
-                                    {base, base + i, base + next});
+      junction_mesh.indices.insert(junction_mesh.indices.end(),
+                                   {base, base + i, base + next});
     }
 
     SceneCachedElement element;
@@ -1613,40 +1616,43 @@ std::vector<uint32_t> GeoViewerWidget::CollectIndicesForCachedElements(
 }
 
 const odr::Mesh3D* GeoViewerWidget::MeshForLayer(LayerType type) const {
-  if (type == LayerType::kLanes) return &network_mesh_.lanes_mesh;
-  if (type == LayerType::kRoadmarks) return &network_mesh_.roadmarks_mesh;
-  if (type == LayerType::kObjects) return &network_mesh_.road_objects_mesh;
+  if (!network_mesh_) return nullptr;
+  if (type == LayerType::kLanes) return &network_mesh_->lanes_mesh;
+  if (type == LayerType::kRoadmarks) return &network_mesh_->roadmarks_mesh;
+  if (type == LayerType::kObjects) return &network_mesh_->road_objects_mesh;
   if (type == LayerType::kSignalLights || type == LayerType::kSignalSigns) {
-    return &network_mesh_.road_signals_mesh;
+    return &network_mesh_->road_signals_mesh;
   }
-  if (type == LayerType::kJunctions) return &junction_mesh_;
+  if (type == LayerType::kJunctions)
+    return junction_mesh_ ? junction_mesh_.get() : nullptr;
   return nullptr;
 }
 
 bool GeoViewerWidget::IsTrianglePickVisible(LayerType type,
                                             uint32_t triangle_index,
                                             size_t vertex_index) const {
+  if (!network_mesh_) return false;
   std::string road_id;
   std::string element_id;
   std::string group;
   if (type == LayerType::kLanes) {
-    road_id = network_mesh_.lanes_mesh.get_road_id(vertex_index);
+    road_id = network_mesh_->lanes_mesh.get_road_id(vertex_index);
     element_id =
-        std::to_string(network_mesh_.lanes_mesh.get_lanesec_s0(vertex_index));
+        std::to_string(network_mesh_->lanes_mesh.get_lanesec_s0(vertex_index));
     group = "section";
   } else if (type == LayerType::kRoadmarks) {
-    road_id = network_mesh_.roadmarks_mesh.get_road_id(vertex_index);
+    road_id = network_mesh_->roadmarks_mesh.get_road_id(vertex_index);
     group = "section";
   } else if (type == LayerType::kObjects) {
-    road_id = network_mesh_.road_objects_mesh.get_road_id(vertex_index);
+    road_id = network_mesh_->road_objects_mesh.get_road_id(vertex_index);
     element_id =
-        network_mesh_.road_objects_mesh.get_road_object_id(vertex_index);
+        network_mesh_->road_objects_mesh.get_road_object_id(vertex_index);
     group = "objects";
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
-    road_id = network_mesh_.road_signals_mesh.get_road_id(vertex_index);
     element_id =
-        network_mesh_.road_signals_mesh.get_road_signal_id(vertex_index);
+        network_mesh_->road_signals_mesh.get_road_signal_id(vertex_index);
+    road_id = GetRoadIdBySignalId(element_id);
     group = (type == LayerType::kSignalLights) ? "lights" : "signs";
   } else if (type == LayerType::kJunctions) {
     const auto group_id = FindJunctionGroupByTriangle(triangle_index);
@@ -1704,9 +1710,10 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
   if (with_neighbors && type == LayerType::kLanes && routing_graph_) {
     std::vector<uint32_t> n_indices;
     const std::string road_id =
-        network_mesh_.lanes_mesh.get_road_id(reference_vertex);
-    const double s0 = network_mesh_.lanes_mesh.get_lanesec_s0(reference_vertex);
-    const int lane_id = network_mesh_.lanes_mesh.get_lane_id(reference_vertex);
+        network_mesh_->lanes_mesh.get_road_id(reference_vertex);
+    const double s0 =
+        network_mesh_->lanes_mesh.get_lanesec_s0(reference_vertex);
+    const int lane_id = network_mesh_->lanes_mesh.get_lane_id(reference_vertex);
     const odr::LaneKey key(road_id, s0, lane_id);
 
     std::vector<odr::LaneKey> neighbors;
@@ -1724,7 +1731,7 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
         for (const auto& range : el.ranges) {
           const std::size_t base = static_cast<std::size_t>(range.start) * 3;
           for (uint32_t k = 0; k < range.count * 3; ++k) {
-            n_indices.push_back(network_mesh_.lanes_mesh.indices[base + k] +
+            n_indices.push_back(network_mesh_->lanes_mesh.indices[base + k] +
                                 static_cast<uint32_t>(lane_v_offset));
           }
         }
@@ -1773,7 +1780,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
   if (type == TreeNodeType::kRoad) {
     layer_type = LayerType::kLanes;
     auto indices = CollectIndicesForCachedElements(
-        layer_type, lane_element_items_, network_mesh_.lanes_mesh.indices,
+        layer_type, lane_element_items_, network_mesh_->lanes_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.road_key == ("R:" + road_id_str);
         });
@@ -1782,7 +1789,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
   } else if (type == TreeNodeType::kSectionGroup) {
     layer_type = LayerType::kLanes;
     auto indices = CollectIndicesForCachedElements(
-        layer_type, lane_element_items_, network_mesh_.lanes_mesh.indices,
+        layer_type, lane_element_items_, network_mesh_->lanes_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.group_key == ("G:" + road_id_str + ":section");
         });
@@ -1794,7 +1801,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
         "E:" + road_id_str +
         ":lane:" + element_id_str.substr(0, element_id_str.find(':'));
     auto indices = CollectIndicesForCachedElements(
-        layer_type, lane_element_items_, network_mesh_.lanes_mesh.indices,
+        layer_type, lane_element_items_, network_mesh_->lanes_mesh.indices,
         [&](const SceneCachedElement& element) {
           if (type == TreeNodeType::kSection) {
             return element.element_key.rfind(prefix + ":", 0) == 0;
@@ -1808,7 +1815,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
     layer_type = LayerType::kObjects;
     auto indices = CollectIndicesForCachedElements(
         layer_type, object_element_items_,
-        network_mesh_.road_objects_mesh.indices,
+        network_mesh_->road_objects_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.group_key == ("G:" + road_id_str + ":objects");
         });
@@ -1818,7 +1825,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
     layer_type = LayerType::kObjects;
     auto indices = CollectIndicesForCachedElements(
         layer_type, object_element_items_,
-        network_mesh_.road_objects_mesh.indices,
+        network_mesh_->road_objects_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.element_key ==
                  ("E:" + road_id_str + ":objects:" + element_id_str);
@@ -1833,7 +1840,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
         (type == TreeNodeType::kLightGroup) ? "light" : "sign";
     auto indices = CollectIndicesForCachedElements(
         layer_type, signal_element_items_,
-        network_mesh_.road_signals_mesh.indices,
+        network_mesh_->road_signals_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.group_key == ("G:" + road_id_str + ":" + group);
         });
@@ -1845,7 +1852,7 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
     const std::string group = (type == TreeNodeType::kLight) ? "light" : "sign";
     auto indices = CollectIndicesForCachedElements(
         layer_type, signal_element_items_,
-        network_mesh_.road_signals_mesh.indices,
+        network_mesh_->road_signals_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.element_key ==
                  ("E:" + road_id_str + ":" + group + ":" + element_id_str);
@@ -1896,12 +1903,12 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
   const odr::Mesh3D* target_mesh = nullptr;
 
   if (layer_type == LayerType::kLanes)
-    target_mesh = &network_mesh_.lanes_mesh;
+    target_mesh = &network_mesh_->lanes_mesh;
   else if (layer_type == LayerType::kObjects)
-    target_mesh = &network_mesh_.road_objects_mesh;
+    target_mesh = &network_mesh_->road_objects_mesh;
   else if (layer_type == LayerType::kSignalLights ||
            layer_type == LayerType::kSignalSigns)
-    target_mesh = &network_mesh_.road_signals_mesh;
+    target_mesh = &network_mesh_->road_signals_mesh;
 
   if (highlight_mgr && highlight_mgr->bounds_valid) {
     camera_.SetTarget((highlight_mgr->min_bound + highlight_mgr->max_bound) *
@@ -1924,29 +1931,29 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
     if (layer_type == LayerType::kLanes) {
       if (type == TreeNodeType::kRoad) {
         start = target_start_vertex;
-        end = network_mesh_.lanes_mesh.vertices.size();
-        for (size_t i = start; i < network_mesh_.lanes_mesh.vertices.size();
+        end = network_mesh_->lanes_mesh.vertices.size();
+        for (size_t i = start; i < network_mesh_->lanes_mesh.vertices.size();
              i++) {
-          if (network_mesh_.lanes_mesh.get_road_id(i) != road_id_str) {
+          if (network_mesh_->lanes_mesh.get_road_id(i) != road_id_str) {
             end = i;
             break;
           }
         }
       } else {
-        auto interval =
-            network_mesh_.lanes_mesh.get_idx_interval_lane(target_start_vertex);
+        auto interval = network_mesh_->lanes_mesh.get_idx_interval_lane(
+            target_start_vertex);
         start = interval[0];
         end = interval[1];
       }
     } else if (layer_type == LayerType::kObjects) {
       auto interval =
-          network_mesh_.road_objects_mesh.get_idx_interval_road_object(
+          network_mesh_->road_objects_mesh.get_idx_interval_road_object(
               target_start_vertex);
       start = interval[0];
       end = interval[1];
     } else if (layer_type == LayerType::kSignalLights ||
                layer_type == LayerType::kSignalSigns) {
-      auto interval = network_mesh_.road_signals_mesh.get_idx_interval_signal(
+      auto interval = network_mesh_->road_signals_mesh.get_idx_interval_signal(
           target_start_vertex);
       start = interval[0];
       end = interval[1];
@@ -1979,7 +1986,7 @@ void GeoViewerWidget::HighlightRoads(const QStringList& road_ids) {
     ids.insert(road_id.toStdString());
   }
   auto indices = CollectIndicesForCachedElements(
-      LayerType::kLanes, lane_element_items_, network_mesh_.lanes_mesh.indices,
+      LayerType::kLanes, lane_element_items_, network_mesh_->lanes_mesh.indices,
       [&](const SceneCachedElement& element) {
         const std::string prefix = "R:";
         return element.road_key.rfind(prefix, 0) == 0 &&
