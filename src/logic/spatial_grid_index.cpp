@@ -220,6 +220,12 @@ std::vector<RaycastHitPoint> RaycastAllHits(
   // Track already-hit triangles by (layer_tag, triangle_index) to avoid
   // duplicates from overlapping grid boxes.
   std::unordered_set<uint64_t> visited;
+  std::size_t total_encoded_triangles = 0;
+  for (const auto& box : grid_boxes) {
+    total_encoded_triangles += box.triangle_indices.size();
+  }
+  visited.reserve(total_encoded_triangles);
+  hits.reserve(total_encoded_triangles);
 
   for (const auto& box : grid_boxes) {
     if (box.triangle_indices.empty()) continue;

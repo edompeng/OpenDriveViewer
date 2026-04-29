@@ -24,17 +24,24 @@ void AsyncMapLoader::Start(const QString& path) {
   progress_timer_.start();
   emit ProgressTextChanged("Loading map and generating mesh...");
 
-  geoviewer::utility::ThreadPool::Instance().Enqueue([this, path]() {
-    auto result = loader_->Load(path.toStdString());
-    QMetaObject::invokeMethod(this, [this, res = std::move(result)]() mutable {
-      is_running_ = false;
-      StopProgressUpdates();
-      last_result_ = std::move(res);
-      if (last_result_.IsValid()) {
-        emit Finalizing();
-      }
-      emit Finished(last_result_.IsValid());
-    });
+  const QPointer<AsyncMapLoader> self(this);
+  const std::shared_ptr<IMapSceneLoader> loader = loader_;
+  geoviewer::utility::ThreadPool::Instance().Enqueue([self, loader, path]() {
+    auto result = loader->Load(path.toStdString());
+    if (!self) return;
+    QMetaObject::invokeMethod(
+        self,
+        [self, res = std::move(result)]() mutable {
+          if (!self) return;
+          self->is_running_ = false;
+          self->StopProgressUpdates();
+          self->last_result_ = std::move(res);
+          if (self->last_result_.IsValid()) {
+            emit self->Finalizing();
+          }
+          emit self->Finished(self->last_result_.IsValid());
+        },
+        Qt::QueuedConnection);
   });
 }
 

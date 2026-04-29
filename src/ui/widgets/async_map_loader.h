@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include <QTimer>
 #include <atomic>
 #include <memory>
@@ -25,7 +26,7 @@ class AsyncMapLoader : public QObject {
  private:
   void StopProgressUpdates();
 
-  std::unique_ptr<IMapSceneLoader> loader_;
+  std::shared_ptr<IMapSceneLoader> loader_;
   std::atomic<bool> is_running_{false};
   QTimer progress_timer_;
   QElapsedTimer elapsed_;
