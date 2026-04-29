@@ -130,6 +130,19 @@ TEST(CameraControllerTest, OrbitByDeltaClampsPitch) {
   EXPECT_GE(cam.GetPitch(), -89.0f);
 }
 
+TEST(CameraControllerTest, OrbitByDeltaLimitsSingleFrameSpike) {
+  CameraController cam;
+  const float initialYaw = cam.GetYaw();
+  const float initialPitch = cam.GetPitch();
+
+  cam.OrbitByDelta(QPoint(100000, -100000));
+
+  // kMaxPixelsPerEvent=200, sensitivity=0.3 => max +/-60 deg per axis/event.
+  EXPECT_NEAR(cam.GetYaw() - initialYaw, 60.0f, 1e-5f);
+  const float expected_pitch = qBound(-89.0f, initialPitch - 60.0f, 89.0f);
+  EXPECT_NEAR(cam.GetPitch(), expected_pitch, 1e-5f);
+}
+
 // ============================================================
 // CameraController - FitToScene
 // ============================================================
