@@ -737,6 +737,24 @@ void GeoViewerWidget::mouseReleaseEvent(QMouseEvent* ev) {
 
 void GeoViewerWidget::mouseMoveEvent(QMouseEvent* ev) {
   const QPoint currentPos = ev->position().toPoint();
+  Qt::MouseButton active_button = Qt::NoButton;
+  if (ev->buttons() & Qt::RightButton) {
+    active_button = Qt::RightButton;
+  } else if (ev->buttons() & Qt::LeftButton) {
+    active_button = Qt::LeftButton;
+  }
+
+  if (active_button != camera_.PressedButton()) {
+    if (active_button == Qt::NoButton) {
+      camera_.EndDrag();
+      UpdateHoverInfo((int)ev->position().x(), (int)ev->position().y());
+    } else {
+      camera_.BeginDrag(currentPos, active_button);
+    }
+    ev->accept();
+    return;
+  }
+
   const QPoint delta = currentPos - camera_.LastPos();
 
   if (camera_.PressedButton() == Qt::LeftButton) {
@@ -749,7 +767,7 @@ void GeoViewerWidget::mouseMoveEvent(QMouseEvent* ev) {
     UpdateHoverInfo((int)ev->position().x(), (int)ev->position().y());
   }
   // Update last position for next delta
-  camera_.BeginDrag(currentPos, camera_.PressedButton());
+  camera_.BeginDrag(currentPos, active_button);
   ev->accept();
 }
 
