@@ -31,6 +31,7 @@ class MainWindow : public QMainWindow {
                        const QString &id_str, const QString &name_str);
 
   void HandleJumpToCoords();
+  void HandleCopyMapBaseName();
   void ToggleWidgetVisibility(QWidget *widget, bool visible);
   void ChangeLanguage(const QString &locale);
 
@@ -61,6 +62,7 @@ class MainWindow : public QMainWindow {
   QString current_map_path_;
   QString pending_map_path_;
   QAction *measure_action_;
+  QAction *copy_map_name_action_ = nullptr;
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
 

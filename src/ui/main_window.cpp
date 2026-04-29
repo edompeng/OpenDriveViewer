@@ -109,6 +109,23 @@ void MainWindow::HandleJumpToCoords() {
   }
 }
 
+void MainWindow::HandleCopyMapBaseName() {
+  if (current_map_path_.isEmpty()) {
+    status_->showMessage(tr("No map loaded."));
+    return;
+  }
+
+  const QFileInfo file_info(current_map_path_);
+  const QString base_name = file_info.completeBaseName();
+  if (base_name.isEmpty()) {
+    status_->showMessage(tr("Map filename is empty."));
+    return;
+  }
+
+  QApplication::clipboard()->setText(base_name);
+  status_->showMessage(tr("Copied map name: %1").arg(base_name));
+}
+
 void MainWindow::ChangeLanguage(const QString& locale) {
   // Explicitly include .qm extension for better robustness in resource loading
   QString path = ":/i18n/geoviewer_" + locale + ".qm";
@@ -146,6 +163,11 @@ void MainWindow::RetranslateUi() {
   lang_btn_->setText(tr("Language"));
   measure_action_->setText(tr("Measure"));
   measure_action_->setToolTip(tr("Measure distance between points"));
+  if (copy_map_name_action_) {
+    copy_map_name_action_->setText(tr("Copy Map Name"));
+    copy_map_name_action_->setToolTip(
+        tr("Copy current map file name without extension"));
+  }
   UpdateWindowTitle();
 
   if (coord_mode_ == CoordinateMode::kWGS84) {
@@ -271,6 +293,11 @@ void MainWindow::SetupToolbar() {
 
   measure_action_ = toolbar->addAction(tr("Measure"));
   measure_action_->setCheckable(true);
+  copy_map_name_action_ = toolbar->addAction(tr("Copy Map Name"));
+  copy_map_name_action_->setToolTip(
+      tr("Copy current map file name without extension"));
+  connect(copy_map_name_action_, &QAction::triggered, this,
+          &MainWindow::HandleCopyMapBaseName);
   toolbar->addWidget(BuildCoordinateTools());
 }
 

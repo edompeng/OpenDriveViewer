@@ -789,6 +789,53 @@ void GeoViewerWidget::wheelEvent(QWheelEvent* ev) {
   ev->accept();
 }
 
+bool GeoViewerWidget::event(QEvent* ev) {
+  if (ev->type() == QEvent::NativeGesture) {
+    auto* gesture_ev = static_cast<QNativeGestureEvent*>(ev);
+    switch (gesture_ev->gestureType()) {
+      case Qt::PanNativeGesture: {
+        const QPointF delta = gesture_ev->delta();
+        const QPoint delta_pixels(static_cast<int>(delta.x()),
+                                  static_cast<int>(delta.y()));
+        if (gesture_ev->modifiers().testFlag(Qt::ShiftModifier)) {
+          camera_.PanByDelta(delta_pixels);
+        } else {
+          camera_.OrbitByDelta(delta_pixels);
+        }
+        update();
+        ev->accept();
+        return true;
+      }
+      case Qt::RotateNativeGesture: {
+        // Native rotate value is an incremental degree delta.
+        const int dx = static_cast<int>(gesture_ev->value() / 0.3f);
+        camera_.OrbitByDelta(QPoint(dx, 0));
+        update();
+        ev->accept();
+        return true;
+      }
+      case Qt::ZoomNativeGesture: {
+        const float wheel_delta = static_cast<float>(gesture_ev->value() * 8.0);
+        const float max_dist = qMax(camera_.MeshRadius() * 100.0f, 50000000.0f);
+
+        QVector3D world_pos;
+        std::optional<PickResult> picked_idx;
+        const QPointF pos = gesture_ev->position();
+        const bool has_pick =
+            GetWorldPosAt(static_cast<int>(pos.x()), static_cast<int>(pos.y()),
+                          world_pos, picked_idx);
+        camera_.ZoomToward(wheel_delta, max_dist, world_pos, has_pick);
+        update();
+        ev->accept();
+        return true;
+      }
+      default:
+        break;
+    }
+  }
+  return QOpenGLWidget::event(ev);
+}
+
 void GeoViewerWidget::focusOutEvent(QFocusEvent* event) {
   camera_.EndDrag();
   QWidget::focusOutEvent(event);

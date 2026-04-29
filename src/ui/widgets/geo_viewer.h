@@ -12,6 +12,7 @@
 #include <QMatrix4x4>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QNativeGestureEvent>
 #include <QOpenGLWidget>
 #include <QString>
 #include <QVector3D>
@@ -166,6 +167,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void wheelEvent(QWheelEvent* ev) override;
   void contextMenuEvent(QContextMenuEvent* ev) override;
   void focusOutEvent(QFocusEvent* event) override;
+  bool event(QEvent* ev) override;
 
  public slots:
   void SearchObject(LayerType type, const QString& id);
