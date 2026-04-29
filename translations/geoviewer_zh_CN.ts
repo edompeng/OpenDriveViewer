@@ -103,37 +103,37 @@
 <context>
     <name>GeoViewerWidget</name>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1178"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="96"/>
         <source>📋 Copy coordinate: %1</source>
         <translation>📋 复制坐标: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1182"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="100"/>
         <source>🏷️ Copy info: %1</source>
         <translation>🏷️ 复制信息: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1183"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="101"/>
         <source>📋 Copy all</source>
         <translation>📋 复制全部</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1186"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="104"/>
         <source>👁️ Hide current object</source>
         <translation>👁️ 隐藏当前物体</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1187"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="105"/>
         <source>⭐ Add to favorites</source>
         <translation>⭐ 添加到收藏</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1193"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="111"/>
         <source>🚩 Set as routing start</source>
         <translation>🚩 设置为起始routing</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer.cpp" line="1194"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="112"/>
         <source>🏁 Set as routing end</source>
         <translation>🏁 设置为终点routing</translation>
     </message>

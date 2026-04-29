@@ -1,6 +1,12 @@
 
 add_library(GeoViewerUIWidgets ${LIB_TYPE}
   geo_viewer.cpp geo_viewer.h
+  geo_viewer_context_menu.cpp
+  geo_viewer_interaction.cpp
+  geo_viewer_highlight.cpp
+  geo_viewer_inspection.cpp
+  geo_viewer_navigation.cpp
+  geo_viewer_overlay.cpp
   geo_viewer_scene.cpp
   floating_panel_widget.cpp floating_panel_widget.h
   layer_control_widget.cpp layer_control_widget.h

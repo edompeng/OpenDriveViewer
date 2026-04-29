@@ -6,6 +6,8 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "Junction.h"
@@ -222,7 +224,7 @@ class DisjointSet {
   }
 
  private:
-  std::map<std::string, std::string> parent_;
+  std::unordered_map<std::string, std::string> parent_;
 };
 
 }  // namespace
@@ -347,8 +349,10 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
     const odr::OpenDriveMap& map, const JunctionClusterOptions& options) {
   JunctionClusterResult result;
 
-  std::map<std::string, JunctionClusterMember> member_by_id;
+  std::unordered_map<std::string, JunctionClusterMember> member_by_id;
+  member_by_id.reserve(map.id_to_junction.size());
   std::vector<std::string> ordered_junction_ids;
+  ordered_junction_ids.reserve(map.id_to_junction.size());
 
   for (const auto& id_and_junction : map.id_to_junction) {
     const auto& junction = id_and_junction.second;
@@ -385,6 +389,7 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
     member_by_id.emplace(junction.id, std::move(member));
   }
 
+  result.junctions.reserve(member_by_id.size());
   for (const auto& id_and_member : member_by_id) {
     result.junctions.push_back(id_and_member.second);
   }
@@ -409,7 +414,8 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
     }
   }
 
-  std::map<std::string, JunctionClusterGroup> groups_by_root;
+  std::unordered_map<std::string, JunctionClusterGroup> groups_by_root;
+  groups_by_root.reserve(result.junctions.size());
   for (const auto& member : result.junctions) {
     const std::string root = disjoint_set.Find(member.junction_id);
     auto& group = groups_by_root[root];
@@ -431,9 +437,10 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
     auto& group = root_and_group.second;
     std::sort(group.junction_ids.begin(), group.junction_ids.end());
 
-    const std::set<std::string> group_junction_ids(group.junction_ids.begin(),
-                                                   group.junction_ids.end());
-    std::map<std::string, JunctionArmInfo> boundary_arms_by_road;
+    std::unordered_set<std::string> group_junction_ids(
+        group.junction_ids.begin(), group.junction_ids.end());
+    std::unordered_map<std::string, JunctionArmInfo> boundary_arms_by_road;
+    boundary_arms_by_road.reserve(group.boundary_arms.size());
     for (const auto& arm : group.boundary_arms) {
       boundary_arms_by_road[arm.road_id] = arm;
     }

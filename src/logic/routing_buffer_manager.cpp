@@ -66,10 +66,28 @@ void RoutingBufferManager::BuildBuffers(
 
   constexpr float kRouteWidth = 1.0f;
   constexpr float kHalfWidth = kRouteWidth * 0.5f;
+  std::size_t total_samples = 0;
+  for (const auto& key : route.path) {
+    const auto road_it = map->id_to_road.find(key.road_id);
+    if (road_it == map->id_to_road.end()) continue;
+    const auto& road = road_it->second;
+    const auto& section = road.get_lanesection(key.lanesection_s0);
+    if (!section.id_to_lane.count(key.lane_id)) continue;
+    const double s_start = section.s0;
+    const double s_end = road.get_lanesection_end(key.lanesection_s0);
+    const int num_samples =
+        std::max(2, static_cast<int>((s_end - s_start) / 1.0));
+    total_samples += static_cast<std::size_t>(num_samples) + 1;
+  }
+  vertices.reserve(total_samples * 6);
+  if (total_samples > route.path.size()) {
+    indices.reserve((total_samples - route.path.size()) * 6);
+  }
 
   for (const auto& key : route.path) {
-    if (!map->id_to_road.count(key.road_id)) continue;
-    const auto& road = map->id_to_road.at(key.road_id);
+    const auto road_it = map->id_to_road.find(key.road_id);
+    if (road_it == map->id_to_road.end()) continue;
+    const auto& road = road_it->second;
     const auto& section = road.get_lanesection(key.lanesection_s0);
     if (!section.id_to_lane.count(key.lane_id)) continue;
 
