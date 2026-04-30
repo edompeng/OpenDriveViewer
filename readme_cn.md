@@ -1,6 +1,6 @@
 # OpenDriveViewer (GeoViewer)
 
-一个高性能、跨平台的 3D 地理空间查看器，专为 OpenDRIVE 和 OpenSCENARIO 地图数据设计。
+一个高性能、跨平台的 3D 地理空间查看器，专为 OpenDRIVE 地图数据设计。
 
 ## 功能
 
@@ -8,10 +8,9 @@
 - **交互式地图组件**: 支持车道几何、交通信号、道路标志和包围盒。
 - **射线检测拾取与高亮**: 高精度鼠标交互，支持精确拾取单个地图几何元素（车道、物体、逻辑端点）。
 - **测量工具**: 内置交互式 3D 长度和距离测量工具，与 UI 完全解耦。
-- **跨平台**: 在 Windows、macOS 和 Linux 上经过严格测试。
-- **稳健的软件架构**: 遵循 SOLID 原则和现代 C++17 设计模式，具有模型-视图分离特性。
-- **双构建系统**: 原生支持 CMake 和 Bazel，根据项目需求灵活选择。
+- **数据便捷访问**: 在所有 UI 面板支持丰富的右键上下文菜单，方便快速复制坐标与元素信息。
 - **国际化 (i18n)**: 完全支持动态语言切换（简体中文、英文）。
+- **跨平台**: 在 Windows、macOS 和 Linux 上经过严格测试。
 
 ---
 
@@ -23,13 +22,14 @@
 2. **Qt6** (Widgets, Gui, OpenGL, OpenGLWidgets, Concurrent) _推荐 Qt 6.5+_
 3. **PROJ** (地图投影库)
 4. **OpenGL** 环境
-5. **Catch2** (用于单元测试)
+5. **GoogleTest** (用于单元测试，通过 Bazel/CMake 自动获取)
+6. **gperftools** (可选，用于 tcmalloc 内存优化)
 
 ---
 
 ## 🚀 构建与测试
 
-本系统同时支持 **CMake** 和 **Bazel**。
+本系统同时支持 **CMake** 和 **Bazel**，跨三大主流平台（macOS, Linux, Windows）。
 
 ### 方式 1: Bazel (推荐)
 
@@ -42,6 +42,18 @@
 ```bash
 build --action_env=QT6_ROOT=/Users/you/Qt/6.9.1/macos
 build --action_env=PROJ_ROOT=/opt/homebrew/opt/proj
+```
+
+**Linux (System Packages)**
+```bash
+build --action_env=QT6_ROOT=/usr
+build --action_env=PROJ_ROOT=/usr
+```
+
+**Windows (MSVC)**
+```bash
+build --action_env=QT6_ROOT=C:/Qt/6.9.1/msvc2022_64
+build --action_env=PROJ_ROOT=C:/OSGeo4W
 ```
 
 #### 2. 构建与运行
@@ -63,11 +75,27 @@ bazel run //bazel:update_translations
 CMake 构建提供原生 IDE 集成（CLion, Visual Studio）和简单的 `make` / `ninja` 构建。
 
 #### 1. 配置
-**macOS & Linux**
+你可以通过 CMake 工具链或前缀路径参数进行配置：
+
+**macOS**
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_PREFIX_PATH="/Users/you/Qt/6.9.1/macos;/opt/homebrew/opt/proj" -DCMAKE_BUILD_TYPE=Release
+```
+
+**Linux**
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_PREFIX_PATH="/path/to/Qt6;/path/to/proj" -DCMAKE_BUILD_TYPE=Release
 ```
+
+**Windows (MSVC)**
+```cmd
+mkdir build && cd build
+cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.9.1\msvc2022_64;C:\OSGeo4W" -A x64
+```
+
+> **注意**: CMake 构建时会自动触发 `lupdate` 更新 `.ts` 文件。对于 Windows 的 `vcpkg` 用户，可以在配置时指定 toolchain。
 
 #### 2. 构建与运行
 ```bash
@@ -77,8 +105,6 @@ cmake --build . --config Release
 # 运行测试
 ctest --build-config Release --output-on-failure
 ```
-
-> **注意**: CMake 构建时会自动触发 `lupdate` 更新 `.ts` 文件。
 
 ---
 
@@ -90,15 +116,16 @@ ctest --build-config Release --output-on-failure
 - **PROJ**: 地图投影与坐标转换库，采用 [MIT](https://proj.org/about.html#license) 开源协议。
 - **libOpenDRIVE**: OpenDRIVE 地图格式解析库（包含在 `third_party` 中），采用 [MIT](https://github.com/DLR-TS/libOpenDRIVE) 开源协议。
 - **pugixml**: 轻量级 C++ XML 处理库（包含在 `third_party` 中），采用 [MIT](https://pugixml.org/) 开源协议。
-- **Catch2**: 现代 C++ 测试框架（包含在 `third_party` 中），采用 [BSL-1.0](https://github.com/catchorg/Catch2) 开源协议。
+- **GoogleTest**: Google C++ 测试框架，采用 [BSD-3-Clause](https://github.com/google/googletest) 开源协议。
+- **gperftools**: 快速的多线程 malloc() 和性能分析工具，采用 [BSD-3-Clause](https://github.com/gperftools/gperftools) 开源协议。
 - **OpenGL**: 用于高性能 3D 渲染。
 
 ## 📦 贡献指南
 
 所有贡献必须遵循我们的标准：
-1. **Google C++ 代码规范**: 使用 `.clang-format` 进行格式化。
-2. **SOLID 原则**: 新架构和重构必须强调解耦。
-3. **测试要求**: 所有可测试的业务逻辑必须包含基于 Catch2 的单元测试。
+1. **Google C++ 代码规范**: 使用 `.clang-format` 进行代码格式化。
+2. **SOLID 原则**: 新架构和重构必须强调解耦（如接口分离、策略/外观模式等）。
+3. **测试要求**: 所有可测试的业务逻辑必须包含基于 GoogleTest 的单元测试，UI 依赖代码应抽象为接口以支持解耦的状态测试。
 
 ## 许可证
 
