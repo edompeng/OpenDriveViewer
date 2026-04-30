@@ -18,5 +18,6 @@ fi
 
 # Run lupdate on the project root
 # Scan src/app and src/utility for tr() strings
+cd "${BUILD_WORKSPACE_DIRECTORY:-.}" || exit 1
 $LUPDATE src -ts translations/geoviewer_zh_CN.ts translations/geoviewer_en_US.ts
 echo "Translations updated in translations/ folder."

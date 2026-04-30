@@ -1,6 +1,8 @@
 #include "src/ui/widgets/routing_widget.h"
 #include <QDebug>
 #include <QMessageBox>
+#include <QApplication>
+#include <QClipboard>
 #include <vector>
 #include "src/logic/input_parsing.h"
 #include "src/logic/routing_logic.h"
@@ -199,17 +201,24 @@ void RoutingWidget::HandleHistoryContextMenu(const QPoint& pos) {
   auto* item = history_tree_->itemAt(pos);
   if (!item) return;
 
-  // Only allow deletion of the root item (the route itself)
-  if (item->parent() != nullptr) item = item->parent();
+  auto* root_item = item;
+  if (root_item->parent() != nullptr) root_item = root_item->parent();
 
   QMenu menu(this);
+  auto* copy_info = menu.addAction(tr("📋 Copy item info"));
   auto* remove_act = menu.addAction(tr("❌ Delete routing"));
   auto* selected = menu.exec(history_tree_->mapToGlobal(pos));
 
   if (selected == remove_act) {
-    int route_id = item->data(0, Qt::UserRole).toInt();
+    int route_id = root_item->data(0, Qt::UserRole).toInt();
     viewer_->RemoveRoutingPath(route_id);
-    delete item;
+    delete root_item;
+  } else if (selected == copy_info) {
+    QString info = item->text(0);
+    if (!item->data(0, Qt::UserRole + 1).toString().isEmpty()) {
+       info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
+    }
+    QApplication::clipboard()->setText(info);
   }
 }
 

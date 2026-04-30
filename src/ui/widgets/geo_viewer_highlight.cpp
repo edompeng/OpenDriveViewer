@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "src/core/coordinate_util.h"
+#include "src/core/viewer_text_util.h"
 #include "src/logic/scene_index_builder.h"
 
 void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
@@ -212,9 +213,13 @@ bool GeoViewerWidget::IsTrianglePickVisible(LayerType type,
   std::string group;
   if (type == LayerType::kLanes) {
     road_id = network_mesh_->lanes_mesh.get_road_id(vertex_index);
-    element_id =
-        std::to_string(network_mesh_->lanes_mesh.get_lanesec_s0(vertex_index));
+    double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vertex_index);
+    element_id = FormatSectionValue(s0);
     group = "section";
+    if (!IsElementActuallyVisible(road_id, group, element_id)) return false;
+    int lane_id = network_mesh_->lanes_mesh.get_lane_id(vertex_index);
+    std::string lane_full_id = "E:" + road_id + ":lane:" + element_id + ":" + std::to_string(lane_id);
+    return hidden_elements_.count(lane_full_id) == 0;
   } else if (type == LayerType::kRoadmarks) {
     road_id = network_mesh_->roadmarks_mesh.get_road_id(vertex_index);
     group = "section";

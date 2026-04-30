@@ -6,6 +6,8 @@
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QApplication>
+#include <QClipboard>
 #include "src/core/thread_pool.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
@@ -649,6 +651,8 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   QAction* toggle_visible = menu.addAction(
       item->checkState(0) == Qt::Checked ? tr("Hide") : tr("Show"));
 
+  QAction* copy_info = menu.addAction(tr("📋 Copy item info"));
+
   TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
   QAction* goTo = nullptr;
 
@@ -674,6 +678,12 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   if (selected == toggle_visible) {
     item->setCheckState(
         0, item->checkState(0) == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+  } else if (selected == copy_info) {
+    QString info = item->text(0);
+    if (!item->data(0, Qt::UserRole + 1).toString().isEmpty()) {
+       info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
+    }
+    QApplication::clipboard()->setText(info);
   } else if (selected == goTo) {
     QString road_id = GetRoadId(item);
     QString element_id = item->data(0, Qt::UserRole + 1).toString();

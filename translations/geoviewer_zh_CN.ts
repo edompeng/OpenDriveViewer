@@ -4,79 +4,84 @@
 <context>
     <name>CoordinatePointsWidget</name>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="32"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="136"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="34"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="138"/>
         <source>&lt;b&gt;Coordinate Points&lt;/b&gt;</source>
         <translation>&lt;b&gt;坐标点管理&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="54"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="138"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="56"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="140"/>
         <source>(lon,lat[,alt]); ...:</source>
         <translation>(经度,纬度[,高度]); ...:</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="60"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="140"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="62"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="142"/>
         <source>(lon,lat) or (lon,lat,alt) semicolon separated</source>
         <translation>(经度,纬度) 或 (经度,纬度,高度) 用分号分隔</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="68"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="146"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="70"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="148"/>
         <source>Add</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="75"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="147"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="77"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="149"/>
         <source>Clear All</source>
         <translation>清空所有</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="93"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="148"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="95"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="150"/>
         <source>Added points:</source>
         <translation>已添加的点:</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="142"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="144"/>
         <source>(x,y[,z]); ...:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="144"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="146"/>
         <source>(x,y) or (x,y,z) semicolon separated</source>
         <translation>(x,y) 或 (x,y,z)， 分号分隔 </translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="209"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="210"/>
+        <source>📋 Copy item info</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="212"/>
         <source>👁 Hide point</source>
         <translation>👁 隐藏此点</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="209"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="212"/>
         <source>👁 Show point</source>
         <translation>👁 显示此点</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="210"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="213"/>
         <source>🎨 Change color</source>
         <translation>🎨 修改颜色</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="211"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="214"/>
         <source>🎯 Jump to point</source>
         <translation>🎯 跳转到此点</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="213"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="216"/>
         <source>❌ Delete point</source>
         <translation>❌ 删除此点</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="225"/>
-        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="281"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="236"/>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="292"/>
         <source>Select point color</source>
         <translation>选择点颜色</translation>
     </message>
@@ -84,18 +89,23 @@
 <context>
     <name>FavoritesWidget</name>
     <message>
-        <location filename="../src/ui/widgets/favorites_widget.cpp" line="19"/>
-        <location filename="../src/ui/widgets/favorites_widget.cpp" line="70"/>
+        <location filename="../src/ui/widgets/favorites_widget.cpp" line="21"/>
+        <location filename="../src/ui/widgets/favorites_widget.cpp" line="72"/>
         <source>&lt;b&gt;Favorites&lt;/b&gt;</source>
         <translation>&lt;b&gt;收藏夹&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/favorites_widget.cpp" line="119"/>
+        <location filename="../src/ui/widgets/favorites_widget.cpp" line="121"/>
+        <source>📋 Copy item info</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/ui/widgets/favorites_widget.cpp" line="122"/>
         <source>🎯 Jump to object</source>
         <translation>🎯 跳转到物体</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/favorites_widget.cpp" line="120"/>
+        <location filename="../src/ui/widgets/favorites_widget.cpp" line="123"/>
         <source>❌ Remove from favorites</source>
         <translation>❌ 从收藏移除</translation>
     </message>
@@ -103,37 +113,37 @@
 <context>
     <name>GeoViewerWidget</name>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="96"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="98"/>
         <source>📋 Copy coordinate: %1</source>
         <translation>📋 复制坐标: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="100"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="102"/>
         <source>🏷️ Copy info: %1</source>
         <translation>🏷️ 复制信息: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="101"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="103"/>
         <source>📋 Copy all</source>
         <translation>📋 复制全部</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="104"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="106"/>
         <source>👁️ Hide current object</source>
         <translation>👁️ 隐藏当前物体</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="105"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="107"/>
         <source>⭐ Add to favorites</source>
         <translation>⭐ 添加到收藏</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="111"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="113"/>
         <source>🚩 Set as routing start</source>
         <translation>🚩 设置为起始routing</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="112"/>
+        <location filename="../src/ui/widgets/geo_viewer_context_menu.cpp" line="114"/>
         <source>🏁 Set as routing end</source>
         <translation>🏁 设置为终点routing</translation>
     </message>
@@ -141,79 +151,84 @@
 <context>
     <name>LayerControlWidget</name>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="43"/>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="144"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="45"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="146"/>
         <source>&lt;b&gt;Layer Control&lt;/b&gt;</source>
         <translation>&lt;b&gt;图层控制&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="65"/>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="145"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="67"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="147"/>
         <source>Search ID...</source>
         <translation>搜索 ID...</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="179"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="181"/>
         <source>Junctions (%1 groups / %2 junctions)</source>
         <translation>路口 (%1 组 / %2 路口)</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="211"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="213"/>
         <source>Road %1</source>
         <translation>道路 %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="233"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="235"/>
         <source>Junction %1</source>
         <translation>路口 %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="256"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="258"/>
         <source>Reference Line</source>
         <translation>参考线</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="299"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="301"/>
         <source>Objects</source>
         <translation>物体</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="301"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="303"/>
         <source>Signal Lights</source>
         <translation>信号灯</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="303"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="305"/>
         <source>Signal Signs</source>
         <translation>信号标志</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="650"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="652"/>
         <source>Hide</source>
         <translation>隐藏</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="650"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="652"/>
         <source>Show</source>
         <translation>显示</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="660"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="654"/>
+        <source>📋 Copy item info</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="664"/>
         <source>Jump to element</source>
         <translation>跳转到元素位置</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="663"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="667"/>
         <source>⭐ Add to favorites</source>
         <translation>⭐ 添加到收藏</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="669"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="673"/>
         <source>🚩 Set as routing start</source>
         <translation>🚩 设置为起始routing</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="670"/>
+        <location filename="../src/ui/widgets/layer_control_widget.cpp" line="674"/>
         <source>🏁 Set as routing end</source>
         <translation>🏁 设置为终点routing</translation>
     </message>
@@ -441,49 +456,54 @@
 <context>
     <name>RoutingWidget</name>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="23"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="123"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="25"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="125"/>
         <source>&lt;b&gt;Routing&lt;/b&gt;</source>
         <translation>&lt;b&gt;路径规划&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="45"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="125"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="47"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="127"/>
         <source>Start: road/section/lane</source>
         <translation>起点: road/section/lane</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="49"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="124"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="51"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="126"/>
         <source>Start (road/section/lane):</source>
         <translation>起点 (road/section/lane):</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="54"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="127"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="56"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="129"/>
         <source>End: road/section/lane</source>
         <translation>终点: road/section/lane</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="58"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="126"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="60"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="128"/>
         <source>End (road/section/lane):</source>
         <translation>终点 (road/section/lane):</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="62"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="128"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="64"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="130"/>
         <source>Calculate</source>
         <translation>计算路径</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="70"/>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="129"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="72"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="131"/>
         <source>History:</source>
         <translation>历史记录:</translation>
     </message>
     <message>
-        <location filename="../src/ui/widgets/routing_widget.cpp" line="206"/>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="208"/>
+        <source>📋 Copy item info</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/ui/widgets/routing_widget.cpp" line="209"/>
         <source>❌ Delete routing</source>
         <translation>❌ 删除路径</translation>
     </message>

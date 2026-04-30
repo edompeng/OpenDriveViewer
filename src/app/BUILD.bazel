@@ -16,6 +16,6 @@ cc_binary(
             "/SUBSYSTEM:WINDOWS",
             "/ENTRY:mainCRTStartup",
         ],
-        "//conditions:default": [],
+        "//conditions:default": ["-L/opt/homebrew/lib", "-ltcmalloc"],
     }),
 )

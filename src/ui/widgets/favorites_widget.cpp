@@ -1,5 +1,7 @@
 #include "src/ui/widgets/favorites_widget.h"
 #include <QDebug>
+#include <QApplication>
+#include <QClipboard>
 #include "src/core/viewer_text_util.h"
 
 FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)
@@ -116,6 +118,7 @@ void FavoritesWidget::HandleCustomContextMenu(const QPoint& pos) {
   if (!favorite) return;
 
   QMenu menu(this);
+  QAction* copy_info = menu.addAction(tr("📋 Copy item info"));
   QAction* jumpTo = menu.addAction(tr("🎯 Jump to object"));
   QAction* removeFav = menu.addAction(tr("❌ Remove from favorites"));
 
@@ -124,6 +127,8 @@ void FavoritesWidget::HandleCustomContextMenu(const QPoint& pos) {
     viewer_->CenterOnElement(QString::fromStdString(favorite->road_id),
                              favorite->type,
                              QString::fromStdString(favorite->element_id));
+  } else if (selected == copy_info) {
+    QApplication::clipboard()->setText(item->text());
   } else if (selected == removeFav) {
     favorites_.RemoveAt(index);
     delete list_->takeItem(list_->row(item));

@@ -7,6 +7,8 @@
 #include <QMenu>
 #include <QShowEvent>
 #include <QToolButton>
+#include <QApplication>
+#include <QClipboard>
 
 #include "src/logic/input_parsing.h"
 
@@ -205,6 +207,7 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
   auto snap = viewer_->GetUserPointSnapshot(index);
 
   QMenu menu(this);
+  QAction* copy_info = menu.addAction(tr("📋 Copy item info"));
   QAction* toggle_vis =
       menu.addAction(snap.visible ? tr("👁 Hide point") : tr("👁 Show point"));
   QAction* change_color = menu.addAction(tr("🎨 Change color"));
@@ -215,7 +218,15 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
   QAction* selected = menu.exec(points_list_->viewport()->mapToGlobal(pos));
   if (!selected) return;
 
-  if (selected == toggle_vis) {
+  if (selected == copy_info) {
+    QString coordText;
+    if (coord_mode_ == CoordinateMode::kWGS84) {
+      coordText = QString("%1, %2, %3").arg(snap.lon, 0, 'f', 7).arg(snap.lat, 0, 'f', 7).arg(snap.alt, 0, 'f', 2);
+    } else {
+      coordText = QString("%1, %2, %3").arg(snap.x, 0, 'f', 3).arg(snap.y, 0, 'f', 3).arg(snap.z, 0, 'f', 3);
+    }
+    QApplication::clipboard()->setText(coordText);
+  } else if (selected == toggle_vis) {
     viewer_->SetUserPointVisible(index, !snap.visible);
     RefreshPointsList();
   } else if (selected == change_color) {
