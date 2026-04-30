@@ -5,18 +5,20 @@ cc_binary(
     name = "OpenDriveViewer",
     srcs = ["main.cpp"],
     copts = QT_COPTS,
-    deps = [
-        "//bazel:qt6",
-        "//src/core:core",
-        "//src/ui:main_window",
-        "//src/ui/widgets",
-        "//bazel:tcmalloc",
-    ],
     linkopts = select({
         "@platforms//os:windows": [
             "/SUBSYSTEM:WINDOWS",
             "/ENTRY:mainCRTStartup",
         ],
         "//conditions:default": [],
+    }),
+    deps = [
+        "//bazel:qt6",
+        "//src/core",
+        "//src/ui:main_window",
+        "//src/ui/widgets",
+    ] + select({
+        "@platforms//os:macos": [],
+        "//conditions:default": ["//bazel:tcmalloc"],
     }),
 )
