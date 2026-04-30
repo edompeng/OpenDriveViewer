@@ -83,6 +83,35 @@ cp "${PROJ_ROOT}/share/proj/proj.ini" "${APP_BUNDLE}/Contents/Resources/proj/"
 # Other small metadata/jsons
 find "${PROJ_ROOT}/share/proj/" -maxdepth 1 -type f -not -name "*.tif" -not -name "*.tiff" -not -name "*.gtiff" -exec cp {} "${APP_BUNDLE}/Contents/Resources/proj/" \;
 
+# --- Handle tcmalloc ---
+echo "Bundling tcmalloc..."
+TCMALLOC_LIB_ORIGINAL=$(otool -L "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}" | grep libtcmalloc | awk '{print $1}' | xargs)
+
+if [ -n "$TCMALLOC_LIB_ORIGINAL" ]; then
+    echo "Found libtcmalloc linkage at: $TCMALLOC_LIB_ORIGINAL"
+    TCMALLOC_LIB_NAME=$(basename "$TCMALLOC_LIB_ORIGINAL")
+    
+    # Resolve real path, as Homebrew often uses symlinks
+    if [ -f "$TCMALLOC_LIB_ORIGINAL" ]; then
+        TCMALLOC_LIB_REAL_PATH=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$TCMALLOC_LIB_ORIGINAL")
+    else
+        # Try to find it in /opt/homebrew/lib
+        TCMALLOC_LIB_REAL_PATH=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "/opt/homebrew/lib/${TCMALLOC_LIB_NAME}")
+    fi
+    
+    if [ -f "$TCMALLOC_LIB_REAL_PATH" ]; then
+        cp "${TCMALLOC_LIB_REAL_PATH}" "${APP_BUNDLE}/Contents/Frameworks/${TCMALLOC_LIB_NAME}"
+        chmod +w "${APP_BUNDLE}/Contents/Frameworks/${TCMALLOC_LIB_NAME}"
+        
+        install_name_tool -id "@executable_path/../Frameworks/${TCMALLOC_LIB_NAME}" "${APP_BUNDLE}/Contents/Frameworks/${TCMALLOC_LIB_NAME}"
+        install_name_tool -change "${TCMALLOC_LIB_ORIGINAL}" "@executable_path/../Frameworks/${TCMALLOC_LIB_NAME}" "${APP_BUNDLE}/Contents/MacOS/${BINARY_NAME}"
+    else
+        echo "Warning: Could not find actual tcmalloc library to copy."
+    fi
+else
+    echo "Warning: libtcmalloc linkage not found in binary."
+fi
+
 # --- Metadata ---
 echo "Updating Info.plist..."
 cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF

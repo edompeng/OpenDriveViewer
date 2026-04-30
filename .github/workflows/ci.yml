@@ -50,12 +50,12 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb patchelf libproj-dev
+          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb patchelf libproj-dev libgoogle-perftools-dev
 
       - name: Install System Dependencies (macOS)
         if: matrix.os == 'macos-14'
         run: |
-          brew install proj
+          brew install proj gperftools
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -131,8 +131,9 @@ jobs:
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
             # Fix path for Windows
+            TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
             export BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
-            bazel build -c opt --copt=-Z7 --linkopt=-DEBUG //... $BAZEL_OPTS --config=windows \
+            bazel build -c opt --copt=-Z7 --linkopt=-DEBUG --linkopt="${TCMALLOC_LIB}" //... $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
@@ -151,7 +152,9 @@ jobs:
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=windows \
+            TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
+            export PATH="${{ env.PROJ_ROOT }}/bin:$PATH"
+            bazel test -c opt --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
@@ -233,9 +236,9 @@ jobs:
         if: matrix.os != 'windows-2022'
         run: |
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb libproj-dev
+            sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb libproj-dev libgoogle-perftools-dev
           else
-            brew install proj ninja
+            brew install proj ninja gperftools
           fi
 
       - name: Cache vcpkg tool

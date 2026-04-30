@@ -31,3 +31,8 @@ alias(
     name = "proj",
     actual = "@proj_config//:proj",
 )
+
+alias(
+    name = "tcmalloc",
+    actual = "@tcmalloc_config//:tcmalloc",
+)
