@@ -42,7 +42,7 @@
     <message>
         <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="144"/>
         <source>(x,y[,z]); ...:</source>
-        <translation type="unfinished"></translation>
+        <translation>(x,y[,z]); ...:</translation>
     </message>
     <message>
         <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="146"/>
@@ -52,7 +52,7 @@
     <message>
         <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="210"/>
         <source>📋 Copy item info</source>
-        <translation type="unfinished"></translation>
+        <translation>📋 复制项目信息</translation>
     </message>
     <message>
         <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="212"/>
@@ -97,7 +97,7 @@
     <message>
         <location filename="../src/ui/widgets/favorites_widget.cpp" line="121"/>
         <source>📋 Copy item info</source>
-        <translation type="unfinished"></translation>
+        <translation>📋 复制项目信息</translation>
     </message>
     <message>
         <location filename="../src/ui/widgets/favorites_widget.cpp" line="122"/>
@@ -210,7 +210,7 @@
     <message>
         <location filename="../src/ui/widgets/layer_control_widget.cpp" line="654"/>
         <source>📋 Copy item info</source>
-        <translation type="unfinished"></translation>
+        <translation>📋 复制项目信息</translation>
     </message>
     <message>
         <location filename="../src/ui/widgets/layer_control_widget.cpp" line="664"/>
@@ -257,17 +257,17 @@
         <location filename="../src/ui/main_window.cpp" line="61"/>
         <location filename="../src/ui/main_window.cpp" line="66"/>
         <source>Coords: %1, %2, %3</source>
-        <translation type="unfinished"></translation>
+        <translation>坐标: %1, %2, %3</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="73"/>
         <source>Obj: %1 (ID: %2)</source>
-        <translation type="unfinished"></translation>
+        <translation>对象: %1 (ID: %2)</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="75"/>
         <source> [%1]</source>
-        <translation type="unfinished"></translation>
+        <translation> [%1]</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="87"/>
@@ -277,22 +277,22 @@
     <message>
         <location filename="../src/ui/main_window.cpp" line="91"/>
         <source>Please enter x, y (optional z), separated by comma or space</source>
-        <translation type="unfinished"></translation>
+        <translation>请输入 x, y (可选 z), 用逗号或空格分隔</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="114"/>
         <source>No map loaded.</source>
-        <translation type="unfinished"></translation>
+        <translation>未加载地图。</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="121"/>
         <source>Map filename is empty.</source>
-        <translation type="unfinished"></translation>
+        <translation>地图文件名为空。</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="126"/>
         <source>Copied map name: %1</source>
-        <translation type="unfinished"></translation>
+        <translation>已复制地图名称: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="160"/>
@@ -303,7 +303,7 @@
     <message>
         <location filename="../src/ui/main_window.cpp" line="161"/>
         <source>Open an OpenDRIVE map file</source>
-        <translation type="unfinished"></translation>
+        <translation>打开 OpenDRIVE 地图文件</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="162"/>
@@ -340,7 +340,7 @@
         <location filename="../src/ui/main_window.cpp" line="169"/>
         <location filename="../src/ui/main_window.cpp" line="298"/>
         <source>Copy current map file name without extension</source>
-        <translation type="unfinished"></translation>
+        <translation>复制当前地图文件名（不含扩展名）</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="174"/>
@@ -357,24 +357,24 @@
     <message>
         <location filename="../src/ui/main_window.cpp" line="177"/>
         <source>Jump to (x,y,z):</source>
-        <translation type="unfinished"></translation>
+        <translation>跳转至 (x,y,z):</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="178"/>
         <source>x,y,z</source>
-        <translation type="unfinished"></translation>
+        <translation>x,y,z</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="182"/>
         <location filename="../src/ui/main_window.cpp" line="311"/>
         <source>WGS84 (lon, lat)</source>
-        <translation type="unfinished"></translation>
+        <translation>WGS84 (经度, 纬度)</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="183"/>
         <location filename="../src/ui/main_window.cpp" line="312"/>
         <source>Local (x, y)</source>
-        <translation type="unfinished"></translation>
+        <translation>本地坐标 (x, y)</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="187"/>
@@ -429,7 +429,7 @@
     <message>
         <location filename="../src/ui/main_window.cpp" line="446"/>
         <source>Map ready in local coordinates mode. Building layer tree...</source>
-        <translation type="unfinished"></translation>
+        <translation>地图已就绪（本地坐标模式）。正在构建图层树...</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="454"/>
@@ -439,7 +439,7 @@
     <message>
         <location filename="../src/ui/main_window.cpp" line="457"/>
         <source>Map loaded successfully. Invalid georeference: local coordinate mode only.</source>
-        <translation type="unfinished"></translation>
+        <translation>地图加载成功。无效的地理参考：仅限本地坐标模式。</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="473"/>
@@ -500,7 +500,7 @@
     <message>
         <location filename="../src/ui/widgets/routing_widget.cpp" line="208"/>
         <source>📋 Copy item info</source>
-        <translation type="unfinished"></translation>
+        <translation>📋 复制元素信息</translation>
     </message>
     <message>
         <location filename="../src/ui/widgets/routing_widget.cpp" line="209"/>
