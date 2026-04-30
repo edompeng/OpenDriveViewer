@@ -18,9 +18,6 @@ struct MapSceneData {
 
   bool IsValid() const { return static_cast<bool>(map); }
   bool IsWgs84ModeAvailable() const { return georeference_valid; }
-  CoordinateMode DefaultCoordinateMode() const {
-    return georeference_valid ? CoordinateMode::kWGS84 : CoordinateMode::kLocal;
-  }
 };
 
 class IMapSceneLoader {

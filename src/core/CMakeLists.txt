@@ -1,5 +1,4 @@
 add_library(GeoViewerCore ${LIB_TYPE}
-    project_context.cpp
     coordinate_util.cpp
     map_loader.cpp
     thread_pool.cpp

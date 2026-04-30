@@ -1,6 +1,7 @@
 #pragma once
 
 #include <proj.h>
+#include <mutex>
 #include <string>
 #include "src/geo_viewer_export.h"
 
@@ -21,8 +22,8 @@ class GEOVIEWER_EXPORT CoordinateUtil {
   CoordinateUtil& operator=(const CoordinateUtil&) = delete;
   CoordinateUtil& operator=(CoordinateUtil&&) = delete;
 
-  PJ_CONTEXT* xodr_proj_ctx_ = nullptr;
-  PJ* xodr_pj_ = nullptr;
+  std::string georeference_;
   double x_offset_ = 0.0;
   double y_offset_ = 0.0;
+  mutable std::mutex mutex_;
 };

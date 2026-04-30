@@ -31,14 +31,6 @@ cc_test(
     deps = COMMON_DEPS,
 )
 
-cc_test(
-    name = "ProjectContextTests",
-    srcs = ["project_context_test.cpp"],
-    copts = QT_COPTS,
-    defines = COMMON_DEFINES,
-    data = COMMON_DATA,
-    deps = COMMON_DEPS,
-)
 
 cc_test(
     name = "CoordinateModePolicyTests",

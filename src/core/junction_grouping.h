@@ -80,7 +80,6 @@ class JunctionClusterUtil {
   static const char* SemanticTypeToString(JunctionSemanticType type);
 
   static bool BoxesOverlap(const JunctionBox3D& lhs, const JunctionBox3D& rhs);
-  static double BoxDistance(const JunctionBox3D& lhs, const JunctionBox3D& rhs);
   static double BoxHorizontalDistance(const JunctionBox3D& lhs,
                                       const JunctionBox3D& rhs);
   static double BoxVerticalDistance(const JunctionBox3D& lhs,

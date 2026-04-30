@@ -197,34 +197,31 @@ bool HasOppositePair(const std::vector<double>& arms, double threshold_rad) {
 
 class DisjointSet {
  public:
-  explicit DisjointSet(const std::vector<std::string>& ids) {
-    for (const auto& id : ids) {
-      parent_[id] = id;
+  explicit DisjointSet(std::size_t size) : parent_(size) {
+    for (std::size_t i = 0; i < size; ++i) {
+      parent_[i] = i;
     }
   }
 
-  std::string Find(const std::string& id) {
-    auto it = parent_.find(id);
-    if (it == parent_.end()) {
-      throw std::out_of_range("Unknown disjoint-set id: " + id);
+  std::size_t Find(std::size_t id) {
+    std::size_t curr = id;
+    while (parent_[curr] != curr) {
+      parent_[curr] = parent_[parent_[curr]];
+      curr = parent_[curr];
     }
-    if (it->second == id) {
-      return id;
-    }
-    it->second = Find(it->second);
-    return it->second;
+    return curr;
   }
 
-  void Union(const std::string& lhs, const std::string& rhs) {
-    const std::string root_lhs = Find(lhs);
-    const std::string root_rhs = Find(rhs);
+  void Union(std::size_t lhs, std::size_t rhs) {
+    const std::size_t root_lhs = Find(lhs);
+    const std::size_t root_rhs = Find(rhs);
     if (root_lhs != root_rhs) {
       parent_[root_rhs] = root_lhs;
     }
   }
 
  private:
-  std::unordered_map<std::string, std::string> parent_;
+  std::vector<std::size_t> parent_;
 };
 
 }  // namespace
@@ -242,16 +239,6 @@ bool JunctionClusterUtil::BoxesOverlap(const JunctionBox3D& lhs,
   return true;
 }
 
-double JunctionClusterUtil::BoxDistance(const JunctionBox3D& lhs,
-                                        const JunctionBox3D& rhs) {
-  if (!lhs.valid || !rhs.valid) {
-    return std::numeric_limits<double>::infinity();
-  }
-
-  const double horizontal = BoxHorizontalDistance(lhs, rhs);
-  const double vertical = BoxVerticalDistance(lhs, rhs);
-  return std::sqrt(horizontal * horizontal + vertical * vertical);
-}
 
 double JunctionClusterUtil::BoxHorizontalDistance(const JunctionBox3D& lhs,
                                                   const JunctionBox3D& rhs) {
@@ -361,6 +348,7 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
     member.junction_name = junction.name;
 
     JunctionBox3D raw_box;
+    std::map<std::string, JunctionArmInfo> arms_by_road;
     for (const auto& id_and_connection : junction.id_to_connection) {
       const auto& connection = id_and_connection.second;
       if (!connection.incoming_road.empty()) {
@@ -368,6 +356,10 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
       }
       if (!connection.connecting_road.empty()) {
         member.connecting_road_ids.insert(connection.connecting_road);
+      }
+
+      if (arms_by_road.count(connection.incoming_road) > 0) {
+        continue;
       }
 
       const auto road_it = map.id_to_road.find(connection.incoming_road);
@@ -380,8 +372,12 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
       if (!TryGetIncomingArm(road_it->second, junction.id, arm)) {
         continue;
       }
-      member.incoming_arms.push_back(arm);
+      arms_by_road[arm.road_id] = arm;
       ExtendBox(raw_box, arm.point);
+    }
+
+    for (auto& id_and_arm : arms_by_road) {
+      member.incoming_arms.push_back(std::move(id_and_arm.second));
     }
 
     member.incoming_box = ExpandedBox(raw_box, options.incoming_box_padding);
@@ -399,7 +395,7 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
         return lhs.junction_id < rhs.junction_id;
       });
 
-  DisjointSet disjoint_set(ordered_junction_ids);
+  DisjointSet disjoint_set(result.junctions.size());
   for (std::size_t i = 0; i < result.junctions.size(); ++i) {
     for (std::size_t j = i + 1; j < result.junctions.size(); ++j) {
       const auto& lhs = result.junctions[i];
@@ -409,18 +405,20 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
                options.max_box_gap_xy &&
            BoxVerticalDistance(lhs.incoming_box, rhs.incoming_box) <=
                options.max_box_gap_z)) {
-        disjoint_set.Union(lhs.junction_id, rhs.junction_id);
+        disjoint_set.Union(i, j);
       }
     }
   }
 
   std::unordered_map<std::string, JunctionClusterGroup> groups_by_root;
   groups_by_root.reserve(result.junctions.size());
-  for (const auto& member : result.junctions) {
-    const std::string root = disjoint_set.Find(member.junction_id);
-    auto& group = groups_by_root[root];
+  for (std::size_t i = 0; i < result.junctions.size(); ++i) {
+    const auto& member = result.junctions[i];
+    const std::string root_id =
+        result.junctions[disjoint_set.Find(i)].junction_id;
+    auto& group = groups_by_root[root_id];
     if (group.group_id.empty()) {
-      group.group_id = root;
+      group.group_id = root_id;
     }
     group.junction_ids.push_back(member.junction_id);
     group.incoming_road_ids.insert(member.incoming_road_ids.begin(),

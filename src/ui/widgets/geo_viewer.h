@@ -321,7 +321,6 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   // ---- Rendering Helpers ----
   void UploadMesh3D(const odr::Mesh3D& mesh, LayerType type);
   void ComputeLaneLines(const odr::LanesMesh& mesh);
-  void ReloadMeshData();
   void CalculateMeshCenter();
 
   // ---- User Annotation Points ----

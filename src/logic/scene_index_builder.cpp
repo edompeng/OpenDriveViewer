@@ -6,7 +6,16 @@ std::vector<uint32_t> CollectSceneIndices(
     const std::vector<SceneCachedElement>& elements,
     const std::vector<uint32_t>& source_indices, size_t vertex_offset,
     const std::function<bool(const SceneCachedElement&)>& predicate) {
+  std::size_t total_count = 0;
+  for (const auto& element : elements) {
+    if (!predicate(element)) continue;
+    for (const auto& range : element.ranges) {
+      total_count += static_cast<std::size_t>(range.count) * 3;
+    }
+  }
+
   std::vector<uint32_t> indices;
+  indices.reserve(total_count);
   for (const auto& element : elements) {
     if (!predicate(element)) continue;
     for (const auto& range : element.ranges) {

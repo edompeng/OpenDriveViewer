@@ -8,8 +8,10 @@ std::vector<SceneGridBox> BuildSpatialGridBoxes(
     const odr::Mesh3D& reference_mesh,
     const std::vector<SceneMeshLayerView>& layer_views, int grid_resolution) {
   std::vector<SceneGridBox> grid_boxes;
+  const int kMaxGridResolution = 512;
+  int resolved_resolution = std::min(grid_resolution, kMaxGridResolution);
   if (reference_mesh.indices.empty() || reference_mesh.vertices.empty() ||
-      grid_resolution <= 0) {
+      resolved_resolution <= 0) {
     return grid_boxes;
   }
 
@@ -29,15 +31,15 @@ std::vector<SceneGridBox> BuildSpatialGridBoxes(
     mesh_max.setZ(std::max(mesh_max.z(), static_cast<float>(vertex[2])));
   }
 
-  grid_boxes.resize(grid_resolution * grid_resolution);
-  float step_x = (mesh_max.x() - mesh_min.x()) / grid_resolution;
-  float step_z = (mesh_max.z() - mesh_min.z()) / grid_resolution;
+  grid_boxes.resize(resolved_resolution * resolved_resolution);
+  float step_x = (mesh_max.x() - mesh_min.x()) / resolved_resolution;
+  float step_z = (mesh_max.z() - mesh_min.z()) / resolved_resolution;
   if (step_x < 0.0001f) step_x = 0.0001f;
   if (step_z < 0.0001f) step_z = 0.0001f;
 
-  for (int i = 0; i < grid_resolution; ++i) {
-    for (int j = 0; j < grid_resolution; ++j) {
-      auto& box = grid_boxes[i * grid_resolution + j];
+  for (int i = 0; i < resolved_resolution; ++i) {
+    for (int j = 0; j < resolved_resolution; ++j) {
+      auto& box = grid_boxes[i * resolved_resolution + j];
       box.min_bound = QVector3D(mesh_min.x() + i * step_x, mesh_min.y(),
                                 mesh_min.z() + j * step_z);
       box.max_bound = QVector3D(mesh_min.x() + (i + 1) * step_x, mesh_max.y(),
@@ -71,16 +73,16 @@ std::vector<SceneGridBox> BuildSpatialGridBoxes(
       const float max_z = std::max({v0.z(), v1.z(), v2.z()});
 
       const int min_col = std::max(
-          0, std::min(grid_resolution - 1,
+          0, std::min(resolved_resolution - 1,
                       static_cast<int>((min_x - mesh_min.x()) / step_x)));
       const int max_col = std::max(
-          0, std::min(grid_resolution - 1,
+          0, std::min(resolved_resolution - 1,
                       static_cast<int>((max_x - mesh_min.x()) / step_x)));
       const int min_row = std::max(
-          0, std::min(grid_resolution - 1,
+          0, std::min(resolved_resolution - 1,
                       static_cast<int>((min_z - mesh_min.z()) / step_z)));
       const int max_row = std::max(
-          0, std::min(grid_resolution - 1,
+          0, std::min(resolved_resolution - 1,
                       static_cast<int>((max_z - mesh_min.z()) / step_z)));
 
       const uint32_t layer_tag = layer_view.resolve_layer_tag
@@ -90,7 +92,7 @@ std::vector<SceneGridBox> BuildSpatialGridBoxes(
           (layer_tag << 28) | static_cast<uint32_t>(triangle);
       for (int c = min_col; c <= max_col; ++c) {
         for (int r = min_row; r <= max_row; ++r) {
-          const int box_index = c * grid_resolution + r;
+          const int box_index = c * resolved_resolution + r;
           grid_boxes[box_index].triangle_indices.push_back(encoded);
         }
       }
@@ -103,9 +105,16 @@ std::vector<SceneGridBox> BuildSpatialGridBoxes(
 bool RayIntersectsSceneAabb(const QVector3D& ray_origin,
                             const QVector3D& ray_dir, const QVector3D& box_min,
                             const QVector3D& box_max, float& hit_distance) {
-  QVector3D inv_dir(1.0f / (ray_dir.x() == 0 ? 1e-6f : ray_dir.x()),
-                    1.0f / (ray_dir.y() == 0 ? 1e-6f : ray_dir.y()),
-                    1.0f / (ray_dir.z() == 0 ? 1e-6f : ray_dir.z()));
+  const float kEpsilon = 1e-8f;
+  QVector3D inv_dir(1.0f / (std::abs(ray_dir.x()) < kEpsilon
+                                ? (ray_dir.x() < 0 ? -kEpsilon : kEpsilon)
+                                : ray_dir.x()),
+                    1.0f / (std::abs(ray_dir.y()) < kEpsilon
+                                ? (ray_dir.y() < 0 ? -kEpsilon : kEpsilon)
+                                : ray_dir.y()),
+                    1.0f / (std::abs(ray_dir.z()) < kEpsilon
+                                ? (ray_dir.z() < 0 ? -kEpsilon : kEpsilon)
+                                : ray_dir.z()));
   float t1 = (box_min.x() - ray_origin.x()) * inv_dir.x();
   float t2 = (box_max.x() - ray_origin.x()) * inv_dir.x();
   float tmin = std::min(t1, t2);

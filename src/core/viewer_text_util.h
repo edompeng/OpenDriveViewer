@@ -4,7 +4,6 @@
 #include <vector>
 #include "Lane.h"
 #include "src/core/scene_enums.h"
-#include "Lane.h"
 
 std::string FormatSectionValue(double value);
 std::string FavoriteTypeLabel(TreeNodeType type);

@@ -165,9 +165,6 @@ macro(add_geoviewer_test name)
   add_test(NAME ${name} COMMAND ${name})
 endmacro()
 
-add_geoviewer_test(ProjectContextTests
-  tests/project_context_test.cpp
-)
 
 add_geoviewer_test(ViewerCoreTests
   tests/scene_index_builder_test.cpp

@@ -519,19 +519,6 @@ void GeoViewerWidget::FinalizeSceneUpdate() {
   StartSpatialGridBuild();
 }
 
-void GeoViewerWidget::ReloadMeshData() {
-  if (!map_) return;
-
-  road_ref_line_vert_ranges_.clear();
-  auto vertices = BuildSceneVertexBufferData();
-
-  bool was_current = (QOpenGLContext::currentContext() == context());
-  if (!was_current) makeCurrent();
-  UploadVertexBufferData(vertices);
-  if (!was_current) doneCurrent();
-
-  UpdateMeshIndices();
-}
 
 
 std::string GeoViewerWidget::GetRoadIdBySignalId(
