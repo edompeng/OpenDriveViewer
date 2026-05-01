@@ -55,7 +55,7 @@ jobs:
       - name: Install System Dependencies (macOS)
         if: matrix.os == 'macos-14'
         run: |
-          brew install proj gperftools
+          brew install proj
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -238,7 +238,7 @@ jobs:
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb libproj-dev libunwind-dev libgoogle-perftools-dev
           else
-            brew install proj ninja gperftools
+            brew install proj ninja
           fi
 
       - name: Cache vcpkg tool

@@ -25,13 +25,15 @@ target_link_libraries(OpenDriveViewer PRIVATE
   MainWindow
 )
 
-find_package(gperftools CONFIG QUIET)
-if (gperftools_FOUND)
-  target_link_libraries(OpenDriveViewer PRIVATE gperftools::tcmalloc)
-else()
-  find_library(TCMALLOC_LIB tcmalloc)
-  if (TCMALLOC_LIB)
-    target_link_libraries(OpenDriveViewer PRIVATE ${TCMALLOC_LIB})
+if (NOT APPLE)
+  find_package(gperftools CONFIG QUIET)
+  if (gperftools_FOUND)
+    target_link_libraries(OpenDriveViewer PRIVATE gperftools::tcmalloc)
+  else()
+    find_library(TCMALLOC_LIB tcmalloc)
+    if (TCMALLOC_LIB)
+      target_link_libraries(OpenDriveViewer PRIVATE ${TCMALLOC_LIB})
+    endif()
   endif()
 endif()
 
