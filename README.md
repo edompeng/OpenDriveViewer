@@ -1,6 +1,8 @@
-# OpenDriveViewer (GeoViewer)
+# OpenDriveViewer
 
 A high-performance, cross-platform 3D geospatial viewer designed for OpenDRIVE map data.
+
+[中文说明](./readme_cn.md)
 
 ## Features
 
@@ -27,7 +29,7 @@ Regardless of your build system choice, you must have the following dependencies
 
 ---
 
-## 🚀 Building & Testing
+## <a id="build-instructions" name="build-instructions"></a>🚀 Building & Testing
 
 This project concurrently supports **CMake** and **Bazel** across three major platforms (macOS, Linux, Windows).
 Choose your preferred build system below.
@@ -122,12 +124,43 @@ This project leverages several high-quality open-source libraries. We are gratef
 - **gperftools**: Fast, multi-threaded malloc() and nifty performance analysis tools. Licensed under [BSD-3-Clause](https://github.com/gperftools/gperftools).
 - **OpenGL**: For high-performance 3D rendering.
 
+## Repository Layout
+
+```text
+.
+├── src/                    # Main C++ source code
+│   ├── app/                # Program entry and app bootstrap
+│   ├── core/               # Core domain/infrastructure modules
+│   ├── logic/              # Business logic and interaction logic
+│   └── ui/                 # Qt UI and rendering layer
+├── tests/                  # GoogleTest test cases
+├── data/                   # Sample OpenDRIVE files and test data
+├── scripts/                # Packaging and helper scripts
+├── cmake/                  # CMake helper scripts/tooling
+├── bazel/                  # Bazel rules and helper scripts
+├── third_party/            # Vendored third-party dependencies
+├── CMakeLists.txt          # CMake entry
+├── BUILD.bazel             # Bazel entry
+```
+
+## Code Location Guide
+
+- App entry: `src/app/main.cpp`
+- Main window and viewer UI: `src/ui/main_window.*`, `src/ui/widgets/geo_viewer.*`
+- Core data/model modules: `src/core/`
+- Domain and interaction logic: `src/logic/`
+- Unit tests: `tests/*_test.cpp`
+- Build scripts:
+  - CMake entry: `CMakeLists.txt`
+  - Bazel entry: `BUILD.bazel`, `MODULE.bazel`
+
 ## 📦 Contributing
 
-All contributions must follow our open-source standards:
-1. **Google C++ Style Guide**: Ensure you format with `.clang-format`.
-2. **SOLID Principles**: New architectures and refactors must emphasize decoupling (e.g. interfaces, Strategy/Facade patterns).
-3. **Tests Required**: Include GoogleTest based unit tests for all testable business and operational logic. UI-dependent code should abstract side-effects to `interfaces` to enable decoupled state testing.
+Please read:
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- [SECURITY.md](./SECURITY.md)
 
 ## License
 

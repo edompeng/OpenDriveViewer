@@ -1,6 +1,8 @@
-# OpenDriveViewer (GeoViewer)
+# OpenDriveViewer
 
 一个高性能、跨平台的 3D 地理空间查看器，专为 OpenDRIVE 地图数据设计。
+
+[English README](./README.md)
 
 ## 功能
 
@@ -120,12 +122,40 @@ ctest --build-config Release --output-on-failure
 - **gperftools**: 快速的多线程 malloc() 和性能分析工具，采用 [BSD-3-Clause](https://github.com/gperftools/gperftools) 开源协议。
 - **OpenGL**: 用于高性能 3D 渲染。
 
+## 仓库目录结构
+
+```text
+.
+├── src/                    # 主体 C++ 源码
+│   ├── app/                # 程序入口与启动逻辑
+│   ├── core/               # 核心领域与基础设施模块
+│   ├── logic/              # 业务逻辑与交互逻辑
+│   └── ui/                 # Qt UI 与渲染层
+├── tests/                  # GoogleTest 单元测试
+├── data/                   # 示例 OpenDRIVE 与测试数据
+├── scripts/                # 打包与辅助脚本
+├── cmake/                  # CMake 辅助脚本
+├── bazel/                  # Bazel 规则与辅助脚本
+├── third_party/            # 内置第三方依赖
+├── CMakeLists.txt          # CMake 入口
+├── BUILD.bazel             # Bazel 入口
+```
+
+## 代码位置索引
+
+- 程序入口：`src/app/main.cpp`
+- 主窗口与核心视图：`src/ui/main_window.*`、`src/ui/widgets/geo_viewer.*`
+- 核心数据与模型：`src/core/`
+- 业务与交互逻辑：`src/logic/`
+- 单元测试：`tests/*_test.cpp`
+
 ## 📦 贡献指南
 
-所有贡献必须遵循我们的标准：
-1. **Google C++ 代码规范**: 使用 `.clang-format` 进行代码格式化。
-2. **SOLID 原则**: 新架构和重构必须强调解耦（如接口分离、策略/外观模式等）。
-3. **测试要求**: 所有可测试的业务逻辑必须包含基于 GoogleTest 的单元测试，UI 依赖代码应抽象为接口以支持解耦的状态测试。
+请先阅读：
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- [SECURITY.md](./SECURITY.md)
 
 ## 许可证
 
