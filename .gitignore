@@ -6,3 +6,4 @@ bazel-*
 MODULE.bazel.lock
 /dist/
 .DS_Store
+restricted_data
