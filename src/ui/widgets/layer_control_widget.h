@@ -6,16 +6,16 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPoint>
+#include <QCheckBox>
 #include <QTreeWidget>
 #include <QWidget>
 #include <atomic>
 #include <cstdint>
 #include <memory>
-#include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/geo_viewer.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
-class LayerControlWidget : public FloatingPanelWidget {
+class LayerControlWidget : public QWidget {
   Q_OBJECT
  public:
   explicit LayerControlWidget(GeoViewerWidget* viewer,
@@ -30,12 +30,10 @@ class LayerControlWidget : public FloatingPanelWidget {
                    const QString& element_id);
 
  protected:
-  void RetranslateUi() override;
-  void mousePressEvent(QMouseEvent* event) override;
-  void mouseMoveEvent(QMouseEvent* event) override;
-  void mouseReleaseEvent(QMouseEvent* event) override;
+  void RetranslateUi();
   void showEvent(QShowEvent* event) override;
   void leaveEvent(QEvent* event) override;
+  void changeEvent(QEvent* event) override;
 
  private slots:
   void HandleCustomContextMenu(const QPoint& pos);
@@ -44,19 +42,15 @@ class LayerControlWidget : public FloatingPanelWidget {
   void HandleItemDoubleClicked(QTreeWidgetItem* item, int column);
   void HandleItemExpanded(QTreeWidgetItem* item);
   void HandleSearch();
-  void ToggleCollapse();
   void HandleElementVisibilityChanged(const QString& id, bool visible);
 
  private:
   GeoViewerWidget* viewer_;
   QTreeWidget* tree_;
-  QWidget* content_area_;
   QLineEdit* search_edit_;
-  QLabel* title_label_;
-  QToolButton* collapse_button_;
-  bool is_collapsed_ = false;
-  bool is_populating_ = false;
   QHash<QString, QTreeWidgetItem*> items_by_full_id_;
+  std::vector<QCheckBox*> global_layer_checkboxes_;
+  bool is_populating_ = false;
   std::shared_ptr<const LayerTreeSnapshot> tree_snapshot_;
   QHash<QString, int> road_snapshot_index_by_id_;
   QHash<QString, int> junction_snapshot_index_by_id_;

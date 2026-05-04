@@ -1,4 +1,9 @@
 #include "src/ui/widgets/layer_control_widget.h"
+#include <QApplication>
+#include <QCheckBox>
+#include <QClipboard>
+#include <QGridLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -6,8 +11,6 @@
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
-#include <QApplication>
-#include <QClipboard>
 #include "src/core/thread_pool.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
@@ -28,65 +31,82 @@ QTreeWidgetItem* CreateChildItem(QTreeWidgetItem* parent) {
 }  // namespace
 
 LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
-    : FloatingPanelWidget(parent), viewer_(viewer) {
-  // UI Setup
+    : QWidget(parent), viewer_(viewer) {
+  setWindowTitle(tr("Layer Control"));
+  setWindowIcon(QIcon(":/icons/layers.png"));  // Optional if icon exists
+
   auto* main_layout = new QVBoxLayout(this);
-  main_layout->setContentsMargins(2, 2, 2, 2);
-  main_layout->setSpacing(0);
+  main_layout->setContentsMargins(10, 10, 10, 10);
+  main_layout->setSpacing(10);
 
-  // Title Bar (Handle for dragging)
-  auto* title_bar = new QWidget(this);
-  title_bar->setStyleSheet(
-      "background-color: #333; border-top-left-radius: 8px; "
-      "border-top-right-radius: 8px;");
-  auto* title_layout = new QHBoxLayout(title_bar);
-  title_layout->setContentsMargins(10, 5, 5, 5);
+  // --- Section 1: Global Layer Visibility ---
+  auto* global_box = new QGroupBox(tr("Global Layer Visibility"), this);
+  auto* global_layout = new QGridLayout(global_box);
+  global_layout->setContentsMargins(10, 10, 10, 10);
 
-  title_label_ = new QLabel(tr("<b>Layer Control</b>"), title_bar);
-  title_label_->setStyleSheet("color: white;");
-  title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
-  title_layout->addWidget(title_label_);
-  title_layout->addStretch();
+  struct LayerSpec {
+    const char* label;
+    LayerType type;
+    bool default_visible;
+  };
 
-  collapse_button_ = new QToolButton(title_bar);
-  collapse_button_->setText("−");
-  collapse_button_->setStyleSheet(
-      "color: white; border: none; font-weight: bold;");
-  connect(collapse_button_, &QToolButton::clicked, this,
-          &LayerControlWidget::ToggleCollapse);
-  title_layout->addWidget(collapse_button_);
+  const LayerSpec layer_specs[] = {
+      {"Lanes", LayerType::kLanes, true},
+      {"Lines", LayerType::kLaneLines, true},
+      {"Marks", LayerType::kRoadmarks, true},
+      {"Objects", LayerType::kObjects, false},
+      {"Facilities", LayerType::kFacilities, true},
+      {"Signal Lights", LayerType::kSignalLights, true},
+      {"Signals", LayerType::kSignalSigns, false},
+      {"Ref Lines", LayerType::kReferenceLines, true},
+      {"Junctions", LayerType::kJunctions, false},
+  };
 
-  main_layout->addWidget(title_bar);
+  global_layer_checkboxes_.clear();
+  for (int i = 0; i < 9; ++i) {
+    const auto& spec = layer_specs[i];
+    auto* cb = new QCheckBox(tr(spec.label), global_box);
+    cb->setChecked(viewer_->IsLayerVisible(spec.type));
+    connect(cb, &QCheckBox::toggled, this, [this, spec](bool checked) {
+      viewer_->SetLayerVisible(spec.type, checked);
+    });
+    global_layout->addWidget(cb, i / 3, i % 3);
+    global_layer_checkboxes_.push_back(cb);
+  }
+  main_layout->addWidget(global_box);
 
-  // Content Area
-  content_area_ = new QWidget(this);
-  auto* content_layout = new QVBoxLayout(content_area_);
-  content_layout->setContentsMargins(5, 5, 5, 5);
+  // --- Section 2: Map Hierarchy Tree ---
+  auto* tree_box = new QGroupBox(tr("Map Hierarchy"), this);
+  auto* tree_layout = new QVBoxLayout(tree_box);
+  tree_layout->setContentsMargins(5, 5, 5, 5);
 
-  search_edit_ = new QLineEdit(content_area_);
+  search_edit_ = new QLineEdit(tree_box);
   search_edit_->setPlaceholderText(tr("Search ID..."));
-  search_edit_->setStyleSheet(
-      "background: rgba(255,255,255,0.1); color: white; border: 1px solid "
-      "rgba(255,255,255,0.2); border-radius: 4px; padding: 2px 5px; "
-      "margin-bottom: 5px;");
-  content_layout->addWidget(search_edit_);
+  tree_layout->addWidget(search_edit_);
   connect(search_edit_, &QLineEdit::returnPressed, this,
           &LayerControlWidget::HandleSearch);
 
-  tree_ = new QTreeWidget(content_area_);
+  tree_ = new QTreeWidget(tree_box);
   tree_->setHeaderHidden(true);
   tree_->setContextMenuPolicy(Qt::CustomContextMenu);
-  content_layout->addWidget(tree_);
+  tree_->setMouseTracking(true);
+  tree_layout->addWidget(tree_);
 
-  main_layout->addWidget(content_area_);
+  main_layout->addWidget(tree_box);
 
   setStyleSheet(
-      "LayerControlWidget { background-color: rgba(50, 50, 55, 230); "
-      "border-radius: 8px; border: 1px solid #555; } "
-      "QTreeWidget { background-color: transparent; color: #eee; border: none; "
-      "} "
-      "QTreeWidget::item:hover { background-color: #444; } "
-      "QTreeWidget::item:selected { background-color: #555; }");
+      "LayerControlWidget { background-color: #2b2b2b; color: #eee; } "
+      "QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: "
+      "6px; margin-top: 1.1em; padding-top: 10px; } "
+      "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 "
+      "3px; } "
+      "QCheckBox { spacing: 5px; } "
+      "QTreeWidget { background-color: #222; color: #eee; border: 1px solid "
+      "#444; border-radius: 4px; } "
+      "QTreeWidget::item:hover { background-color: #3d3d3d; } "
+      "QTreeWidget::item:selected { background-color: #4a4a4a; } "
+      "QLineEdit { background-color: #333; color: white; border: 1px solid "
+      "#555; border-radius: 4px; padding: 4px; }");
 
   connect(tree_, &QTreeWidget::customContextMenuRequested, this,
           &LayerControlWidget::HandleCustomContextMenu);
@@ -99,13 +119,11 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   connect(tree_, &QTreeWidget::itemExpanded, this,
           &LayerControlWidget::HandleItemExpanded);
 
-  tree_->setMouseTracking(true);
-
   connect(viewer_, &GeoViewerWidget::ElementVisibilityChanged, this,
           &LayerControlWidget::HandleElementVisibilityChanged);
 
-  setMinimumSize(250, 50);
-  resize(250, 500);
+  setMinimumSize(350, 400);
+  resize(400, 700);
 }
 
 LayerControlWidget::~LayerControlWidget() { snapshot_generation_++; }
@@ -143,11 +161,34 @@ void LayerControlWidget::RequestSnapshotBuild() {
 }
 
 void LayerControlWidget::RetranslateUi() {
-  title_label_->setText(tr("<b>Layer Control</b>"));
+  setWindowTitle(tr("Layer Control"));
+  if (auto* group = qobject_cast<QGroupBox*>(
+          layout()->itemAt(0)->widget())) {  // Global layer visibility group
+    group->setTitle(tr("Global Layer Visibility"));
+  }
+  if (auto* group = qobject_cast<QGroupBox*>(
+          layout()->itemAt(1)->widget())) {  // Map hierarchy group
+    group->setTitle(tr("Map Hierarchy"));
+  }
+
+  const char* layer_labels[] = {"Lanes",   "Lines",      "Marks",
+                                "Objects", "Facilities", "Signal Lights",
+                                "Signals", "Ref Lines",  "Junctions"};
+  for (size_t i = 0; i < global_layer_checkboxes_.size() && i < 9; ++i) {
+    global_layer_checkboxes_[i]->setText(tr(layer_labels[i]));
+  }
+
   search_edit_->setPlaceholderText(tr("Search ID..."));
   if (tree_snapshot_) {
     PopulateTopLevelItems();
   }
+}
+
+void LayerControlWidget::changeEvent(QEvent* event) {
+  if (event->type() == QEvent::LanguageChange) {
+    RetranslateUi();
+  }
+  QWidget::changeEvent(event);
 }
 
 Qt::CheckState LayerControlWidget::ComputeJunctionGroupCheckState(
@@ -361,7 +402,8 @@ void LayerControlWidget::HandleItemExpanded(QTreeWidgetItem* item) {
   EnsureChildrenLoaded(item);
 }
 
-void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item, int /*column*/) {
+void LayerControlWidget::HandleItemEntered(QTreeWidgetItem* item,
+                                           int /*column*/) {
   if (!item) {
     emit ItemHovered("", TreeNodeType::kRoad, "");
     return;
@@ -415,7 +457,8 @@ void LayerControlWidget::leaveEvent(QEvent* event) {
   QWidget::leaveEvent(event);
 }
 
-void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item, int /*column*/) {
+void LayerControlWidget::HandleItemChanged(QTreeWidgetItem* item,
+                                           int /*column*/) {
   if (is_populating_) return;
 
   const TreeNodeType changed_type =
@@ -639,10 +682,6 @@ void LayerControlWidget::HandleSearch() {
   }
 }
 
-void LayerControlWidget::ToggleCollapse() {
-  TogglePanelCollapse(content_area_, is_collapsed_, collapse_button_, 30, 500);
-}
-
 void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   QTreeWidgetItem* item = tree_->itemAt(pos);
   if (!item) return;
@@ -681,7 +720,7 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   } else if (selected == copy_info) {
     QString info = item->text(0);
     if (!item->data(0, Qt::UserRole + 1).toString().isEmpty()) {
-       info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
+      info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
     }
     QApplication::clipboard()->setText(info);
   } else if (selected == goTo) {
@@ -708,22 +747,6 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
         emit viewer_->RoutingEndRequested(lane_pos.trimmed());
     }
   }
-}
-
-void LayerControlWidget::mousePressEvent(QMouseEvent* event) {
-  if (!BeginPanelDrag(event)) {
-    FloatingPanelWidget::mousePressEvent(event);
-  }
-}
-
-void LayerControlWidget::mouseMoveEvent(QMouseEvent* event) {
-  if (!DragPanel(event, true)) {
-    FloatingPanelWidget::mouseMoveEvent(event);
-  }
-}
-
-void LayerControlWidget::mouseReleaseEvent(QMouseEvent* event) {
-  FloatingPanelWidget::mouseReleaseEvent(event);
 }
 
 void LayerControlWidget::SelectElement(const QString& road_id,

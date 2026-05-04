@@ -1,6 +1,7 @@
 #pragma once
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDockWidget>
 #include <QEvent>
 #include <QLabel>
 #include <QLineEdit>
@@ -55,6 +56,7 @@ class MainWindow : public QMainWindow {
   QLineEdit *jump_to_coords_edit_;
   QStatusBar *status_;
   LayerControlWidget *layer_control_;
+  QDockWidget *layer_control_dock_;
   RoutingWidget *routing_panel_;
   FavoritesWidget *favorites_panel_;
   CoordinatePointsWidget *coordinate_points_panel_;
@@ -73,7 +75,6 @@ class MainWindow : public QMainWindow {
   QToolButton *lang_btn_;
   QAction *load_action_;
   QLabel *jump_label_;
-  std::vector<QCheckBox *> layer_checkboxes_;
   CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
   QComboBox *coord_mode_combo_ = nullptr;
   bool wgs84_mode_allowed_ = true;

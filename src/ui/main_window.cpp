@@ -187,22 +187,18 @@ void MainWindow::RetranslateUi() {
   panels_menu_->setTitle(tr("Panels"));
   auto actions = panels_menu_->actions();
   if (actions.size() >= 4) {
-    actions[0]->setText(tr("Layer Control"));
+    actions[0]->setText(tr("Layer Manager"));
     actions[1]->setText(tr("Routing"));
     actions[2]->setText(tr("Favorites"));
     actions[3]->setText(tr("Coordinate Inputs"));
   }
 
-  // Update Layer checkboxes
-  const char* layer_labels[] = {"Lanes",     "Lines",         "Marks",
-                                "Objects",   "Signal Lights", "Signals",
-                                "Ref Lines", "Junctions"};
-  for (size_t i = 0; i < layer_checkboxes_.size() && i < 8; ++i) {
-    layer_checkboxes_[i]->setText(tr(layer_labels[i]));
-  }
-
   // Update Language menu
   lang_menu_->setTitle(tr("Language"));
+
+  if (layer_control_dock_) {
+    layer_control_dock_->setWindowTitle(tr("Layer Manager"));
+  }
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
@@ -213,11 +209,15 @@ void MainWindow::resizeEvent(QResizeEvent* event) {
 }
 
 void MainWindow::SetupPanels() {
-  layer_control_ = new LayerControlWidget(view_, view_);
-  layer_control_->move(20, 20);
-  layer_control_->show();
+  layer_control_dock_ = new QDockWidget(tr("Layer Manager"), this);
+  layer_control_dock_->setObjectName("LayerManagerDock");
+  layer_control_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
+                                       Qt::RightDockWidgetArea);
 
-  layer_control_->show();
+  layer_control_ = new LayerControlWidget(view_, layer_control_dock_);
+  layer_control_dock_->setWidget(layer_control_);
+  addDockWidget(Qt::LeftDockWidgetArea, layer_control_dock_);
+  layer_control_dock_->show();
 
   routing_panel_ = new RoutingWidget(view_, view_);
   routing_panel_->move(20, 530);
@@ -259,7 +259,11 @@ void MainWindow::SetupToolbar() {
     connect(act, &QAction::toggled, this,
             [this, w](bool checked) { ToggleWidgetVisibility(w, checked); });
   };
-  addToggle(tr("Layer Control"), layer_control_);
+  
+  QAction* layerAct = layer_control_dock_->toggleViewAction();
+  layerAct->setText(tr("Layer Manager"));
+  panels_menu_->addAction(layerAct);
+
   addToggle(tr("Routing"), routing_panel_);
   addToggle(tr("Favorites"), favorites_panel_);
   addToggle(tr("Coordinate Inputs"), coordinate_points_panel_);
@@ -304,8 +308,8 @@ void MainWindow::SetupToolbar() {
 QWidget* MainWindow::BuildCoordinateTools() {
   QWidget* container = new QWidget(this);
   QHBoxLayout* layout = new QHBoxLayout(container);
-
-  layout->addSpacing(20);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(10);
 
   coord_mode_combo_ = new QComboBox(container);
   coord_mode_combo_->addItem(tr("WGS84 (lon, lat)"));
@@ -328,7 +332,6 @@ QWidget* MainWindow::BuildCoordinateTools() {
 
   layout->addWidget(coord_mode_combo_);
 
-  layout->addSpacing(10);
   jump_label_ = new QLabel(tr("Jump to (lon,lat,alt):"), container);
   layout->addWidget(jump_label_);
   jump_to_coords_edit_ = new QLineEdit(container);
@@ -338,40 +341,7 @@ QWidget* MainWindow::BuildCoordinateTools() {
           &MainWindow::HandleJumpToCoords);
   layout->addWidget(jump_to_coords_edit_);
 
-  QWidget* layers_widget = new QWidget(container);
-  QHBoxLayout* layers_layout = new QHBoxLayout(layers_widget);
-  layers_layout->setContentsMargins(0, 0, 0, 0);
-
-  struct LayerToggleSpec {
-    const char* label;
-    LayerType type;
-    bool default_visible;
-  };
-
-  const LayerToggleSpec layer_specs[] = {
-      {"Lanes", LayerType::kLanes, true},
-      {"Lines", LayerType::kLaneLines, true},
-      {"Marks", LayerType::kRoadmarks, true},
-      {"Objects", LayerType::kObjects, false},
-      {"Signal Lights", LayerType::kSignalLights, true},
-      {"Signals", LayerType::kSignalSigns, false},
-      {"Ref Lines", LayerType::kReferenceLines, true},
-      {"Junctions", LayerType::kJunctions, false},
-  };
-
-  layer_checkboxes_.clear();
-  for (const auto& spec : layer_specs) {
-    auto* checkbox = new QCheckBox(tr(spec.label), layers_widget);
-    checkbox->setChecked(spec.default_visible);
-    view_->SetLayerVisible(spec.type, spec.default_visible);
-    connect(checkbox, &QCheckBox::toggled, this, [this, spec](bool checked) {
-      view_->SetLayerVisible(spec.type, checked);
-    });
-    layers_layout->addWidget(checkbox);
-    layer_checkboxes_.push_back(checkbox);
-  }
-
-  layout->addWidget(layers_widget);
+  layout->addStretch();
   return container;
 }
 
