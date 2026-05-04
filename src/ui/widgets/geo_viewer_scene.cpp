@@ -607,7 +607,7 @@ void GeoViewerWidget::ApplyDefaultLayerStyles() {
 
   gl_renderer_->SetLayerColor(LayerType::kLanes,
                               QVector3D(0.75f, 0.75f, 0.75f));
-  gl_renderer_->SetLayerAlpha(LayerType::kLanes, 0.4f);
+  gl_renderer_->SetLayerAlpha(LayerType::kLanes, 1.0f);
 
   gl_renderer_->SetLayerColor(LayerType::kLaneLines,
                               QVector3D(1.0f, 1.0f, 0.0f));
@@ -652,7 +652,7 @@ void GeoViewerWidget::ApplyDefaultLayerStyles() {
 
   gl_renderer_->SetLayerColor(LayerType::kJunctions,
                               QVector3D(1.0f, 0.75f, 0.2f));
-  gl_renderer_->SetLayerAlpha(LayerType::kJunctions, 0.45f);
+  gl_renderer_->SetLayerAlpha(LayerType::kJunctions, 1.0f);
   gl_renderer_->SetLayerPolygonOffset(LayerType::kJunctions, -2.5f, -2.5f);
 }
 

@@ -233,6 +233,9 @@ void GlRenderer::RenderScene(
     size_t user_point_count, size_t measure_point_count,
     const QVector3D& routing_color, float routing_alpha) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+  glDepthMask(GL_TRUE);
+  glDepthFunc(GL_LEQUAL);
 
   glUseProgram(shader_program_);
 
