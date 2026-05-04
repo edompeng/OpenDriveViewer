@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -72,10 +73,19 @@ jobs:
           target: 'desktop'
           arch: ${{ matrix.qt_arch }}
           cache: true
-          cache-key-prefix: qt-${{ matrix.os }}
+          # More specific cache key to avoid architecture/version mismatches
+          cache-key-prefix: qt-${{ matrix.os }}-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
 
       # Use the pre-installed vcpkg on the runner to save time on cloning.
       # Binary caching (x-gha) handles package persistence.
+
+      - name: Cache vcpkg Downloads
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ env.VCPKG_INSTALLATION_ROOT }}/downloads
+          key: vcpkg-downloads-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
@@ -111,30 +121,32 @@ jobs:
           path: |
             ~/.cache/bazel-repo
             ~/.cache/bazel-disk
-          key: bazel-${{ matrix.os }}-${{ hashFiles('**/BUILD.bazel', '**/WORKSPACE*', 'MODULE.bazel', 'bazel/*.bzl', 'third_party/bazel/*.BUILD') }}
+          # Key includes all files that can trigger a full dependency re-fetch
+          key: bazel-${{ matrix.os }}-${{ hashFiles('**/BUILD*', '**/WORKSPACE*', 'MODULE.bazel', '*.bzl') }}
           restore-keys: |
             bazel-${{ matrix.os }}-
 
       - name: Build and Test with Bazel
         shell: bash
         run: |
-          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going --show_result=10 --host_jvm_args=-Djava.net.preferIPv4Stack=true --registry=https://bcr.bazel.build"
+          BAZEL_STARTUP_OPTS="--host_jvm_args=-Djava.net.preferIPv4Stack=true"
+          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going --show_result=10 --registry=https://bcr.bazel.build"
           COMMON_FLAGS="-c opt"
           
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            xvfb-run --auto-servernum bazel test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=linux \
+            xvfb-run --auto-servernum bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=linux \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
             TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
             export PATH="${{ env.PROJ_ROOT }}/bin:$PATH"
-            bazel test $COMMON_FLAGS --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
+            bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
               --test_env=PATH
           else
-            bazel test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=macos \
+            bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=macos \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -223,6 +235,14 @@ jobs:
           append-timestamp: false
 
       # Use pre-installed vcpkg to save time
+
+      - name: Cache vcpkg Downloads
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v5
+        with:
+          path: |
+            ${{ env.VCPKG_INSTALLATION_ROOT }}/downloads
+          key: vcpkg-downloads-cmake-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
