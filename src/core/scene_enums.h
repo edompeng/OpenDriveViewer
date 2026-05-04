@@ -11,6 +11,7 @@ enum class LayerType {
   kRouting,
   kReferenceLines,
   kJunctions,
+  kFacilities,
   kCount
 };
 

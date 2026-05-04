@@ -24,6 +24,46 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
     start = interval[0];
     end = interval[1];
     mesh = &network_mesh_->road_objects_mesh;
+  } else if (type == LayerType::kFacilities) {
+    if (facility_mesh_) {
+      const size_t facility_vi = vert_idx;
+      if (facility_vi < facility_mesh_->vertices.size()) {
+        for (const auto& el : facility_element_items_) {
+          bool found = false;
+          for (const auto& range : el.ranges) {
+            for (uint32_t k = 0; k < range.count * 3; ++k) {
+              if (facility_mesh_->indices[range.start * 3 + k] ==
+                  static_cast<uint32_t>(facility_vi)) {
+                found = true;
+                break;
+              }
+            }
+            if (found) {
+              mesh = facility_mesh_.get();
+              start = 0;
+              end = mesh->vertices.size();
+              std::vector<uint32_t> indices;
+              size_t v_offset =
+                  gl_renderer_->GetLayerVertexOffset(LayerType::kFacilities);
+              for (const auto& r : el.ranges) {
+                for (uint32_t k = 0; k < r.count * 3; ++k) {
+                  indices.push_back(facility_mesh_->indices[r.start * 3 + k] +
+                                    static_cast<uint32_t>(v_offset));
+                }
+              }
+              auto* highlight_mgr = gl_renderer_->GetHighlightManager();
+              highlight_mgr->cur_start = vert_idx;
+              highlight_mgr->cur_end = vert_idx + 1;
+              highlight_mgr->cur_layer = type;
+              SetHighlightIndices(indices, type, false, vert_idx);
+              return;
+            }
+          }
+        }
+      }
+      ClearHighlight();
+      return;
+    }
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
     auto interval =
@@ -196,6 +236,7 @@ const odr::Mesh3D* GeoViewerWidget::MeshForLayer(LayerType type) const {
   if (type == LayerType::kLanes) return &network_mesh_->lanes_mesh;
   if (type == LayerType::kRoadmarks) return &network_mesh_->roadmarks_mesh;
   if (type == LayerType::kObjects) return &network_mesh_->road_objects_mesh;
+  if (type == LayerType::kFacilities) return facility_mesh_.get();
   if (type == LayerType::kSignalLights || type == LayerType::kSignalSigns) {
     return &network_mesh_->road_signals_mesh;
   }
@@ -227,7 +268,27 @@ bool GeoViewerWidget::IsTrianglePickVisible(LayerType type,
     road_id = network_mesh_->road_objects_mesh.get_road_id(vertex_index);
     element_id =
         network_mesh_->road_objects_mesh.get_road_object_id(vertex_index);
+    // Hide facility patches from picking
+    if (IsFacility(road_id, element_id)) return false;
     group = "objects";
+  } else if (type == LayerType::kFacilities) {
+    // Manual facility ribbon pick
+    for (const auto& el : facility_element_items_) {
+      for (const auto& range : el.ranges) {
+        if (triangle_index >= range.start &&
+            triangle_index < (range.start + range.count)) {
+          QStringList parts =
+              QString::fromStdString(el.element_key).split(":");
+          if (parts.size() >= 4) {
+            road_id = parts[1].toStdString();
+            element_id = parts[3].toStdString();
+            group = "objects";
+            return IsElementActuallyVisible(road_id, group, element_id);
+          }
+        }
+      }
+    }
+    return false;
   } else if (type == LayerType::kSignalLights ||
              type == LayerType::kSignalSigns) {
     element_id =
@@ -255,7 +316,7 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
   const odr::Mesh3D* mesh = MeshForLayer(type);
 
   // Calculate highlighted bounding box
-  if (mesh && !indices.empty()) {
+  if (!indices.empty()) {
     const size_t v_offset = gl_renderer_->GetLayerVertexOffset(type);
     QVector3D min_b(std::numeric_limits<float>::max(),
                     std::numeric_limits<float>::max(),
@@ -265,9 +326,21 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
                     std::numeric_limits<float>::lowest());
     for (uint32_t global_idx : indices) {
       if (global_idx < v_offset) continue;
-      const size_t local_idx = static_cast<size_t>(global_idx - v_offset);
-      if (local_idx >= mesh->vertices.size()) continue;
-      const auto& v = mesh->vertices[local_idx];
+      size_t local_idx = static_cast<size_t>(global_idx - v_offset);
+      const odr::Mesh3D* target_mesh = mesh;
+
+      if (type == LayerType::kObjects && target_mesh &&
+          local_idx >= target_mesh->vertices.size()) {
+        // This was a hack for dual mesh, now we have separate layers.
+        // But we'll keep it as a fallback or if kFacilities is mapped back.
+        if (facility_mesh_) {
+          local_idx -= target_mesh->vertices.size();
+          target_mesh = facility_mesh_.get();
+        }
+      }
+
+      if (!target_mesh || local_idx >= target_mesh->vertices.size()) continue;
+      const auto& v = target_mesh->vertices[local_idx];
       min_b.setX(std::min(min_b.x(), static_cast<float>(v[0])));
       min_b.setY(std::min(min_b.y(), static_cast<float>(v[1])));
       min_b.setZ(std::min(min_b.z(), static_cast<float>(v[2])));
@@ -392,25 +465,48 @@ void GeoViewerWidget::HighlightElement(const QString& road_id,
     SetHighlightIndices(indices, layer_type);
     return;
   } else if (type == TreeNodeType::kObjectGroup) {
-    layer_type = LayerType::kObjects;
     auto indices = CollectIndicesForCachedElements(
-        layer_type, object_element_items_,
+        LayerType::kObjects, object_element_items_,
         network_mesh_->road_objects_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.group_key == ("G:" + road_id_str + ":objects");
         });
-    SetHighlightIndices(indices, layer_type);
+    if (!indices.empty()) {
+      SetHighlightIndices(indices, LayerType::kObjects);
+    }
+    if (facility_mesh_) {
+      auto f_indices = CollectIndicesForCachedElements(
+          LayerType::kFacilities, facility_element_items_,
+          facility_mesh_->indices, [&](const SceneCachedElement& element) {
+            return element.group_key == ("G:" + road_id_str + ":objects");
+          });
+      if (!f_indices.empty()) {
+        // Note: If both are non-empty, the last one wins in HighlightManager.
+        SetHighlightIndices(f_indices, LayerType::kFacilities);
+      }
+    }
     return;
   } else if (type == TreeNodeType::kObject) {
-    layer_type = LayerType::kObjects;
     auto indices = CollectIndicesForCachedElements(
-        layer_type, object_element_items_,
+        LayerType::kObjects, object_element_items_,
         network_mesh_->road_objects_mesh.indices,
         [&](const SceneCachedElement& element) {
           return element.element_key ==
                  ("E:" + road_id_str + ":objects:" + element_id_str);
         });
-    SetHighlightIndices(indices, layer_type);
+    if (!indices.empty()) {
+      SetHighlightIndices(indices, LayerType::kObjects);
+    } else if (facility_mesh_) {
+      auto f_indices = CollectIndicesForCachedElements(
+          LayerType::kFacilities, facility_element_items_,
+          facility_mesh_->indices, [&](const SceneCachedElement& element) {
+            return element.element_key ==
+                   ("E:" + road_id_str + ":objects:" + element_id_str);
+          });
+      if (!f_indices.empty()) {
+        SetHighlightIndices(f_indices, LayerType::kFacilities);
+      }
+    }
     return;
   } else if (type == TreeNodeType::kLightGroup ||
              type == TreeNodeType::kSignGroup) {

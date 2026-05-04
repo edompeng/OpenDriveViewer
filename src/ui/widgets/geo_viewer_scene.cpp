@@ -1,5 +1,7 @@
+#include <QtGui/qvectornd.h>
 #include "src/ui/widgets/geo_viewer.h"
 
+#include <Math.hpp>
 #include <future>
 #include <tuple>
 #include <vector>
@@ -44,7 +46,8 @@ void GeoViewerWidget::SetMapAndMesh(
     return;
   }
 
-  network_mesh_ = std::make_shared<odr::RoadNetworkMesh>(std::move(network_mesh));
+  network_mesh_ =
+      std::make_shared<odr::RoadNetworkMesh>(std::move(network_mesh));
   junction_cluster_result_ = junction_grouping
                                  ? *junction_grouping
                                  : JunctionClusterUtil::Analyze(*map_);
@@ -61,8 +64,8 @@ void GeoViewerWidget::SetMapAndMesh(
       std::make_unique<odr::RoutingGraph>(map_->get_routing_graph());
 
   signal_id_to_road_id_.clear();
-  for (const auto& [road_id, road]: map_->id_to_road){
-    for (const auto& [signal_id, signal]: road.id_to_signal) {
+  for (const auto& [road_id, road] : map_->id_to_road) {
+    for (const auto& [signal_id, signal] : road.id_to_signal) {
       signal_id_to_road_id_[signal_id] = road_id;
     }
   }
@@ -111,6 +114,8 @@ void GeoViewerWidget::ResetSceneData() {
   lane_key_to_interval_.clear();
   road_ref_line_vert_ranges_.clear();
   lane_outline_indices_.clear();
+  facility_element_items_.clear();
+  facility_mesh_ = std::make_shared<odr::Mesh3D>();
   routing_graph_.reset();
   spatial_grid_ready_ = false;
   grid_boxes_.clear();
@@ -143,8 +148,8 @@ void GeoViewerWidget::PopulateLaneKeyIntervals() {
   // Pre-initialize libOpenDRIVE caches sequentially to avoid races in
   // background tasks
   if (!network_mesh.lanes_mesh.indices.empty()) {
-    static_cast<void>(
-        network_mesh.lanes_mesh.get_road_id(network_mesh.lanes_mesh.indices[0]));
+    static_cast<void>(network_mesh.lanes_mesh.get_road_id(
+        network_mesh.lanes_mesh.indices[0]));
     static_cast<void>(network_mesh.lanes_mesh.get_lane_outline_indices());
   }
 
@@ -174,17 +179,18 @@ void GeoViewerWidget::RebuildSceneCaches() {
   auto map = map_;
   auto network_mesh = network_mesh_;
 
-  auto f_lane = pool.Enqueue(
-      [this]() { return BuildLaneElementCache(network_mesh_); });
+  auto f_lane =
+      pool.Enqueue([this]() { return BuildLaneElementCache(network_mesh_); });
   auto f_roadmark = pool.Enqueue(
       [this]() { return BuildRoadmarkElementCache(network_mesh_); });
-  auto f_object = pool.Enqueue([this]() {
-    return BuildObjectElementCache(network_mesh_);
-  });
-  auto f_signal = pool.Enqueue([this, map]() { return BuildSignalElementCache(map, network_mesh_);
-  });
+  auto f_object =
+      pool.Enqueue([this]() { return BuildObjectElementCache(network_mesh_); });
+  auto f_signal = pool.Enqueue(
+      [this, map]() { return BuildSignalElementCache(map, network_mesh_); });
   auto f_outline = pool.Enqueue(
       [this]() { return BuildOutlineElementCache(network_mesh_); });
+  auto f_facility =
+      pool.Enqueue([this]() { return BuildFacilityElementCache(); });
 
   // Collect results and update member variables sequentially
   auto lane_res = f_lane.get();
@@ -198,6 +204,10 @@ void GeoViewerWidget::RebuildSceneCaches() {
   auto outline_res = f_outline.get();
   outline_element_items_ = std::move(outline_res.items);
   lane_outline_indices_ = std::move(outline_res.indices);
+
+  auto facility_res = f_facility.get();
+  facility_mesh_ = std::move(facility_res.mesh);
+  facility_element_items_ = std::move(facility_res.items);
 }
 
 GeoViewerWidget::LaneCacheResult GeoViewerWidget::BuildLaneElementCache(
@@ -218,9 +228,9 @@ GeoViewerWidget::LaneCacheResult GeoViewerWidget::BuildLaneElementCache(
                        SceneCachedElement element;
                        element.road_key = "R:" + road_id;
                        element.group_key = "G:" + road_id + ":section";
-                       element.element_key = "E:" + road_id + ":lane:" +
-                                             FormatSectionValue(s0) + ":" +
-                                             std::to_string(lane_id);
+                       element.element_key = "E:" + road_id +
+                                             ":lane:" + FormatSectionValue(s0) +
+                                             ":" + std::to_string(lane_id);
                        return element;
                      });
   }
@@ -256,7 +266,7 @@ std::vector<SceneCachedElement> GeoViewerWidget::BuildRoadmarkElementCache(
 }
 
 std::vector<SceneCachedElement> GeoViewerWidget::BuildObjectElementCache(
-    const std::shared_ptr<odr::RoadNetworkMesh> network_mesh)const {
+    const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const {
   const auto& mesh = network_mesh->road_objects_mesh;
   std::vector<SceneCachedElement> items;
   std::map<std::pair<std::string, std::string>, size_t> item_map;
@@ -265,6 +275,7 @@ std::vector<SceneCachedElement> GeoViewerWidget::BuildObjectElementCache(
     const uint32_t vertex_index = mesh.indices[i];
     const std::string road_id = mesh.get_road_id(vertex_index);
     const std::string object_id = mesh.get_road_object_id(vertex_index);
+    if (IsFacility(road_id, object_id)) continue;
     auto key = std::make_pair(road_id, object_id);
 
     AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
@@ -279,20 +290,136 @@ std::vector<SceneCachedElement> GeoViewerWidget::BuildObjectElementCache(
   return items;
 }
 
+bool GeoViewerWidget::IsFacility(const std::string& road_id,
+                                 const std::string& object_id) const {
+  if (!map_ || !map_->id_to_road.count(road_id)) return false;
+  const auto& road = map_->id_to_road.at(road_id);
+  if (!road.id_to_object.count(object_id)) return false;
+  const auto& obj = road.id_to_object.at(object_id);
+
+  auto to_lower = [](std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return s;
+  };
+  return to_lower(obj.type) == "facility" || to_lower(obj.name) == "facility";
+}
+
+static void AddRibbonMesh(odr::Mesh3D& mesh, const QVector3D& p1,
+                          const QVector3D& p2, float width) {
+  QVector3D dir = p2 - p1;
+  float len = dir.length();
+  if (len < 1e-4f) return;
+  QVector3D unit_dir = dir / len;
+  QVector3D up(0, 1, 0);  // Y is up in renderer coords
+  QVector3D side = QVector3D::crossProduct(unit_dir, up).normalized();
+  if (side.lengthSquared() < 1e-4f) side = QVector3D(0, 0, 1);
+
+  float half_w = width * 0.5f;
+  QVector3D v0 = p1 - side * half_w;
+  QVector3D v1 = p1 + side * half_w;
+  QVector3D v2 = p2 + side * half_w;
+  QVector3D v3 = p2 - side * half_w;
+
+  uint32_t start_idx = static_cast<uint32_t>(mesh.vertices.size());
+  auto push_v = [&](const QVector3D& v) {
+    mesh.vertices.push_back({static_cast<double>(v.x()),
+                             static_cast<double>(v.y()),
+                             static_cast<double>(v.z())});
+  };
+  push_v(v0);
+  push_v(v1);
+  push_v(v2);
+  push_v(v3);
+
+  mesh.indices.push_back(start_idx + 0);
+  mesh.indices.push_back(start_idx + 1);
+  mesh.indices.push_back(start_idx + 2);
+  mesh.indices.push_back(start_idx + 0);
+  mesh.indices.push_back(start_idx + 2);
+  mesh.indices.push_back(start_idx + 3);
+}
+
+GeoViewerWidget::FacilityCacheResult
+GeoViewerWidget::BuildFacilityElementCache() const {
+  FacilityCacheResult result;
+  result.mesh = std::make_shared<odr::Mesh3D>();
+  if (!map_) return result;
+
+  for (const auto& [road_id, road] : map_->id_to_road) {
+    for (const auto& [obj_id, obj] : road.id_to_object) {
+      if (!IsFacility(road_id, obj_id)) continue;
+
+      SceneCachedElement element;
+      element.road_key = "R:" + road_id;
+      element.group_key = "G:" + road_id + ":objects";
+      element.element_key = "E:" + road_id + ":objects:" + obj_id;
+
+      uint32_t tri_start =
+          static_cast<uint32_t>(result.mesh->indices.size() / 3);
+      odr::Vec3D e_s, e_t, e_h;
+      const auto p0 = road.get_xyz(obj.s0, obj.t0, obj.z0, &e_s, &e_t, &e_h);
+      const odr::Mat3D base_mat{{{e_s[0], e_t[0], e_h[0]},
+                                 {e_s[1], e_t[1], e_h[1]},
+                                 {e_s[2], e_t[2], e_h[2]}}};
+      const odr::Mat3D rot_mat =
+          odr::EulerAnglesToMatrix<double>(obj.roll, obj.pitch, obj.hdg);
+      for (const auto& outline : obj.outlines) {
+        std::vector<odr::Vec3D> points;
+        for (const auto& corner : outline.outline) {
+          odr::Vec3D pt_world;
+          if (corner.type == odr::RoadObjectCorner::Type_Road) {
+            pt_world = road.get_xyz(corner.pt[0], corner.pt[1],
+                                    corner.pt[2] + corner.height);
+          } else {
+            odr::Vec3D pt_local = {corner.pt[0], corner.pt[1], corner.pt[2]};
+            if (corner.type == odr::RoadObjectCorner::Type_Local_AbsZ) {
+              pt_local[2] -= p0[2];  // 转换为相对坐标
+            }
+            pt_local = odr::add(pt_local, odr::Vec3D{0.0, 0.0, corner.height});
+            pt_world = odr::add(
+                odr::MatVecMultiplication(
+                    base_mat, odr::MatVecMultiplication(rot_mat, pt_local)),
+                p0);
+            // points.push_back(LocalToRendererPoint(pt_world));
+          }
+          points.push_back(pt_world);
+        }
+
+        for (size_t i = 0; i + 1 < points.size(); ++i) {
+          const QVector3D p1(points[i][0], points[i][1], points[i][2]);
+          const QVector3D p2(points[i + 1][0], points[i + 1][1],
+                             points[i + 1][2]);
+          AddRibbonMesh(*result.mesh, p1, p2, 0.8f);
+        }
+      }
+
+      uint32_t tri_count =
+          static_cast<uint32_t>(result.mesh->indices.size() / 3) - tri_start;
+      if (tri_count > 0) {
+        element.ranges.push_back({tri_start, tri_count});
+        result.items.push_back(element);
+      }
+    }
+  }
+
+  return result;
+}
+
 std::vector<SceneCachedElement> GeoViewerWidget::BuildSignalElementCache(
     const std::shared_ptr<odr::OpenDriveMap> map,
-    const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const{
+    const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const {
   const auto& mesh = network_mesh->road_signals_mesh;
   std::vector<SceneCachedElement> items;
   std::map<std::pair<std::string, std::string>, size_t> item_map;
 
   for (size_t i = 0; i < mesh.indices.size(); i += 3) {
     const uint32_t vertex_index = mesh.indices[i];
-    //const std::string road_id = mesh.get_road_id(vertex_index);
+    // const std::string road_id = mesh.get_road_id(vertex_index);
     const std::string signal_id = mesh.get_road_signal_id(vertex_index);
     std::string road_id = "";
     auto itr = signal_id_to_road_id_.find(signal_id);
-    if (itr != signal_id_to_road_id_.end()){
+    if (itr != signal_id_to_road_id_.end()) {
       road_id = itr->second;
     }
     auto key = std::make_pair(road_id, signal_id);
@@ -401,6 +528,11 @@ void GeoViewerWidget::TransformSceneMeshes() {
     for (auto& v : network_mesh.road_objects_mesh.vertices) transform(v);
   }));
   tasks.push_back(pool.Enqueue([&]() {
+    if (facility_mesh_) {
+      for (auto& v : facility_mesh_->vertices) transform(v);
+    }
+  }));
+  tasks.push_back(pool.Enqueue([&]() {
     for (auto& v : network_mesh.road_signals_mesh.vertices) transform(v);
   }));
 
@@ -440,6 +572,9 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   append_mesh(network_mesh.lanes_mesh, LayerType::kLanes);
   append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks);
   append_mesh(network_mesh.road_objects_mesh, LayerType::kObjects);
+  if (facility_mesh_) {
+    append_mesh(*facility_mesh_, LayerType::kFacilities);
+  }
   append_mesh(junction_mesh, LayerType::kJunctions);
 
   gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
@@ -468,7 +603,8 @@ void GeoViewerWidget::UploadVertexBufferData(
 void GeoViewerWidget::ApplyDefaultLayerStyles() {
   if (!gl_renderer_) return;
 
-  gl_renderer_->SetLayerColor(LayerType::kLanes, QVector3D(0.75f, 0.75f, 0.75f));
+  gl_renderer_->SetLayerColor(LayerType::kLanes,
+                              QVector3D(0.75f, 0.75f, 0.75f));
   gl_renderer_->SetLayerAlpha(LayerType::kLanes, 0.4f);
 
   gl_renderer_->SetLayerColor(LayerType::kLaneLines,
@@ -481,7 +617,8 @@ void GeoViewerWidget::ApplyDefaultLayerStyles() {
                               QVector3D(1.0f, 1.0f, 0.0f));
   gl_renderer_->SetLayerAlpha(LayerType::kLaneLinesDashed, 0.8f);
   gl_renderer_->SetLayerDrawMode(LayerType::kLaneLinesDashed, GL_LINES);
-  gl_renderer_->SetLayerPolygonOffset(LayerType::kLaneLinesDashed, -1.0f, -1.0f);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kLaneLinesDashed, -1.0f,
+                                      -1.0f);
 
   gl_renderer_->SetLayerColor(LayerType::kRoadmarks,
                               QVector3D(1.0f, 1.0f, 1.0f));
@@ -490,6 +627,12 @@ void GeoViewerWidget::ApplyDefaultLayerStyles() {
 
   gl_renderer_->SetLayerColor(LayerType::kObjects, QVector3D(0.8f, 0.5f, 0.3f));
   gl_renderer_->SetLayerAlpha(LayerType::kObjects, 1.0f);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kObjects, -1.0f, -1.0f);
+
+  gl_renderer_->SetLayerColor(LayerType::kFacilities,
+                              QVector3D(0.0f, 1.0f, 1.0f));
+  gl_renderer_->SetLayerAlpha(LayerType::kFacilities, 1.0f);
+  gl_renderer_->SetLayerPolygonOffset(LayerType::kFacilities, -1.0f, -1.0f);
 
   gl_renderer_->SetLayerColor(LayerType::kReferenceLines,
                               QVector3D(1.0f, 0.5f, 0.0f));
@@ -519,13 +662,11 @@ void GeoViewerWidget::FinalizeSceneUpdate() {
   StartSpatialGridBuild();
 }
 
-
-
 std::string GeoViewerWidget::GetRoadIdBySignalId(
     const std::string& signal_id) const noexcept {
-    auto itr = signal_id_to_road_id_.find(signal_id);
+  auto itr = signal_id_to_road_id_.find(signal_id);
   if (itr == signal_id_to_road_id_.end()) {
-      return "";
+    return "";
   }
   return itr->second;
 }

@@ -76,6 +76,34 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
         id_str = QString::fromStdString(o_id);
       }
       UpdateHighlight(vi, picked_idx->layer);
+    } else if (picked_idx->layer == LayerType::kFacilities) {
+      if (facility_mesh_) {
+        for (const auto& el : facility_element_items_) {
+          bool found = false;
+          for (const auto& range : el.ranges) {
+            for (uint32_t k = 0; k < range.count * 3; ++k) {
+              if (facility_mesh_->indices[range.start * 3 + k] ==
+                  static_cast<uint32_t>(vi)) {
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+          if (found) {
+            QStringList parts =
+                QString::fromStdString(el.element_key).split(":");
+            if (parts.size() >= 4) {
+              std::string r_id = parts[1].toStdString();
+              std::string o_id = parts[3].toStdString();
+              type_str = "Facility";
+              id_str = QString("%1 (%2)").arg(o_id.c_str()).arg(r_id.c_str());
+            }
+            break;
+          }
+        }
+      }
+      UpdateHighlight(vi, picked_idx->layer);
     } else if (picked_idx->layer == LayerType::kSignalLights ||
                picked_idx->layer == LayerType::kSignalSigns) {
       std::string s_id =

@@ -29,6 +29,7 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
   layer_visibility_cache_[LayerType::kJunctions] = false;
   layer_visibility_cache_[LayerType::kSignalSigns] = false;
   layer_visibility_cache_[LayerType::kObjects] = false;
+  layer_visibility_cache_[LayerType::kFacilities] = true;
 
   network_mesh_ = std::make_shared<odr::RoadNetworkMesh>();
   junction_mesh_ = std::make_shared<odr::Mesh3D>();
@@ -396,6 +397,12 @@ void GeoViewerWidget::UpdateMeshIndices() {
     collectLayerData(LayerType::kObjects, object_element_items_,
                      network_mesh.road_objects_mesh.indices,
                      &network_mesh.road_objects_mesh);
+  }));
+  futures.push_back(pool.Enqueue([&]() {
+    collectLayerData(
+        LayerType::kFacilities, facility_element_items_,
+        facility_mesh_ ? facility_mesh_->indices : std::vector<uint32_t>{},
+        facility_mesh_.get());
   }));
   futures.push_back(pool.Enqueue([&]() {
     // Junction groups need a specialized predicate: individual junctions use

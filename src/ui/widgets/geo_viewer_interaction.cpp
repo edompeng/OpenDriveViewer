@@ -119,53 +119,7 @@ void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
   camera_.BeginDrag(ev->position().toPoint(), ev->button());
 
   if (ev->button() == Qt::LeftButton) {
-    QVector3D world_pos;
-    std::optional<PickResult> picked_idx;
-    if (GetWorldPosAt((int)ev->position().x(), (int)ev->position().y(),
-                      world_pos, picked_idx) &&
-        picked_idx.has_value() && map_) {
-      QString road_id, element_id;
-      TreeNodeType node_type = TreeNodeType::kRoad;
-      size_t vi = picked_idx->vertex_index;
-
-      if (picked_idx->layer == LayerType::kLanes) {
-        road_id =
-            QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));
-        double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
-        int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
-        element_id = QString("%1:%2").arg(s0).arg(lane_id);
-        node_type = TreeNodeType::kLane;
-      } else if (picked_idx->layer == LayerType::kObjects) {
-        road_id = QString::fromStdString(
-            network_mesh_->road_objects_mesh.get_road_id(vi));
-        element_id = QString::fromStdString(
-            network_mesh_->road_objects_mesh.get_road_object_id(vi));
-        node_type = TreeNodeType::kObject;
-      } else if (picked_idx->layer == LayerType::kSignalLights) {
-        element_id = QString::fromStdString(
-            network_mesh_->road_signals_mesh.get_road_signal_id(vi));
-        const std::string signal_id = element_id.toStdString();
-        road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
-        node_type = TreeNodeType::kLight;
-      } else if (picked_idx->layer == LayerType::kSignalSigns) {
-        element_id = QString::fromStdString(
-            network_mesh_->road_signals_mesh.get_road_signal_id(vi));
-        const std::string signal_id = element_id.toStdString();
-        road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
-        node_type = TreeNodeType::kSign;
-      } else if (picked_idx->layer == LayerType::kJunctions) {
-        auto group_id = FindJunctionGroupByVertex(vi);
-        if (group_id.has_value()) {
-          road_id = QString::fromStdString(*group_id);
-          element_id = QString::fromStdString(*group_id);
-          node_type = TreeNodeType::kJunctionGroup;
-        }
-      }
-
-      if (!road_id.isEmpty()) {
-        emit ElementSelected(road_id, node_type, element_id);
-      }
-    }
+    HandlePickSelection((int)ev->position().x(), (int)ev->position().y(), false);
   }
   ev->accept();
 }
@@ -173,6 +127,91 @@ void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
 void GeoViewerWidget::mouseReleaseEvent(QMouseEvent* ev) {
   camera_.EndDrag();
   ev->accept();
+}
+
+void GeoViewerWidget::mouseDoubleClickEvent(QMouseEvent* ev) {
+  if (ev->button() == Qt::LeftButton) {
+    HandlePickSelection((int)ev->position().x(), (int)ev->position().y(), true);
+  }
+  ev->accept();
+}
+
+void GeoViewerWidget::HandlePickSelection(int x, int y, bool is_double_click) {
+  QVector3D world_pos;
+  std::optional<PickResult> picked_idx;
+  if (GetWorldPosAt(x, y, world_pos, picked_idx) && picked_idx.has_value() &&
+      map_) {
+    QString road_id, element_id;
+    TreeNodeType node_type = TreeNodeType::kRoad;
+    size_t vi = picked_idx->vertex_index;
+
+    if (picked_idx->layer == LayerType::kLanes) {
+      road_id =
+          QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));
+      double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
+      int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
+      element_id = QString("%1:%2").arg(s0).arg(lane_id);
+      node_type = TreeNodeType::kLane;
+    } else if (picked_idx->layer == LayerType::kObjects ||
+               picked_idx->layer == LayerType::kFacilities) {
+      if (picked_idx->layer == LayerType::kObjects) {
+        road_id = QString::fromStdString(
+            network_mesh_->road_objects_mesh.get_road_id(vi));
+        element_id = QString::fromStdString(
+            network_mesh_->road_objects_mesh.get_road_object_id(vi));
+      } else if (facility_mesh_) {
+        for (const auto& el : facility_element_items_) {
+          bool found = false;
+          for (const auto& range : el.ranges) {
+            for (uint32_t k = 0; k < range.count * 3; ++k) {
+              if (facility_mesh_->indices[range.start * 3 + k] ==
+                  static_cast<uint32_t>(vi)) {
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+          if (found) {
+            QStringList parts =
+                QString::fromStdString(el.element_key).split(":");
+            if (parts.size() >= 4) {
+              road_id = parts[1];
+              element_id = parts[3];
+            }
+            break;
+          }
+        }
+      }
+      node_type = TreeNodeType::kObject;
+    } else if (picked_idx->layer == LayerType::kSignalLights) {
+      element_id = QString::fromStdString(
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi));
+      const std::string signal_id = element_id.toStdString();
+      road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
+      node_type = TreeNodeType::kLight;
+    } else if (picked_idx->layer == LayerType::kSignalSigns) {
+      element_id = QString::fromStdString(
+          network_mesh_->road_signals_mesh.get_road_signal_id(vi));
+      const std::string signal_id = element_id.toStdString();
+      road_id = QString::fromStdString(GetRoadIdBySignalId(signal_id));
+      node_type = TreeNodeType::kSign;
+    } else if (picked_idx->layer == LayerType::kJunctions) {
+      auto group_id = FindJunctionGroupByVertex(vi);
+      if (group_id.has_value()) {
+        road_id = QString::fromStdString(*group_id);
+        element_id = QString::fromStdString(*group_id);
+        node_type = TreeNodeType::kJunctionGroup;
+      }
+    }
+
+    if (!road_id.isEmpty()) {
+      emit ElementSelected(road_id, node_type, element_id);
+    }
+    if (is_double_click) {
+      JumpToLocalLocation(world_pos.x(), world_pos.y(), world_pos.z());
+    }
+  }
 }
 
 void GeoViewerWidget::mouseMoveEvent(QMouseEvent* ev) {
@@ -385,6 +424,9 @@ std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
                                                  ? LayerType::kSignalLights
                                                  : LayerType::kSignalSigns);
               }},
+          SceneMeshLayerView{facility_mesh_.get(),
+                             static_cast<uint32_t>(LayerType::kFacilities),
+                             {}},
       },
       grid_resolution);
 }

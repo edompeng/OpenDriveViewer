@@ -163,6 +163,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void paintGL() override;
   void mousePressEvent(QMouseEvent* ev) override;
   void mouseReleaseEvent(QMouseEvent* ev) override;
+  void mouseDoubleClickEvent(QMouseEvent* ev) override;
   void mouseMoveEvent(QMouseEvent* ev) override;
   void wheelEvent(QWheelEvent* ev) override;
   void contextMenuEvent(QContextMenuEvent* ev) override;
@@ -205,10 +206,12 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   std::vector<SceneCachedElement> lane_element_items_;
   std::vector<SceneCachedElement> roadmark_element_items_;
   std::vector<SceneCachedElement> object_element_items_;
+  std::vector<SceneCachedElement> facility_element_items_;
   std::vector<SceneCachedElement> signal_element_items_;
   std::vector<SceneCachedElement> junction_element_items_;
   std::vector<SceneOutlineElement> outline_element_items_;
   std::shared_ptr<odr::Mesh3D> junction_mesh_;
+  std::shared_ptr<odr::Mesh3D> facility_mesh_;
   std::map<std::string, QVector3D> junction_group_centers_;
   std::unordered_map<std::string, std::size_t> junction_group_index_by_id_;
   std::unordered_map<std::string, std::size_t> junction_member_index_by_id_;
@@ -257,11 +260,18 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
   std::vector<SceneCachedElement> BuildObjectElementCache(
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+  struct FacilityCacheResult {
+    std::shared_ptr<odr::Mesh3D> mesh;
+    std::vector<SceneCachedElement> items;
+  };
+  FacilityCacheResult BuildFacilityElementCache() const;
   std::vector<SceneCachedElement> BuildSignalElementCache(
       const std::shared_ptr<odr::OpenDriveMap> map,
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
   OutlineCacheResult BuildOutlineElementCache(
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+  bool IsFacility(const std::string& road_id,
+                  const std::string& object_id) const;
   void TransformSceneMeshes();
   std::vector<float> BuildSceneVertexBufferData();
   void UploadVertexBufferData(const std::vector<float>& vertices);
@@ -305,6 +315,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   };
   std::optional<PickResult> GetPickedVertexIndex(int x, int y);
   void UpdateHoverInfo(int x, int y);
+  void HandlePickSelection(int x, int y, bool is_double_click);
   float closest_t_ = 0.0f;
 
   bool GetWorldPosAt(int x, int y, QVector3D& world_pos,
