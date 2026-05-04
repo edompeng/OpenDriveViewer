@@ -14,9 +14,9 @@
 
 #include "src/core/scene_enums.h"
 #include "src/core/scene_geometry_types.h"
+#include "src/geo_viewer_export.h"
 #include "src/logic/highlight_manager.h"
 #include "src/logic/routing_buffer_manager.h"
-#include "src/geo_viewer_export.h"
 
 namespace geoviewer::render {
 
@@ -202,7 +202,7 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
                    const QVector3D& routing_color, float routing_alpha);
 
   /// Draw all layers that use triangle draw mode.
-  void DrawTriangles(const QMatrix4x4& view_proj);
+  void DrawTriangles();
 
   /// Draw all layers that use line draw mode.
   void DrawLines();

@@ -90,7 +90,7 @@ void GlRenderer::UploadLayerIndices(LayerType type,
   if (indices.empty()) {
     return;
   }
-  
+
   GenLayerEbo(type);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[idx].ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
@@ -106,7 +106,8 @@ size_t GlRenderer::GetLayerVertexOffset(LayerType type) const {
   return layers_[static_cast<int>(type)].vertex_offset;
 }
 
-void GlRenderer::SetLayerChunks(LayerType type, std::vector<SceneMeshChunk> chunks) {
+void GlRenderer::SetLayerChunks(LayerType type,
+                                std::vector<SceneMeshChunk> chunks) {
   int i = static_cast<int>(type);
   layers_[i].chunks = std::move(chunks);
 
@@ -114,12 +115,18 @@ void GlRenderer::SetLayerChunks(LayerType type, std::vector<SceneMeshChunk> chun
   layers_[i].layer_min = QVector3D(1e9f, 1e9f, 1e9f);
   layers_[i].layer_max = QVector3D(-1e9f, -1e9f, -1e9f);
   for (const auto& chunk : layers_[i].chunks) {
-    layers_[i].layer_min.setX(std::min(layers_[i].layer_min.x(), chunk.min_bound.x()));
-    layers_[i].layer_min.setY(std::min(layers_[i].layer_min.y(), chunk.min_bound.y()));
-    layers_[i].layer_min.setZ(std::min(layers_[i].layer_min.z(), chunk.min_bound.z()));
-    layers_[i].layer_max.setX(std::max(layers_[i].layer_max.x(), chunk.max_bound.x()));
-    layers_[i].layer_max.setY(std::max(layers_[i].layer_max.y(), chunk.max_bound.y()));
-    layers_[i].layer_max.setZ(std::max(layers_[i].layer_max.z(), chunk.max_bound.z()));
+    layers_[i].layer_min.setX(
+        std::min(layers_[i].layer_min.x(), chunk.min_bound.x()));
+    layers_[i].layer_min.setY(
+        std::min(layers_[i].layer_min.y(), chunk.min_bound.y()));
+    layers_[i].layer_min.setZ(
+        std::min(layers_[i].layer_min.z(), chunk.min_bound.z()));
+    layers_[i].layer_max.setX(
+        std::max(layers_[i].layer_max.x(), chunk.max_bound.x()));
+    layers_[i].layer_max.setY(
+        std::max(layers_[i].layer_max.y(), chunk.max_bound.y()));
+    layers_[i].layer_max.setZ(
+        std::max(layers_[i].layer_max.z(), chunk.max_bound.z()));
   }
 }
 
@@ -181,24 +188,23 @@ void GlRenderer::UploadUserPointsData(const std::vector<float>& data) {
   glBufferData(GL_ARRAY_BUFFER,
                static_cast<GLsizeiptr>(data.size() * sizeof(float)),
                data.data(), GL_DYNAMIC_DRAW);
-               
+
   // location 0: vec3 position
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
                         static_cast<void*>(nullptr));
   glEnableVertexAttribArray(0);
-  
+
   // location 1: vec4 color
   glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
                         reinterpret_cast<void*>(3 * sizeof(float)));
   glEnableVertexAttribArray(1);
-  
+
   glBindVertexArray(0);
 }
 
 // ============ Measurement ============
 
-void GlRenderer::UploadMeasurePointsData(
-    const std::vector<QVector3D>& points) {
+void GlRenderer::UploadMeasurePointsData(const std::vector<QVector3D>& points) {
   if (points.empty()) return;
 
   if (!measure_vao_) {
@@ -218,9 +224,8 @@ void GlRenderer::UploadMeasurePointsData(
 
 // ============ Highlighting ============
 
-void GlRenderer::UploadHighlightIndices(
-    const std::vector<uint32_t>& primary,
-    const std::vector<uint32_t>& neighbor) {
+void GlRenderer::UploadHighlightIndices(const std::vector<uint32_t>& primary,
+                                        const std::vector<uint32_t>& neighbor) {
   if (!highlight_mgr_) return;
   highlight_mgr_->UploadHighlight(primary);
   highlight_mgr_->UploadNeighborHighlight(neighbor);
@@ -228,10 +233,11 @@ void GlRenderer::UploadHighlightIndices(
 
 // ============ Core Rendering ============
 
-void GlRenderer::RenderScene(
-    const QMatrix4x4& view, float distance, float mesh_radius,
-    size_t user_point_count, size_t measure_point_count,
-    const QVector3D& routing_color, float routing_alpha) {
+void GlRenderer::RenderScene(const QMatrix4x4& view, float distance,
+                             float mesh_radius, size_t user_point_count,
+                             size_t measure_point_count,
+                             const QVector3D& routing_color,
+                             float routing_alpha) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glEnable(GL_DEPTH_TEST);
   glDepthMask(GL_TRUE);
@@ -274,7 +280,7 @@ void GlRenderer::RenderScene(
   UpdateFrustum(view_proj);
 
   // Draw all layers (triangles and lines)
-  DrawTriangles(view_proj);
+  DrawTriangles();
   DrawLines();
 
   // Draw highlighting
@@ -292,7 +298,7 @@ void GlRenderer::RenderScene(
   glBindVertexArray(0);
 }
 
-void GlRenderer::DrawTriangles(const QMatrix4x4& view_proj) {
+void GlRenderer::DrawTriangles() {
   glUniform1i(uniforms_.use_vertex_color, 0);
   for (int i = 0; i < kLayerCount; ++i) {
     if (!layers_[i].visible || layers_[i].index_count == 0 || !layers_[i].ebo) {
@@ -328,11 +334,11 @@ void GlRenderer::DrawTriangles(const QMatrix4x4& view_proj) {
     } else {
       for (const auto& chunk : layers_[i].chunks) {
         if (frustum_.IsAabbVisible(chunk.min_bound, chunk.max_bound)) {
-          glDrawElements(
-              layers_[i].draw_mode, static_cast<GLsizei>(chunk.index_count),
-              GL_UNSIGNED_INT,
-              reinterpret_cast<void*>(
-                  static_cast<intptr_t>(chunk.index_offset * sizeof(uint32_t))));
+          glDrawElements(layers_[i].draw_mode,
+                         static_cast<GLsizei>(chunk.index_count),
+                         GL_UNSIGNED_INT,
+                         reinterpret_cast<void*>(static_cast<intptr_t>(
+                             chunk.index_offset * sizeof(uint32_t))));
         }
       }
     }
@@ -395,10 +401,10 @@ void GlRenderer::DrawPoints(size_t point_count) {
   glUniform1f(uniforms_.alpha, 1.0f);
   glUniform1i(uniforms_.is_dashed, 0);
   glUniform1i(uniforms_.use_vertex_color, 1);
-  
+
   glBindVertexArray(user_points_vao_);
   glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(point_count));
-  
+
   glUniform1i(uniforms_.use_vertex_color, 0);
   glEnable(GL_DEPTH_TEST);
 }
@@ -437,7 +443,7 @@ void GlRenderer::DrawHighlight() {
 }
 
 void GlRenderer::DrawRouting(const QVector3D& routing_color,
-                              float routing_alpha) {
+                             float routing_alpha) {
   if (!routing_buf_mgr_) return;
   glUniform1i(uniforms_.use_vertex_color, 0);
 
@@ -547,7 +553,8 @@ bool GlRenderer::InitShaders() {
   uniforms_.object_color = glGetUniformLocation(shader_program_, "objectColor");
   uniforms_.alpha = glGetUniformLocation(shader_program_, "alpha");
   uniforms_.is_dashed = glGetUniformLocation(shader_program_, "is_dashed");
-  uniforms_.use_vertex_color = glGetUniformLocation(shader_program_, "use_vertex_color");
+  uniforms_.use_vertex_color =
+      glGetUniformLocation(shader_program_, "use_vertex_color");
 
   return true;
 }
@@ -566,10 +573,10 @@ void GlRenderer::InitBuffers() {
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
                         static_cast<void*>(nullptr));
   glEnableVertexAttribArray(0);
-  
+
   // Set default color for all vertices not using vertex color attribute
-  glVertexAttrib4f(1, 1.0f, 1.0f, 1.0f, 1.0f); 
-  
+  glVertexAttrib4f(1, 1.0f, 1.0f, 1.0f, 1.0f);
+
   glBindVertexArray(0);
 }
 
@@ -600,22 +607,28 @@ bool GlRenderer::CheckProgramErrors(GLuint program) {
 void GlRenderer::UpdateFrustum(const QMatrix4x4& m) {
   // Extract planes from View-Projection matrix m
   // Left plane
-  frustum_.planes[0].normal = QVector3D(m(3, 0) + m(0, 0), m(3, 1) + m(0, 1), m(3, 2) + m(0, 2));
+  frustum_.planes[0].normal =
+      QVector3D(m(3, 0) + m(0, 0), m(3, 1) + m(0, 1), m(3, 2) + m(0, 2));
   frustum_.planes[0].distance = m(3, 3) + m(0, 3);
   // Right plane
-  frustum_.planes[1].normal = QVector3D(m(3, 0) - m(0, 0), m(3, 1) - m(0, 1), m(3, 2) - m(0, 2));
+  frustum_.planes[1].normal =
+      QVector3D(m(3, 0) - m(0, 0), m(3, 1) - m(0, 1), m(3, 2) - m(0, 2));
   frustum_.planes[1].distance = m(3, 3) - m(0, 3);
   // Bottom plane
-  frustum_.planes[2].normal = QVector3D(m(3, 0) + m(1, 0), m(3, 1) + m(1, 1), m(3, 2) + m(1, 2));
+  frustum_.planes[2].normal =
+      QVector3D(m(3, 0) + m(1, 0), m(3, 1) + m(1, 1), m(3, 2) + m(1, 2));
   frustum_.planes[2].distance = m(3, 3) + m(1, 3);
   // Top plane
-  frustum_.planes[3].normal = QVector3D(m(3, 0) - m(1, 0), m(3, 1) - m(1, 1), m(3, 2) - m(1, 2));
+  frustum_.planes[3].normal =
+      QVector3D(m(3, 0) - m(1, 0), m(3, 1) - m(1, 1), m(3, 2) - m(1, 2));
   frustum_.planes[3].distance = m(3, 3) - m(1, 3);
   // Near plane
-  frustum_.planes[4].normal = QVector3D(m(3, 0) + m(2, 0), m(3, 1) + m(2, 1), m(3, 2) + m(2, 2));
+  frustum_.planes[4].normal =
+      QVector3D(m(3, 0) + m(2, 0), m(3, 1) + m(2, 1), m(3, 2) + m(2, 2));
   frustum_.planes[4].distance = m(3, 3) + m(2, 3);
   // Far plane
-  frustum_.planes[5].normal = QVector3D(m(3, 0) - m(2, 0), m(3, 1) - m(2, 1), m(3, 2) - m(2, 2));
+  frustum_.planes[5].normal =
+      QVector3D(m(3, 0) - m(2, 0), m(3, 1) - m(2, 1), m(3, 2) - m(2, 2));
   frustum_.planes[5].distance = m(3, 3) - m(2, 3);
 
   // Normalize planes
