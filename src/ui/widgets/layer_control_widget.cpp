@@ -80,17 +80,30 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   auto* tree_layout = new QVBoxLayout(tree_box);
   tree_layout->setContentsMargins(5, 5, 5, 5);
 
-  search_edit_ = new QLineEdit(tree_box);
-  search_edit_->setPlaceholderText(tr("Search ID..."));
-  tree_layout->addWidget(search_edit_);
-  connect(search_edit_, &QLineEdit::textChanged, this,
-          &LayerControlWidget::HandleSearch);
-
   tree_ = new QTreeWidget(tree_box);
   tree_->setHeaderHidden(true);
   tree_->setContextMenuPolicy(Qt::CustomContextMenu);
   tree_->setMouseTracking(true);
+
+  auto* search_layout = new QHBoxLayout();
+  search_edit_ = new QLineEdit(tree_box);
+  search_edit_->setPlaceholderText(tr("Search ID..."));
+  search_layout->addWidget(search_edit_);
+
+  auto* collapse_btn = new QToolButton(tree_box);
+  collapse_btn->setToolTip(tr("Collapse All"));
+  collapse_btn->setIcon(style()->standardIcon(QStyle::SP_ToolBarVerticalExtensionButton)); // Better icon
+  search_layout->addWidget(collapse_btn);
+  connect(collapse_btn, &QToolButton::clicked, this, [this]() {
+    search_edit_->clear(); // Clear search to show everything before collapsing
+    tree_->collapseAll();
+  });
+
+  tree_layout->addLayout(search_layout);
   tree_layout->addWidget(tree_);
+
+  connect(search_edit_, &QLineEdit::textChanged, this,
+          &LayerControlWidget::HandleSearch);
 
   main_layout->addWidget(tree_box);
 
