@@ -19,15 +19,15 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
 
-  // Initialize visibility cache with defaults
+  // Initialize visibility array with defaults
   for (int i = 0; i < static_cast<int>(LayerType::kCount); ++i) {
-    layer_visibility_cache_[static_cast<LayerType>(i)] = true;
+    layer_visibility_[i] = true;
   }
   // Junctions and Signal Signs are hidden by default in UI
-  layer_visibility_cache_[LayerType::kJunctions] = false;
-  layer_visibility_cache_[LayerType::kSignalSigns] = false;
-  layer_visibility_cache_[LayerType::kObjects] = false;
-  layer_visibility_cache_[LayerType::kFacilities] = true;
+  layer_visibility_[static_cast<size_t>(LayerType::kJunctions)] = false;
+  layer_visibility_[static_cast<size_t>(LayerType::kSignalSigns)] = false;
+  layer_visibility_[static_cast<size_t>(LayerType::kObjects)] = false;
+  layer_visibility_[static_cast<size_t>(LayerType::kFacilities)] = true;
 
   network_mesh_ = std::make_shared<odr::RoadNetworkMesh>();
   junction_mesh_ = std::make_shared<odr::Mesh3D>();
@@ -73,7 +73,7 @@ void GeoViewerWidget::EndUserPointsBatch() {
 }
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
-  layer_visibility_cache_[type] = visible;
+  layer_visibility_[static_cast<size_t>(type)] = visible;
   
   if (gl_renderer_) {
     gl_renderer_->SetLayerVisible(type, visible);
@@ -81,21 +81,15 @@ void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
     // Sync dashed lane lines with solid lane lines
     if (type == LayerType::kLaneLines) {
       gl_renderer_->SetLayerVisible(LayerType::kLaneLinesDashed, visible);
-      layer_visibility_cache_[LayerType::kLaneLinesDashed] = visible;
+      layer_visibility_[static_cast<size_t>(LayerType::kLaneLinesDashed)] = visible;
     }
   }
 
-  needs_vertex_rebuild_ = true;
-  needs_index_update_ = true;
   update();
 }
 
 bool GeoViewerWidget::IsLayerVisible(LayerType type) const {
-  if (!gl_renderer_) {
-    auto it = layer_visibility_cache_.find(type);
-    return (it != layer_visibility_cache_.end()) ? it->second : false;
-  }
-  return gl_renderer_->IsLayerVisible(type);
+  return layer_visibility_[static_cast<size_t>(type)];
 }
 
 void GeoViewerWidget::SetElementVisible(const QString& id, bool visible) {
@@ -171,7 +165,7 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
 
     if (spatial_grid_ready_) {
       const auto hits = RaycastAllHits(
-          grid_boxes_, ray_origin, ray_dir,
+          spatial_grid_data_, ray_origin, ray_dir,
           [this](uint32_t layer_tag) {
             return MeshForLayer(static_cast<LayerType>(layer_tag));
           },
@@ -242,7 +236,7 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
 
     if (spatial_grid_ready_) {
       const auto hits = RaycastAllHits(
-          grid_boxes_, ray_origin, ray_dir,
+          spatial_grid_data_, ray_origin, ray_dir,
           [this](uint32_t layer_tag) {
             return MeshForLayer(static_cast<LayerType>(layer_tag));
           },
@@ -312,14 +306,19 @@ void GeoViewerWidget::UpdateUserPointsBuffers() {
   if (!gl_renderer_) return;
   makeCurrent();
 
-  // Upload all point positions (visible or not) — visibility is handled
-  // during draw calls by skipping invisible points individually.
+  // Upload position (3 floats) + color (4 floats) for each point.
+  // Visibility is handled by alpha=0 in the color or discarding in shader.
+  // Here we use alpha=0 for invisible points.
   std::vector<float> data;
-  data.reserve(user_points_.size() * 3);
+  data.reserve(user_points_.size() * 7);
   for (const auto& p : user_points_) {
     data.push_back(p.world_pos.x());
     data.push_back(p.world_pos.y());
     data.push_back(p.world_pos.z());
+    data.push_back(p.color.x());
+    data.push_back(p.color.y());
+    data.push_back(p.color.z());
+    data.push_back(p.visible ? 1.0f : 0.0f);
   }
 
   gl_renderer_->UploadUserPointsData(data);

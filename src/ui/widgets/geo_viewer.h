@@ -26,6 +26,7 @@
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
+#include <array>
 #include <vector>
 #include "OpenDriveMap.h"
 #include "RoadNetworkMesh.h"
@@ -34,6 +35,7 @@
 #include "src/core/scene_geometry_types.h"
 #include "src/logic/camera_controller.h"
 #include "src/logic/measure_tool_controller.h"
+#include "src/logic/spatial_grid_index.h"
 #include "src/ui/render/gl_renderer.h"
 
 #include "src/geo_viewer_export.h"
@@ -219,14 +221,13 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   std::vector<std::size_t> junction_vertex_group_indices_;
 
   std::unordered_set<std::string> hidden_elements_;
-  std::map<LayerType, bool> layer_visibility_cache_;
+  std::array<bool, static_cast<size_t>(LayerType::kCount)> layer_visibility_;
   bool right_hand_traffic_ = true;
   CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
   bool georeference_valid_ = false;
 
   std::vector<uint32_t> lane_outline_indices_;
 
-  std::unordered_map<odr::LaneKey, std::array<size_t, 2>> lane_key_to_interval_;
   std::unordered_map<odr::LaneKey, std::size_t> lane_element_index_by_key_;
   std::unique_ptr<odr::RoutingGraph> routing_graph_;
   std::unordered_map<std::string, std::string> signal_id_to_road_id_;
@@ -298,11 +299,11 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
                                 const std::string& element_id) const;
 
   // ---- Spatial Grid Acceleration ----
-  std::vector<SceneGridBox> grid_boxes_;
+  SpatialGridData spatial_grid_data_;
   int grid_resolution_ = 32;
   void BuildSpatialGrid();
   void StartSpatialGridBuild();
-  std::vector<SceneGridBox> BuildSpatialGridData(
+  SpatialGridData BuildSpatialGridData(
       std::shared_ptr<odr::OpenDriveMap> map,
       const odr::RoadNetworkMesh& network_mesh,
       const odr::Mesh3D& junction_mesh, int grid_resolution) const;
@@ -355,4 +356,10 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   bool user_points_batch_dirty_ = false;
   bool user_points_batch_buffer_dirty_ = false;
   void CommitUserPointsChange(bool buffer_dirty);
+
+  // ---- Interaction Cache ----
+  QPoint last_wheel_pick_pos_{-1, -1};
+  QVector3D last_wheel_world_pos_;
+  bool last_wheel_has_pick_ = false;
+  std::optional<PickResult> last_wheel_picked_idx_;
 };

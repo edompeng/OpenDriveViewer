@@ -14,8 +14,8 @@ void GeoViewerWidget::initializeGL() {
   }
 
   // Apply cached visibility
-  for (const auto& [type, visible] : layer_visibility_cache_) {
-    gl_renderer_->SetLayerVisible(type, visible);
+  for (size_t i = 0; i < layer_visibility_.size(); ++i) {
+    gl_renderer_->SetLayerVisible(static_cast<LayerType>(i), layer_visibility_[i]);
   }
 
   measure_ctrl_ = std::make_unique<MeasureToolController>(this);
@@ -57,17 +57,10 @@ void GeoViewerWidget::paintGL() {
   const float distance = camera_.GetDistance();
   const float mesh_radius = camera_.MeshRadius();
 
-  // Prepare user point data for drawing (positions + color override)
-  std::vector<std::pair<QVector3D, bool>> user_points_draw_data;
-  user_points_draw_data.reserve(user_points_.size());
-  for (const auto& p : user_points_) {
-    user_points_draw_data.push_back({p.color, p.visible});
-  }
-
   size_t measure_ptr_count = measure_ctrl_ ? measure_ctrl_->Points().size() : 0;
 
   // The renderer handles all OpenGL draw calls
-  gl_renderer_->RenderScene(view, distance, mesh_radius, user_points_draw_data,
+  gl_renderer_->RenderScene(view, distance, mesh_radius, user_points_.size(),
                             measure_ptr_count, QVector3D(0.0f, 1.0f, 0.5f),
                             0.8f);
 
@@ -266,9 +259,20 @@ void GeoViewerWidget::wheelEvent(QWheelEvent* ev) {
 
     QVector3D world_pos;
     std::optional<PickResult> picked_idx;
-    const bool hasPick =
-        GetWorldPosAt((int)ev->position().x(), (int)ev->position().y(),
-                      world_pos, picked_idx);
+    bool hasPick = false;
+
+    QPoint current_pos = ev->position().toPoint();
+    if (current_pos == last_wheel_pick_pos_) {
+      world_pos = last_wheel_world_pos_;
+      hasPick = last_wheel_has_pick_;
+      picked_idx = last_wheel_picked_idx_;
+    } else {
+      hasPick = GetWorldPosAt(current_pos.x(), current_pos.y(), world_pos, picked_idx);
+      last_wheel_pick_pos_ = current_pos;
+      last_wheel_world_pos_ = world_pos;
+      last_wheel_has_pick_ = hasPick;
+      last_wheel_picked_idx_ = picked_idx;
+    }
 
     camera_.ZoomToward(wheelDelta, maxDist, world_pos, hasPick);
     update();
@@ -380,7 +384,7 @@ void GeoViewerWidget::StartSpatialGridBuild() {
         QMetaObject::invokeMethod(
             this, [this, res = std::move(result), generation]() mutable {
               if (generation == spatial_grid_generation_.load()) {
-                grid_boxes_ = std::move(res);
+                spatial_grid_data_ = std::move(res);
                 spatial_grid_ready_ = true;
                 update();
               }
@@ -389,12 +393,12 @@ void GeoViewerWidget::StartSpatialGridBuild() {
 }
 
 void GeoViewerWidget::BuildSpatialGrid() {
-  grid_boxes_ = BuildSpatialGridData(map_, *network_mesh_, *junction_mesh_,
-                                     grid_resolution_);
+  spatial_grid_data_ = BuildSpatialGridData(map_, *network_mesh_, *junction_mesh_,
+                                            grid_resolution_);
   spatial_grid_ready_ = true;
 }
 
-std::vector<SceneGridBox> GeoViewerWidget::BuildSpatialGridData(
+SpatialGridData GeoViewerWidget::BuildSpatialGridData(
     std::shared_ptr<odr::OpenDriveMap> map,
     const odr::RoadNetworkMesh& network_mesh, const odr::Mesh3D& junction_mesh,
     int grid_resolution) const {
@@ -452,7 +456,7 @@ GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
                           origin, direction);
 
   const auto result = PickFromSpatialGrid(
-      grid_boxes_, origin, direction,
+      spatial_grid_data_, origin, direction,
       [this](uint32_t layer_tag) {
         return MeshForLayer(static_cast<LayerType>(layer_tag));
       },

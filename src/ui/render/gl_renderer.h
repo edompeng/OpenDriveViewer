@@ -20,6 +20,46 @@
 
 namespace geoviewer::render {
 
+/// @brief Cached uniform locations for optimized rendering
+struct FrustumPlane {
+  QVector3D normal;
+  float distance;
+  bool IsPointInFront(const QVector3D& p) const {
+    return QVector3D::dotProduct(normal, p) + distance >= 0;
+  }
+};
+
+struct Frustum {
+  FrustumPlane planes[6];
+  bool IsAabbVisible(const QVector3D& min_b, const QVector3D& max_b) const {
+    const float min_x = min_b.x(), min_y = min_b.y(), min_z = min_b.z();
+    const float max_x = max_b.x(), max_y = max_b.y(), max_z = max_b.z();
+
+    for (int i = 0; i < 6; ++i) {
+      const float nx = planes[i].normal.x();
+      const float ny = planes[i].normal.y();
+      const float nz = planes[i].normal.z();
+
+      const float px = (nx >= 0) ? max_x : min_x;
+      const float py = (ny >= 0) ? max_y : min_y;
+      const float pz = (nz >= 0) ? max_z : min_z;
+
+      if (nx * px + ny * py + nz * pz + planes[i].distance < 0) return false;
+    }
+    return true;
+  }
+};
+
+struct ShaderUniforms {
+  GLint model = -1;
+  GLint view = -1;
+  GLint projection = -1;
+  GLint object_color = -1;
+  GLint alpha = -1;
+  GLint is_dashed = -1;
+  GLint use_vertex_color = -1;
+};
+
 /// @brief Single layer OpenGL mesh descriptor (Data Class)
 struct MeshLayer {
   GLuint ebo = 0;
@@ -31,6 +71,8 @@ struct MeshLayer {
   float polygon_offset_factor = 0.0f;
   float polygon_offset_units = 0.0f;
   size_t vertex_offset = 0;
+  QVector3D layer_min{1e9f, 1e9f, 1e9f};
+  QVector3D layer_max{-1e9f, -1e9f, -1e9f};
   std::vector<SceneMeshChunk> chunks;
 };
 
@@ -156,21 +198,17 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   /// @param routing_color Color for routing paths
   /// @param routing_alpha Alpha for routing paths
   void RenderScene(const QMatrix4x4& view, float distance, float mesh_radius,
-                   const std::vector<std::pair<QVector3D, bool>>& user_points,
-                   size_t measure_point_count, const QVector3D& routing_color,
-                   float routing_alpha);
+                   size_t user_point_count, size_t measure_point_count,
+                   const QVector3D& routing_color, float routing_alpha);
 
   /// Draw all layers that use triangle draw mode.
-  void DrawTriangles(GLint color_loc, GLint alpha_loc, GLint dashed_loc,
-                     const QMatrix4x4& view_proj);
+  void DrawTriangles(const QMatrix4x4& view_proj);
 
   /// Draw all layers that use line draw mode.
-  void DrawLines(GLint color_loc, GLint alpha_loc, GLint dashed_loc);
+  void DrawLines();
 
   /// Draw user annotation points (rendered as GL_POINTS).
-  void DrawPoints(
-      GLint color_loc, GLint alpha_loc, GLint dashed_loc,
-      const std::vector<std::pair<QVector3D, bool>>& user_points);
+  void DrawPoints(size_t point_count);
 
   // ============ Projection Utilities ============
 
@@ -188,16 +226,18 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   bool CheckProgramErrors(GLuint program);
 
   // ---- Internal draw helpers ----
-  void DrawHighlight(GLint color_loc, GLint alpha_loc, GLint dashed_loc);
-  void DrawRouting(GLint color_loc, GLint alpha_loc, GLint dashed_loc,
-                   const QVector3D& routing_color, float routing_alpha);
-  void DrawMeasurement(GLint color_loc, GLint alpha_loc, GLint dashed_loc,
-                       size_t point_count);
+  void DrawHighlight();
+  void DrawRouting(const QVector3D& routing_color, float routing_alpha);
+  void DrawMeasurement(size_t point_count);
 
   // ---- Main scene buffers ----
   GLuint vao_ = 0;
   GLuint vbo_ = 0;
+  void UpdateFrustum(const QMatrix4x4& view_proj);
+  Frustum frustum_;
+
   GLuint shader_program_ = 0;
+  ShaderUniforms uniforms_;
 
   // ---- Layers ----
   static constexpr int kLayerCount = static_cast<int>(LayerType::kCount);

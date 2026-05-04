@@ -111,14 +111,13 @@ void GeoViewerWidget::ResetSceneData() {
   junction_member_index_by_id_.clear();
   junction_vertex_group_indices_.clear();
   lane_element_index_by_key_.clear();
-  lane_key_to_interval_.clear();
   road_ref_line_vert_ranges_.clear();
   lane_outline_indices_.clear();
   facility_element_items_.clear();
   facility_mesh_ = std::make_shared<odr::Mesh3D>();
   routing_graph_.reset();
   spatial_grid_ready_ = false;
-  grid_boxes_.clear();
+  spatial_grid_data_ = SpatialGridData();
 }
 
 void GeoViewerWidget::ClearMeshAuxiliaryData(odr::Mesh3D& mesh) {
@@ -163,15 +162,7 @@ void GeoViewerWidget::PopulateLaneKeyIntervals() {
         network_mesh.road_objects_mesh.indices[0]));
   }
 
-  lane_key_to_interval_.reserve(
-      network_mesh.lanes_mesh.lane_start_indices.size());
-  for (const auto& [start_idx, lane_id] :
-       network_mesh.lanes_mesh.lane_start_indices) {
-    const std::string road_id = network_mesh.lanes_mesh.get_road_id(start_idx);
-    const double s0 = network_mesh.lanes_mesh.get_lanesec_s0(start_idx);
-    lane_key_to_interval_[odr::LaneKey(road_id, s0, lane_id)] =
-        network_mesh.lanes_mesh.get_idx_interval_lane(start_idx);
-  }
+  // Redundant cache population removed.
 }
 
 void GeoViewerWidget::RebuildSceneCaches() {
@@ -545,65 +536,61 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   if (!gl_renderer_ || !network_mesh_ || !junction_mesh_) return {};
   auto& network_mesh = *network_mesh_;
   auto& junction_mesh = *junction_mesh_;
+  
+  // Pre-calculate total size to avoid reallocations
+  size_t total_vertices = network_mesh.lanes_mesh.vertices.size() +
+                         network_mesh.roadmarks_mesh.vertices.size() +
+                         network_mesh.road_objects_mesh.vertices.size() +
+                         (facility_mesh_ ? facility_mesh_->vertices.size() : 0) +
+                         junction_mesh.vertices.size() +
+                         network_mesh.road_signals_mesh.vertices.size();
+  
   std::vector<float> vertices;
+  vertices.reserve(total_vertices * 3);
 
-  auto append_mesh = [&](const odr::Mesh3D& mesh, LayerType type,
-                         bool should_append) {
-    if (should_append) {
-      gl_renderer_->SetLayerVertexOffset(type, vertices.size() / 3);
-      for (const auto& vertex : mesh.vertices) {
-        vertices.push_back(vertex[0]);
-        vertices.push_back(vertex[1]);
-        vertices.push_back(vertex[2]);
-      }
-    } else {
-      gl_renderer_->SetLayerVertexOffset(type, 0);
+  auto append_mesh = [&](const odr::Mesh3D& mesh, LayerType type) {
+    gl_renderer_->SetLayerVertexOffset(type, vertices.size() / 3);
+    for (const auto& vertex : mesh.vertices) {
+      vertices.push_back(static_cast<float>(vertex[0]));
+      vertices.push_back(static_cast<float>(vertex[1]));
+      vertices.push_back(static_cast<float>(vertex[2]));
     }
   };
 
-  const bool lanes_visible =
-      IsLayerVisible(LayerType::kLanes) || IsLayerVisible(LayerType::kLaneLines);
-  append_mesh(network_mesh.lanes_mesh, LayerType::kLanes, lanes_visible);
+  // Lanes
+  append_mesh(network_mesh.lanes_mesh, LayerType::kLanes);
   gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLines,
                                      gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
   gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLinesDashed,
                                      gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
 
-  append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks,
-              IsLayerVisible(LayerType::kRoadmarks));
+  // Roadmarks
+  append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks);
 
-  append_mesh(network_mesh.road_objects_mesh, LayerType::kObjects,
-              IsLayerVisible(LayerType::kObjects));
+  // Objects
+  append_mesh(network_mesh.road_objects_mesh, LayerType::kObjects);
 
-  append_mesh(*facility_mesh_, LayerType::kFacilities,
-              facility_mesh_ && IsLayerVisible(LayerType::kFacilities));
-
-  append_mesh(junction_mesh, LayerType::kJunctions,
-              IsLayerVisible(LayerType::kJunctions));
-
-  if (IsLayerVisible(LayerType::kReferenceLines)) {
-    gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
-                                       vertices.size() / 3);
-    GenerateRefLinePoints(map_, vertices, road_ref_line_vert_ranges_);
+  // Facilities
+  if (facility_mesh_) {
+    append_mesh(*facility_mesh_, LayerType::kFacilities);
   } else {
-    gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines, 0);
+    gl_renderer_->SetLayerVertexOffset(LayerType::kFacilities, 0);
   }
 
-  const bool signals_visible = IsLayerVisible(LayerType::kSignalLights) ||
-                               IsLayerVisible(LayerType::kSignalSigns);
-  if (signals_visible) {
-    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights,
-                                       vertices.size() / 3);
-    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns,
-                                       vertices.size() / 3);
-    for (const auto& vertex : network_mesh.road_signals_mesh.vertices) {
-      vertices.push_back(vertex[0]);
-      vertices.push_back(vertex[1]);
-      vertices.push_back(vertex[2]);
-    }
-  } else {
-    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights, 0);
-    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns, 0);
+  // Junctions
+  append_mesh(junction_mesh, LayerType::kJunctions);
+
+  // Reference Lines (Special case: generated on the fly)
+  gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines, vertices.size() / 3);
+  GenerateRefLinePoints(map_, vertices, road_ref_line_vert_ranges_);
+
+  // Signals (Lights and Signs share the same mesh)
+  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights, vertices.size() / 3);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns, vertices.size() / 3);
+  for (const auto& vertex : network_mesh.road_signals_mesh.vertices) {
+    vertices.push_back(static_cast<float>(vertex[0]));
+    vertices.push_back(static_cast<float>(vertex[1]));
+    vertices.push_back(static_cast<float>(vertex[2]));
   }
 
   return vertices;
@@ -673,7 +660,7 @@ void GeoViewerWidget::FinalizeSceneUpdate() {
   mesh_updated_ = true;
   CalculateMeshCenter();
   spatial_grid_ready_ = false;
-  grid_boxes_.clear();
+  spatial_grid_data_ = SpatialGridData();
   StartSpatialGridBuild();
 }
 

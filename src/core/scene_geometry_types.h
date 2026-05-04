@@ -31,5 +31,6 @@ struct SceneMeshChunk {
 struct SceneGridBox {
   QVector3D min_bound;
   QVector3D max_bound;
-  std::vector<uint32_t> triangle_indices;
+  uint32_t index_offset = 0;
+  uint32_t index_count = 0;
 };
