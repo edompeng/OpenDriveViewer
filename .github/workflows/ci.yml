@@ -79,6 +79,15 @@ jobs:
       # Use the pre-installed vcpkg on the runner to save time on cloning.
       # Binary caching (x-gha) handles package persistence.
 
+      - name: Cache vcpkg Installed Libraries
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
+
       - name: Cache vcpkg Downloads
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v5
@@ -235,6 +244,15 @@ jobs:
           append-timestamp: false
 
       # Use pre-installed vcpkg to save time
+
+      - name: Cache vcpkg Installed Libraries
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-installed-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-installed-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
 
       - name: Cache vcpkg Downloads
         if: matrix.os == 'windows-2022'
