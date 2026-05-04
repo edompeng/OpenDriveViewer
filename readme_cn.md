@@ -134,7 +134,6 @@ ctest --build-config Release --output-on-failure
 ├── tests/                  # GoogleTest 单元测试
 ├── data/                   # 示例 OpenDRIVE 与测试数据
 ├── scripts/                # 打包与辅助脚本
-├── cmake/                  # CMake 辅助脚本
 ├── bazel/                  # Bazel 规则与辅助脚本
 ├── third_party/            # 内置第三方依赖
 ├── CMakeLists.txt          # CMake 入口

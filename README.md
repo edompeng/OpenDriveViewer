@@ -136,7 +136,6 @@ This project leverages several high-quality open-source libraries. We are gratef
 ├── tests/                  # GoogleTest test cases
 ├── data/                   # Sample OpenDRIVE files and test data
 ├── scripts/                # Packaging and helper scripts
-├── cmake/                  # CMake helper scripts/tooling
 ├── bazel/                  # Bazel rules and helper scripts
 ├── third_party/            # Vendored third-party dependencies
 ├── CMakeLists.txt          # CMake entry
