@@ -150,6 +150,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
                         const QString& id_str, const QString& name_str);
   void ElementSelected(const QString& road_id, TreeNodeType type,
                        const QString& element_id);
+  void ViewResized();
   void AddFavoriteRequested(const QString& road_id, TreeNodeType type,
                             const QString& element_id, const QString& name);
   void RoutingStartRequested(const QString& lane_pos);

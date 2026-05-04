@@ -429,6 +429,15 @@ void MainWindow::SetupConnections() {
       }
     });
   });
+  connect(view_, &GeoViewerWidget::ViewResized, this, [this]() {
+    if (favorites_panel_) {
+      favorites_panel_->move(view_->width() - favorites_panel_->width() - 20,
+                             20);
+    }
+    if (routing_panel_) {
+      routing_panel_->move(20, view_->height() - routing_panel_->height() - 20);
+    }
+  });
 }
 
 void MainWindow::StartMapLoad(const QString& path) {

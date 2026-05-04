@@ -31,6 +31,7 @@ void GeoViewerWidget::resizeGL(int w, int h) {
   if (gl_renderer_) {
     gl_renderer_->Resize(w, h);
   }
+  emit ViewResized();
 }
 
 void GeoViewerWidget::paintGL() {

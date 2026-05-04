@@ -7,6 +7,9 @@
 #include "src/ui/main_window.h"
 
 int main(int argc, char **argv) {
+#ifdef Q_OS_MAC
+  qputenv("QT_MAC_WANTS_LAYER", "1");
+#endif
   Q_INIT_RESOURCE(OpenDriveViewer_translations);
   QApplication app(argc, argv);
 

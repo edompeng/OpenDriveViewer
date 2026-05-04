@@ -83,7 +83,7 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   search_edit_ = new QLineEdit(tree_box);
   search_edit_->setPlaceholderText(tr("Search ID..."));
   tree_layout->addWidget(search_edit_);
-  connect(search_edit_, &QLineEdit::returnPressed, this,
+  connect(search_edit_, &QLineEdit::textChanged, this,
           &LayerControlWidget::HandleSearch);
 
   tree_ = new QTreeWidget(tree_box);
@@ -600,86 +600,77 @@ void LayerControlWidget::HandleElementVisibilityChanged(const QString& id,
 
 void LayerControlWidget::HandleSearch() {
   QString query = search_edit_->text().trimmed();
-  if (query.isEmpty()) return;
-
-  if (!tree_snapshot_) return;
-
-  if (!items_by_full_id_.contains(query) &&
-      !items_by_full_id_.contains("R:" + query) &&
-      !items_by_full_id_.contains("JG:" + query)) {
-    for (const auto& group : tree_snapshot_->junction_groups) {
-      if (group.group_id == query) {
-        EnsureItemMaterialized(group.group_id, TreeNodeType::kJunctionGroup,
-                               group.group_id);
-        break;
-      }
-      for (const auto& junction_id : group.junction_ids) {
-        if (junction_id == query) {
-          EnsureItemMaterialized(group.group_id, TreeNodeType::kJunction,
-                                 query);
-          break;
-        }
-      }
+  
+  // Disable updates to avoid flicker
+  tree_->setUpdatesEnabled(false);
+  
+  if (query.isEmpty()) {
+    // Show everything
+    QTreeWidgetItemIterator it(tree_);
+    while (*it) {
+      (*it)->setHidden(false);
+      ++it;
     }
-    for (const auto& road : tree_snapshot_->roads) {
-      if (road.road_id == query) {
-        break;
-      }
-      auto ensureChild = [&](const std::vector<RoadChildSnapshot>& entries,
-                             TreeNodeType type) {
-        for (const auto& entry : entries) {
-          if (entry.element_id == query) {
-            EnsureItemMaterialized(road.road_id, type, query);
-            return true;
-          }
-        }
-        return false;
-      };
-      if (ensureChild(road.lanes, TreeNodeType::kLane) ||
-          ensureChild(road.objects, TreeNodeType::kObject) ||
-          ensureChild(road.lights, TreeNodeType::kLight) ||
-          ensureChild(road.signs, TreeNodeType::kSign)) {
-        break;
-      }
-    }
+    tree_->setUpdatesEnabled(true);
+    return;
   }
 
-  for (auto* item : items_by_full_id_) {
-    QString id = item->data(0, Qt::UserRole + 1).toString();
-    if (id == query) {
-      // Found item
-      tree_->setCurrentItem(item);
-      tree_->scrollToItem(item);
-      item->setSelected(true);
-
-      // Expand parents
-      QTreeWidgetItem* p = item->parent();
-      while (p) {
-        p->setExpanded(true);
-        p = p->parent();
-      }
-
-      // Trigger camera jump
-      TreeNodeType type = (TreeNodeType)item->data(0, Qt::UserRole).toInt();
-      QString road_id;
-      if (type == TreeNodeType::kRoad || type == TreeNodeType::kJunctionGroup) {
-        road_id = id;
-      } else {
-        QTreeWidgetItem* road_item = item->parent();
-        while (road_item &&
-               (TreeNodeType)road_item->data(0, Qt::UserRole).toInt() !=
-                   TreeNodeType::kRoad) {
-          road_item = road_item->parent();
-        }
-        if (road_item)
-          road_id = road_item->data(0, Qt::UserRole + 1).toString();
-      }
-      if (!road_id.isEmpty()) {
-        viewer_->CenterOnElement(road_id, type, id);
-      }
-      return;
-    }
+  // Hide everything first
+  QTreeWidgetItemIterator it(tree_);
+  while (*it) {
+    (*it)->setHidden(true);
+    ++it;
   }
+
+  if (!tree_snapshot_) {
+    tree_->setUpdatesEnabled(true);
+    return;
+  }
+
+  // 1. Find all matches in snapshot and materialize them
+  auto matchAndShow = [&](const QString& id, TreeNodeType type, const QString& road_id) {
+    if (id.contains(query, Qt::CaseInsensitive)) {
+      EnsureItemMaterialized(road_id, type, id);
+      QString full_id = BuildFullId(road_id, type, id);
+      auto item_it = items_by_full_id_.find(full_id);
+      if (item_it != items_by_full_id_.end()) {
+        QTreeWidgetItem* item = item_it.value();
+        // Show item and all its parents
+        while (item) {
+          item->setHidden(false);
+          item->setExpanded(true);
+          item = item->parent();
+        }
+      }
+    }
+  };
+
+  for (const auto& road : tree_snapshot_->roads) {
+    if (road.road_id.contains(query, Qt::CaseInsensitive)) {
+      // Show road root
+      auto item_it = items_by_full_id_.find("R:" + road.road_id);
+      if (item_it != items_by_full_id_.end()) {
+        item_it.value()->setHidden(false);
+      }
+    }
+    for (const auto& lane : road.lanes) matchAndShow(lane.element_id, TreeNodeType::kLane, road.road_id);
+    for (const auto& obj : road.objects) matchAndShow(obj.element_id, TreeNodeType::kObject, road.road_id);
+    for (const auto& light : road.lights) matchAndShow(light.element_id, TreeNodeType::kLight, road.road_id);
+    for (const auto& sign : road.signs) matchAndShow(sign.element_id, TreeNodeType::kSign, road.road_id);
+  }
+
+  for (const auto& group : tree_snapshot_->junction_groups) {
+    if (group.group_id.contains(query, Qt::CaseInsensitive)) {
+       auto item_it = items_by_full_id_.find("JG:" + group.group_id);
+       if (item_it != items_by_full_id_.end()) {
+         item_it.value()->setHidden(false);
+         if (item_it.value()->parent()) item_it.value()->parent()->setHidden(false);
+       }
+    }
+    for (const auto& jid : group.junction_ids) matchAndShow(jid, TreeNodeType::kJunction, group.group_id);
+  }
+
+  tree_->setUpdatesEnabled(true);
 }
 
 void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
