@@ -14,6 +14,10 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -70,27 +74,14 @@ jobs:
           cache: true
           cache-key-prefix: qt-${{ matrix.os }}
 
-      - name: Cache vcpkg tool
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/vcpkg
-          key: vcpkg-tool-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
-
-      - name: Cache vcpkg dependencies
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/vcpkg_installed
-          key: vcpkg-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            vcpkg-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
+      # Use the pre-installed vcpkg on the runner to save time on cloning.
+      # Binary caching (x-gha) handles package persistence.
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgDirectory: ${{ env.VCPKG_INSTALLATION_ROOT }}
           vcpkgJsonGlob: '**/vcpkg.json'
           runVcpkgInstall: true
         env:
@@ -124,46 +115,26 @@ jobs:
           restore-keys: |
             bazel-${{ matrix.os }}-
 
-      - name: Build with Bazel
+      - name: Build and Test with Bazel
         shell: bash
         run: |
-          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
+          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going --show_result=10"
+          COMMON_FLAGS="-c opt"
+          
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            bazel build -c opt --copt=-g --strip=never //... $BAZEL_OPTS --config=linux \
-              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
-              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
-          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            # Fix path for Windows
-            TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
-            export BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
-            bazel build -c opt --copt=-Z7 --linkopt=-DEBUG --linkopt="${TCMALLOC_LIB}" //... $BAZEL_OPTS --config=windows \
-              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
-              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
-              --action_env=GITHUB_WORKSPACE="${{ github.workspace }}"
-          else
-            bazel build -c opt --copt=-g --strip=never //... $BAZEL_OPTS --config=macos \
-              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
-              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
-          fi
-
-      - name: Test with Bazel
-        shell: bash
-        run: |
-          BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going"
-          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            xvfb-run --auto-servernum bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=linux \
+            xvfb-run --auto-servernum bazel test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=linux \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
             TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
             export PATH="${{ env.PROJ_ROOT }}/bin:$PATH"
-            bazel test -c opt --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
+            bazel test $COMMON_FLAGS --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
               --test_env=PATH
           else
-            bazel test -c opt //... --test_output=errors $BAZEL_OPTS --config=macos \
+            bazel test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=macos \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -239,32 +210,25 @@ jobs:
         if: matrix.os != 'windows-2022'
         run: |
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb libproj-dev libunwind-dev libgoogle-perftools-dev
+            sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb libproj-dev libunwind-dev libgoogle-perftools-dev ninja-build
           else
             brew install proj ninja
           fi
 
-      - name: Cache vcpkg tool
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v4
+      - name: Setup Ccache
+        uses: hendrikmuhs/ccache-action@v1.2
         with:
-          path: ${{ github.workspace }}/vcpkg
-          key: vcpkg-tool-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+          key: ${{ matrix.os }}-ccache
+          variant: ccache
+          append-timestamp: false
 
-      - name: Cache vcpkg dependencies
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/vcpkg_installed
-          key: vcpkg-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            vcpkg-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
+      # Use pre-installed vcpkg to save time
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+          vcpkgDirectory: ${{ env.VCPKG_INSTALLATION_ROOT }}
           vcpkgJsonGlob: '**/vcpkg.json'
           runVcpkgInstall: true
         env:
@@ -308,7 +272,9 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DFETCHCONTENT_BASE_DIR="${{ github.workspace }}/cmake_deps" \
             -DQT_PATH="${{ env.QT_ROOT_DIR }}" \
-            -DPROJ_ROOT="${{ env.PROJ_ROOT }}"
+            -DPROJ_ROOT="${{ env.PROJ_ROOT }}" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build build --config RelWithDebInfo
 
       - name: Test
