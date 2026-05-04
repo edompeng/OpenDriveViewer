@@ -203,8 +203,8 @@ void MainWindow::RetranslateUi() {
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
   QMainWindow::resizeEvent(event);
-  if (favorites_panel_) {
-    favorites_panel_->move(width() - favorites_panel_->width() - 20, 20);
+  if (favorites_panel_ && view_) {
+    favorites_panel_->move(view_->width() - favorites_panel_->width() - 20, 20);
   }
 }
 
