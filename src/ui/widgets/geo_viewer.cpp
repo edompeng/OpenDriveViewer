@@ -8,11 +8,9 @@
 #include <QPolygonF>
 #include <QRegularExpression>
 #include <QStringList>
-#include <algorithm>
 #include <future>
 #include "src/core/coordinate_util.h"
 #include "src/core/thread_pool.h"
-#include "src/core/viewer_text_util.h"
 #include "src/logic/scene_index_builder.h"
 #include "src/logic/spatial_grid_index.h"
 
@@ -75,17 +73,21 @@ void GeoViewerWidget::EndUserPointsBatch() {
 }
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
-  if (type >= LayerType::kLanes && type < LayerType::kCount) {
-    layer_visibility_cache_[type] = visible;
-    if (gl_renderer_) {
-      auto* highlight_mgr = gl_renderer_->GetHighlightManager();
-      if (!visible && highlight_mgr && highlight_mgr->cur_layer == type) {
-        ClearHighlight();
-      }
-      gl_renderer_->SetLayerVisible(type, visible);
-      update();
+  layer_visibility_cache_[type] = visible;
+  
+  if (gl_renderer_) {
+    gl_renderer_->SetLayerVisible(type, visible);
+    
+    // Sync dashed lane lines with solid lane lines
+    if (type == LayerType::kLaneLines) {
+      gl_renderer_->SetLayerVisible(LayerType::kLaneLinesDashed, visible);
+      layer_visibility_cache_[LayerType::kLaneLinesDashed] = visible;
     }
   }
+
+  needs_vertex_rebuild_ = true;
+  needs_index_update_ = true;
+  update();
 }
 
 bool GeoViewerWidget::IsLayerVisible(LayerType type) const {
@@ -106,7 +108,7 @@ void GeoViewerWidget::SetElementVisible(const QString& id, bool visible) {
   }
   needs_index_update_ = true;
   if (batch_update_count_ == 0) {
-    UpdateMeshIndices();
+    update();
   }
   emit ElementVisibilityChanged(id, visible);
 }
@@ -541,38 +543,32 @@ void GeoViewerWidget::UpdateMeshIndices() {
   // kLaneLines
   {
     std::vector<uint32_t> solid_indices;
-    std::vector<uint32_t> dashed_indices;
     std::size_t estimated_solid = 0;
-    std::size_t estimated_dashed = 0;
     for (const auto& el : outline_element_items_) {
       if (hidden_elements_.count(el.road_key) ||
           hidden_elements_.count(el.group_key) ||
           hidden_elements_.count(el.element_key)) {
         continue;
       }
+      if (el.is_dashed) continue;
       std::size_t count = 0;
       for (const auto& range : el.ranges) {
         count += static_cast<std::size_t>(range.count) * 2;
       }
-      if (el.is_dashed) {
-        estimated_dashed += count;
-      } else {
-        estimated_solid += count;
-      }
+      estimated_solid += count;
     }
     solid_indices.reserve(estimated_solid);
-    dashed_indices.reserve(estimated_dashed);
     size_t v_offset = gl_renderer_->GetLayerVertexOffset(LayerType::kLanes);
 
     for (const auto& el : outline_element_items_) {
       if (hidden_elements_.count(el.road_key)) continue;
       if (hidden_elements_.count(el.group_key)) continue;
       if (hidden_elements_.count(el.element_key)) continue;
+      if (el.is_dashed) continue;
 
-      auto& target = el.is_dashed ? dashed_indices : solid_indices;
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 2; ++k) {
-          target.push_back(static_cast<uint32_t>(
+          solid_indices.push_back(static_cast<uint32_t>(
                                lane_outline_indices_[range.start * 2 + k]) +
                            static_cast<uint32_t>(v_offset));
         }
@@ -588,7 +584,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
       gl_renderer_->UploadLayerIndices(t, indices);
     };
     SetupLineLayer(LayerType::kLaneLines, solid_indices);
-    SetupLineLayer(LayerType::kLaneLinesDashed, dashed_indices);
+    SetupLineLayer(LayerType::kLaneLinesDashed, {});
   }
 
   // Reference Lines

@@ -546,49 +546,64 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   auto& network_mesh = *network_mesh_;
   auto& junction_mesh = *junction_mesh_;
   std::vector<float> vertices;
-  std::size_t total_vertex_count =
-      network_mesh.lanes_mesh.vertices.size() +
-      network_mesh.roadmarks_mesh.vertices.size() +
-      network_mesh.road_objects_mesh.vertices.size() +
-      junction_mesh.vertices.size() +
-      network_mesh.road_signals_mesh.vertices.size();
 
-  for (const auto& [road_id, road] : map_->id_to_road) {
-    static_cast<void>(road_id);
-    total_vertex_count += static_cast<std::size_t>(road.length / 2.0) * 2 + 16;
+  auto append_mesh = [&](const odr::Mesh3D& mesh, LayerType type,
+                         bool should_append) {
+    if (should_append) {
+      gl_renderer_->SetLayerVertexOffset(type, vertices.size() / 3);
+      for (const auto& vertex : mesh.vertices) {
+        vertices.push_back(vertex[0]);
+        vertices.push_back(vertex[1]);
+        vertices.push_back(vertex[2]);
+      }
+    } else {
+      gl_renderer_->SetLayerVertexOffset(type, 0);
+    }
+  };
+
+  const bool lanes_visible =
+      IsLayerVisible(LayerType::kLanes) || IsLayerVisible(LayerType::kLaneLines);
+  append_mesh(network_mesh.lanes_mesh, LayerType::kLanes, lanes_visible);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLines,
+                                     gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
+  gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLinesDashed,
+                                     gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
+
+  append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks,
+              IsLayerVisible(LayerType::kRoadmarks));
+
+  append_mesh(network_mesh.road_objects_mesh, LayerType::kObjects,
+              IsLayerVisible(LayerType::kObjects));
+
+  append_mesh(*facility_mesh_, LayerType::kFacilities,
+              facility_mesh_ && IsLayerVisible(LayerType::kFacilities));
+
+  append_mesh(junction_mesh, LayerType::kJunctions,
+              IsLayerVisible(LayerType::kJunctions));
+
+  if (IsLayerVisible(LayerType::kReferenceLines)) {
+    gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
+                                       vertices.size() / 3);
+    GenerateRefLinePoints(map_, vertices, road_ref_line_vert_ranges_);
+  } else {
+    gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines, 0);
   }
 
-  vertices.reserve(total_vertex_count * 3);
-
-  auto append_mesh = [&](const odr::Mesh3D& mesh, LayerType type) {
-    gl_renderer_->SetLayerVertexOffset(type, vertices.size() / 3);
-    for (const auto& vertex : mesh.vertices) {
+  const bool signals_visible = IsLayerVisible(LayerType::kSignalLights) ||
+                               IsLayerVisible(LayerType::kSignalSigns);
+  if (signals_visible) {
+    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights,
+                                       vertices.size() / 3);
+    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns,
+                                       vertices.size() / 3);
+    for (const auto& vertex : network_mesh.road_signals_mesh.vertices) {
       vertices.push_back(vertex[0]);
       vertices.push_back(vertex[1]);
       vertices.push_back(vertex[2]);
     }
-  };
-
-  append_mesh(network_mesh.lanes_mesh, LayerType::kLanes);
-  append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks);
-  append_mesh(network_mesh.road_objects_mesh, LayerType::kObjects);
-  if (facility_mesh_) {
-    append_mesh(*facility_mesh_, LayerType::kFacilities);
-  }
-  append_mesh(junction_mesh, LayerType::kJunctions);
-
-  gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
-                                     vertices.size() / 3);
-  GenerateRefLinePoints(map_, vertices, road_ref_line_vert_ranges_);
-
-  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights,
-                                     vertices.size() / 3);
-  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns,
-                                     vertices.size() / 3);
-  for (const auto& vertex : network_mesh.road_signals_mesh.vertices) {
-    vertices.push_back(vertex[0]);
-    vertices.push_back(vertex[1]);
-    vertices.push_back(vertex[2]);
+  } else {
+    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights, 0);
+    gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns, 0);
   }
 
   return vertices;

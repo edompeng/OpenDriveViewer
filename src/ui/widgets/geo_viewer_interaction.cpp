@@ -36,6 +36,14 @@ void GeoViewerWidget::resizeGL(int w, int h) {
 void GeoViewerWidget::paintGL() {
   if (!gl_renderer_) return;
 
+  if (needs_vertex_rebuild_ && batch_update_count_ == 0) {
+    auto vertices = BuildSceneVertexBufferData();
+    if (!vertices.empty()) {
+      UploadVertexBufferData(vertices);
+    }
+    needs_vertex_rebuild_ = false;
+  }
+
   if (needs_index_update_ && batch_update_count_ == 0) {
     UpdateMeshIndices();
   }

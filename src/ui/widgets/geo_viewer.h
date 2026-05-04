@@ -202,6 +202,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   JunctionClusterResult junction_cluster_result_;
   bool mesh_updated_ = false;
   bool needs_index_update_ = false;
+  bool needs_vertex_rebuild_ = false;
   int batch_update_count_ = 0;
   std::vector<SceneCachedElement> lane_element_items_;
   std::vector<SceneCachedElement> roadmark_element_items_;

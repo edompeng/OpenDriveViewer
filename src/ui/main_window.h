@@ -10,7 +10,6 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QStatusBar>
-#include <vector>
 #include "src/core/scene_enums.h"
 #include "src/ui/widgets/async_map_loader.h"
 #include "src/ui/widgets/coordinate_points_widget.h"
