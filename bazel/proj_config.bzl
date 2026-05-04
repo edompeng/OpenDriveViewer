@@ -67,37 +67,43 @@ def _proj_config_impl(repository_ctx):
         repository_ctx.execute(["cmd.exe", "/c", "if exist include (rd /s /q include)"])
         repository_ctx.execute(["cmd.exe", "/c", "if exist lib (rd /s /q lib)"])
         repository_ctx.execute(["cmd.exe", "/c", "if exist bin (rd /s /q bin)"])
-        
+
         # Search for proj.h in the current workspace
         # GITHUB_WORKSPACE is the most reliable start point on CI runners.
         search_root = repository_ctx.os.environ.get("GITHUB_WORKSPACE", str(repository_ctx.path("../..")))
         find_cmd = 'powershell.exe -Command "(Get-ChildItem -Path \'{}\' -Filter proj.h -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).DirectoryName"'.format(search_root)
-        
+
         res = repository_ctx.execute(["cmd.exe", "/c", find_cmd])
         discovered_path = res.stdout.strip()
-        
+
         if not discovered_path:
             # Fallback to the environment variable if search fails
             discovered_path = proj_root.replace("/", "\\") + "\\include"
-            
+
         discovered_lib = discovered_path.replace("\\include", "\\lib")
         discovered_bin = discovered_path.replace("\\include", "\\bin")
-            
+
         # Copy the headers
         repository_ctx.execute([
-            "cmd.exe", "/c", 'robocopy "{}" "include" /E /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_path)
+            "cmd.exe",
+            "/c",
+            'robocopy "{}" "include" /E /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_path),
         ])
-        
+
         # Copy the library files
         repository_ctx.execute([
-            "cmd.exe", "/c", 'robocopy "{}" "lib" proj*.lib /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_lib)
+            "cmd.exe",
+            "/c",
+            'robocopy "{}" "lib" proj*.lib /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_lib),
         ])
-        
+
         # Copy the DLLs
         repository_ctx.execute([
-            "cmd.exe", "/c", 'robocopy "{}" "bin" proj*.dll /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_bin)
+            "cmd.exe",
+            "/c",
+            'robocopy "{}" "bin" proj*.dll /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_bin),
         ])
-        
+
         # Verification
         check = repository_ctx.execute(["cmd.exe", "/c", "if not exist include\\proj.h (exit 1)"])
         if check.return_code != 0:

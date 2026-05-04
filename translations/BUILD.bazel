@@ -28,8 +28,8 @@ genrule(
     name = "gen_translations_qrc",
     srcs = [":qm_outputs"],
     outs = ["translations_gen.qrc"],
-    tools = [":gen_qrc_bin"],
     cmd = "$(location :gen_qrc_bin) --output $@ $(locations :qm_outputs)",
+    tools = [":gen_qrc_bin"],
 )
 
 # Bundle generated .qrc into resource wrapper

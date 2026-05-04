@@ -5,9 +5,9 @@
 #include <memory>
 #include <unordered_set>
 #include <vector>
+#include "OpenDriveMap.h"
 #include "src/core/junction_grouping.h"
 #include "src/core/scene_enums.h"
-#include "OpenDriveMap.h"
 
 struct RoadChildSnapshot {
   QString element_id;

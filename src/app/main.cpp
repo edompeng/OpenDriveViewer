@@ -11,7 +11,8 @@ int main(int argc, char **argv) {
   QApplication app(argc, argv);
 
   // Initialize crash handler
-  QString crash_dir = app.applicationDirPath() + QDir::separator() + "crash_reports";
+  QString crash_dir =
+      app.applicationDirPath() + QDir::separator() + "crash_reports";
   geoviewer::core::CrashHandler::Initialize(crash_dir.toStdString());
 
   QSurfaceFormat format;

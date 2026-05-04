@@ -8,19 +8,19 @@ cc_library(
         "gl_renderer.h",
     ],
     copts = QT_COPTS,
+    linkopts = select({
+        "@platforms//os:windows": ["-DEFAULTLIB:opengl32.lib"],
+        "//conditions:default": [],
+    }),
     local_defines = select({
         "@platforms//os:windows": ["GEOVIEWER_BUILD_LIB"],
         "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],
     deps = [
-        "//src:export_header",
         "//bazel:qt6",
+        "//src:export_header",
         "//src/core",
         "//src/logic",
     ],
-    linkopts = select({
-        "@platforms//os:windows": ["-DEFAULTLIB:opengl32.lib"],
-        "//conditions:default": [],
-    }),
 )

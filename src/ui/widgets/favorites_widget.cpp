@@ -1,7 +1,7 @@
 #include "src/ui/widgets/favorites_widget.h"
-#include <QDebug>
 #include <QApplication>
 #include <QClipboard>
+#include <QDebug>
 #include "src/core/viewer_text_util.h"
 
 FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)

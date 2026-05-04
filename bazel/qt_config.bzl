@@ -159,16 +159,17 @@ def _configure_linux(repository_ctx, qt6_root, modules, repo_dir):
 
 def _configure_windows(repository_ctx, qt6_root, modules, repo_dir):
     """Configure Qt6 for Windows (MSVC SDK layout)."""
+
     # Ensure destination is clean
     repository_ctx.execute(["cmd.exe", "/c", "if exist include (rd /s /q include)"])
 
     # Search for a representative Qt header to find the include directory
     search_root = repository_ctx.os.environ.get("GITHUB_WORKSPACE", str(repository_ctx.path("../..")))
     find_cmd = 'powershell.exe -Command "(Get-ChildItem -Path \'{}\' -Filter qobject.h -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).DirectoryName"'.format(search_root)
-    
+
     res = repository_ctx.execute(["cmd.exe", "/c", find_cmd])
     discovered_path = res.stdout.strip()
-    
+
     # If discovered_path contains 'QtCore', we want its parent (the main include dir)
     if "QtCore" in discovered_path or "qtcore" in discovered_path.lower():
         # Strip everything from \QtCore onwards
@@ -185,7 +186,9 @@ def _configure_windows(repository_ctx, qt6_root, modules, repo_dir):
 
     # Copy the headers
     repository_ctx.execute([
-        "cmd.exe", "/c", 'robocopy "{}" "include" /E /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_path)
+        "cmd.exe",
+        "/c",
+        'robocopy "{}" "include" /E /NFL /NDL /NJH /NJS /NC /NS /NP || exit 0'.format(discovered_path),
     ])
 
     qt_copts = ["-I{}/include".format(repo_dir)] + [

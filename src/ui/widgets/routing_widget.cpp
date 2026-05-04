@@ -1,12 +1,12 @@
 #include "src/ui/widgets/routing_widget.h"
-#include <QDebug>
-#include <QMessageBox>
 #include <QApplication>
 #include <QClipboard>
+#include <QDebug>
+#include <QMessageBox>
 #include <vector>
+#include "RoutingGraph.h"
 #include "src/logic/input_parsing.h"
 #include "src/logic/routing_logic.h"
-#include "RoutingGraph.h"
 
 RoutingWidget::RoutingWidget(GeoViewerWidget* viewer, QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {
@@ -216,13 +216,14 @@ void RoutingWidget::HandleHistoryContextMenu(const QPoint& pos) {
   } else if (selected == copy_info) {
     QString info = item->text(0);
     if (!item->data(0, Qt::UserRole + 1).toString().isEmpty()) {
-       info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
+      info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
     }
     QApplication::clipboard()->setText(info);
   }
 }
 
-void RoutingWidget::HandleItemDoubleClicked(QTreeWidgetItem* item, int /*column*/) {
+void RoutingWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
+                                            int /*column*/) {
   if (!item) return;
 
   if (item->parent() == nullptr) {

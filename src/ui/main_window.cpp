@@ -259,7 +259,7 @@ void MainWindow::SetupToolbar() {
     connect(act, &QAction::toggled, this,
             [this, w](bool checked) { ToggleWidgetVisibility(w, checked); });
   };
-  
+
   QAction* layerAct = layer_control_dock_->toggleViewAction();
   layerAct->setText(tr("Layer Manager"));
   panels_menu_->addAction(layerAct);

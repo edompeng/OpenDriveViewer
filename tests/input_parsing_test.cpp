@@ -19,7 +19,8 @@ TEST(CoordinateInputParserTest, ParseUserPoints_Single2DPointParsedCorrectly) {
   EXPECT_FALSE(result[0].z.has_value());
 }
 
-TEST(CoordinateInputParserTest, ParseUserPoints_2DPointWithParenthesesParsedCorrectly) {
+TEST(CoordinateInputParserTest,
+     ParseUserPoints_2DPointWithParenthesesParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("(116.3912, 39.9073)");
   ASSERT_EQ(result.size(), std::size_t(1));
@@ -27,7 +28,8 @@ TEST(CoordinateInputParserTest, ParseUserPoints_2DPointWithParenthesesParsedCorr
   EXPECT_DOUBLE_EQ(result[0].y, 39.9073);
 }
 
-TEST(CoordinateInputParserTest, ParseUserPoints_3DPointWithAltitudeParsedCorrectly) {
+TEST(CoordinateInputParserTest,
+     ParseUserPoints_3DPointWithAltitudeParsedCorrectly) {
   const auto result =
       CoordinateInputParser::ParseUserPoints("116.3912, 39.9073, 50.5");
   ASSERT_EQ(result.size(), std::size_t(1));
@@ -37,7 +39,8 @@ TEST(CoordinateInputParserTest, ParseUserPoints_3DPointWithAltitudeParsedCorrect
   EXPECT_DOUBLE_EQ(*result[0].z, 50.5);
 }
 
-TEST(CoordinateInputParserTest, ParseUserPoints_MultiplePointsSeparatedBySemicolons) {
+TEST(CoordinateInputParserTest,
+     ParseUserPoints_MultiplePointsSeparatedBySemicolons) {
   const auto result = CoordinateInputParser::ParseUserPoints(
       "1.0, 2.0; 3.0, 4.0; 5.0, 6.0, 7.0");
   ASSERT_EQ(result.size(), std::size_t(3));
@@ -96,7 +99,8 @@ TEST(CoordinateInputParserTest, ParseJumpLocation_3DCoordinateWithAltitude) {
   EXPECT_DOUBLE_EQ(result->z, 100.0);
 }
 
-TEST(CoordinateInputParserTest, ParseJumpLocation_MoreThan3ComponentsReturnsNullopt) {
+TEST(CoordinateInputParserTest,
+     ParseJumpLocation_MoreThan3ComponentsReturnsNullopt) {
   EXPECT_FALSE(CoordinateInputParser::ParseJumpLocation("1,2,3,4").has_value());
 }
 
@@ -117,9 +121,11 @@ TEST(CoordinateInputParserTest, ParseLaneKey_ValidFormat) {
   EXPECT_EQ(result->lane_id, -1);
 }
 
-TEST(CoordinateInputParserTest, ParseLaneKey_WrongNumberOfComponentsReturnsNullopt) {
+TEST(CoordinateInputParserTest,
+     ParseLaneKey_WrongNumberOfComponentsReturnsNullopt) {
   EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/15.5").has_value());
-  EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/15.5/-1/extra").has_value());
+  EXPECT_FALSE(
+      CoordinateInputParser::ParseLaneKey("road/15.5/-1/extra").has_value());
 }
 
 TEST(CoordinateInputParserTest, ParseLaneKey_NonNumericS0ReturnsNullopt) {
@@ -127,5 +133,6 @@ TEST(CoordinateInputParserTest, ParseLaneKey_NonNumericS0ReturnsNullopt) {
 }
 
 TEST(CoordinateInputParserTest, ParseLaneKey_NonIntegerLaneIdReturnsNullopt) {
-  EXPECT_FALSE(CoordinateInputParser::ParseLaneKey("road/15.5/abc").has_value());
+  EXPECT_FALSE(
+      CoordinateInputParser::ParseLaneKey("road/15.5/abc").has_value());
 }

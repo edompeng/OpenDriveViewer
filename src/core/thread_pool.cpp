@@ -5,9 +5,9 @@ namespace geoviewer::utility {
 
 ThreadPool& ThreadPool::Instance() {
   const unsigned int detected_threads = std::thread::hardware_concurrency();
-  const size_t worker_count =
-      detected_threads == 0 ? static_cast<size_t>(1)
-                            : static_cast<size_t>(detected_threads);
+  const size_t worker_count = detected_threads == 0
+                                  ? static_cast<size_t>(1)
+                                  : static_cast<size_t>(detected_threads);
   static ThreadPool instance(worker_count);
   return instance;
 }

@@ -1,12 +1,12 @@
 #pragma once
 #include <QAction>
+#include <QCheckBox>
 #include <QHash>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPoint>
-#include <QCheckBox>
 #include <QTreeWidget>
 #include <QWidget>
 #include <atomic>

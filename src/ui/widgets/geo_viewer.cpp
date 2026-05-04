@@ -74,14 +74,15 @@ void GeoViewerWidget::EndUserPointsBatch() {
 
 void GeoViewerWidget::SetLayerVisible(LayerType type, bool visible) {
   layer_visibility_[static_cast<size_t>(type)] = visible;
-  
+
   if (gl_renderer_) {
     gl_renderer_->SetLayerVisible(type, visible);
-    
+
     // Sync dashed lane lines with solid lane lines
     if (type == LayerType::kLaneLines) {
       gl_renderer_->SetLayerVisible(LayerType::kLaneLinesDashed, visible);
-      layer_visibility_[static_cast<size_t>(LayerType::kLaneLinesDashed)] = visible;
+      layer_visibility_[static_cast<size_t>(LayerType::kLaneLinesDashed)] =
+          visible;
     }
   }
 
@@ -567,9 +568,10 @@ void GeoViewerWidget::UpdateMeshIndices() {
 
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 2; ++k) {
-          solid_indices.push_back(static_cast<uint32_t>(
-                               lane_outline_indices_[range.start * 2 + k]) +
-                           static_cast<uint32_t>(v_offset));
+          solid_indices.push_back(
+              static_cast<uint32_t>(
+                  lane_outline_indices_[range.start * 2 + k]) +
+              static_cast<uint32_t>(v_offset));
         }
       }
     }

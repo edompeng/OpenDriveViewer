@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include "src/core/coordinate_mode_policy.h"
+#include <gtest/gtest.h>
 
 TEST(CoordinateModePolicyTest, Wgs84AllowedOnlyWithValidGeoreference) {
   EXPECT_TRUE(IsWgs84ModeAllowed(true));
@@ -10,4 +10,3 @@ TEST(CoordinateModePolicyTest, DefaultModeFollowsGeoreferenceValidity) {
   EXPECT_EQ(ResolveDefaultCoordinateMode(true), CoordinateMode::kWGS84);
   EXPECT_EQ(ResolveDefaultCoordinateMode(false), CoordinateMode::kLocal);
 }
-

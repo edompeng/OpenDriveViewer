@@ -15,7 +15,8 @@ void GeoViewerWidget::initializeGL() {
 
   // Apply cached visibility
   for (size_t i = 0; i < layer_visibility_.size(); ++i) {
-    gl_renderer_->SetLayerVisible(static_cast<LayerType>(i), layer_visibility_[i]);
+    gl_renderer_->SetLayerVisible(static_cast<LayerType>(i),
+                                  layer_visibility_[i]);
   }
 
   measure_ctrl_ = std::make_unique<MeasureToolController>(this);
@@ -121,7 +122,8 @@ void GeoViewerWidget::mousePressEvent(QMouseEvent* ev) {
   camera_.BeginDrag(ev->position().toPoint(), ev->button());
 
   if (ev->button() == Qt::LeftButton) {
-    HandlePickSelection((int)ev->position().x(), (int)ev->position().y(), false);
+    HandlePickSelection((int)ev->position().x(), (int)ev->position().y(),
+                        false);
   }
   ev->accept();
 }
@@ -268,7 +270,8 @@ void GeoViewerWidget::wheelEvent(QWheelEvent* ev) {
       hasPick = last_wheel_has_pick_;
       picked_idx = last_wheel_picked_idx_;
     } else {
-      hasPick = GetWorldPosAt(current_pos.x(), current_pos.y(), world_pos, picked_idx);
+      hasPick = GetWorldPosAt(current_pos.x(), current_pos.y(), world_pos,
+                              picked_idx);
       last_wheel_pick_pos_ = current_pos;
       last_wheel_world_pos_ = world_pos;
       last_wheel_has_pick_ = hasPick;
@@ -394,8 +397,8 @@ void GeoViewerWidget::StartSpatialGridBuild() {
 }
 
 void GeoViewerWidget::BuildSpatialGrid() {
-  spatial_grid_data_ = BuildSpatialGridData(map_, *network_mesh_, *junction_mesh_,
-                                            grid_resolution_);
+  spatial_grid_data_ = BuildSpatialGridData(map_, *network_mesh_,
+                                            *junction_mesh_, grid_resolution_);
   spatial_grid_ready_ = true;
 }
 

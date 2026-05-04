@@ -45,7 +45,7 @@ struct ProjThreadCache {
 
     static const std::string kToProj = "+proj=longlat +datum=WGS84 +no_defs";
     PJ* raw_pj = proj_create_crs_to_crs(ctx, georeference.c_str(),
-                                       kToProj.c_str(), nullptr);
+                                        kToProj.c_str(), nullptr);
     if (!raw_pj) return false;
 
     pj = proj_normalize_for_visualization(ctx, raw_pj);

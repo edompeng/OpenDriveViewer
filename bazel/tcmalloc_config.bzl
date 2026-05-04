@@ -4,7 +4,7 @@ def _tcmalloc_config_impl(repository_ctx):
     has_tcmalloc = False
     is_windows = "windows" in repository_ctx.os.name.lower()
     is_mac = "mac" in repository_ctx.os.name.lower()
-    
+
     # 1. Detect tcmalloc based on OS
     if is_windows:
         proj_root = repository_ctx.os.environ.get("PROJ_ROOT", "").replace("\\", "/")

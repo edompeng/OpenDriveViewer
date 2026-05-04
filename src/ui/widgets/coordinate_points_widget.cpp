@@ -1,14 +1,14 @@
 #include "src/ui/widgets/coordinate_points_widget.h"
 
+#include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QColorDialog>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
 #include <QShowEvent>
 #include <QToolButton>
-#include <QApplication>
-#include <QClipboard>
 
 #include "src/logic/input_parsing.h"
 
@@ -221,9 +221,15 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
   if (selected == copy_info) {
     QString coordText;
     if (coord_mode_ == CoordinateMode::kWGS84) {
-      coordText = QString("%1, %2, %3").arg(snap.lon, 0, 'f', 7).arg(snap.lat, 0, 'f', 7).arg(snap.alt, 0, 'f', 2);
+      coordText = QString("%1, %2, %3")
+                      .arg(snap.lon, 0, 'f', 7)
+                      .arg(snap.lat, 0, 'f', 7)
+                      .arg(snap.alt, 0, 'f', 2);
     } else {
-      coordText = QString("%1, %2, %3").arg(snap.x, 0, 'f', 3).arg(snap.y, 0, 'f', 3).arg(snap.z, 0, 'f', 3);
+      coordText = QString("%1, %2, %3")
+                      .arg(snap.x, 0, 'f', 3)
+                      .arg(snap.y, 0, 'f', 3)
+                      .arg(snap.z, 0, 'f', 3);
     }
     QApplication::clipboard()->setText(coordText);
   } else if (selected == toggle_vis) {

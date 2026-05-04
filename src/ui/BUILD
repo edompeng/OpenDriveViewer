@@ -25,8 +25,8 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        "//src:export_header",
         "//bazel:qt6",
+        "//src:export_header",
         "//src/core",
         "//src/logic",
         "//src/ui/render",

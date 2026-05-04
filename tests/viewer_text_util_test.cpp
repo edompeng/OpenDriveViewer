@@ -8,8 +8,11 @@ TEST(ViewerTextUtilTest, FormatsSectionValuesAndLabels) {
 }
 
 TEST(ViewerTextUtilTest, BuildsDisplayStrings) {
-  EXPECT_EQ(BuildFavoriteDisplayName("42", TreeNodeType::kLane, "1:2"), "kLane 1:2 (kRoad 42)");
-  EXPECT_EQ(BuildFavoriteDisplayName("42", TreeNodeType::kLane, "1:2", "Custom"), "Custom");
+  EXPECT_EQ(BuildFavoriteDisplayName("42", TreeNodeType::kLane, "1:2"),
+            "kLane 1:2 (kRoad 42)");
+  EXPECT_EQ(
+      BuildFavoriteDisplayName("42", TreeNodeType::kLane, "1:2", "Custom"),
+      "Custom");
   EXPECT_EQ(BuildRouteDisplayName("a", "b"), "a -> b");
   EXPECT_EQ(BuildLanePosition("r1", "10.5", "-1"), "r1/10.5/-1");
 }

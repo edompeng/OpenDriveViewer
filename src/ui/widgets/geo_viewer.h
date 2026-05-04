@@ -26,7 +26,6 @@
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
-#include <array>
 #include <vector>
 #include "OpenDriveMap.h"
 #include "RoadNetworkMesh.h"
@@ -304,10 +303,10 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   int grid_resolution_ = 32;
   void BuildSpatialGrid();
   void StartSpatialGridBuild();
-  SpatialGridData BuildSpatialGridData(
-      std::shared_ptr<odr::OpenDriveMap> map,
-      const odr::RoadNetworkMesh& network_mesh,
-      const odr::Mesh3D& junction_mesh, int grid_resolution) const;
+  SpatialGridData BuildSpatialGridData(std::shared_ptr<odr::OpenDriveMap> map,
+                                       const odr::RoadNetworkMesh& network_mesh,
+                                       const odr::Mesh3D& junction_mesh,
+                                       int grid_resolution) const;
   std::atomic<uint64_t> spatial_grid_generation_{0};
   bool spatial_grid_ready_ = false;
 

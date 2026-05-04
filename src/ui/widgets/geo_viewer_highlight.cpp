@@ -259,7 +259,8 @@ bool GeoViewerWidget::IsTrianglePickVisible(LayerType type,
     group = "section";
     if (!IsElementActuallyVisible(road_id, group, element_id)) return false;
     int lane_id = network_mesh_->lanes_mesh.get_lane_id(vertex_index);
-    std::string lane_full_id = "E:" + road_id + ":lane:" + element_id + ":" + std::to_string(lane_id);
+    std::string lane_full_id =
+        "E:" + road_id + ":lane:" + element_id + ":" + std::to_string(lane_id);
     return hidden_elements_.count(lane_full_id) == 0;
   } else if (type == LayerType::kRoadmarks) {
     road_id = network_mesh_->roadmarks_mesh.get_road_id(vertex_index);
@@ -277,8 +278,7 @@ bool GeoViewerWidget::IsTrianglePickVisible(LayerType type,
       for (const auto& range : el.ranges) {
         if (triangle_index >= range.start &&
             triangle_index < (range.start + range.count)) {
-          QStringList parts =
-              QString::fromStdString(el.element_key).split(":");
+          QStringList parts = QString::fromStdString(el.element_key).split(":");
           if (parts.size() >= 4) {
             road_id = parts[1].toStdString();
             element_id = parts[3].toStdString();

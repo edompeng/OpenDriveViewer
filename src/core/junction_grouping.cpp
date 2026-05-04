@@ -239,7 +239,6 @@ bool JunctionClusterUtil::BoxesOverlap(const JunctionBox3D& lhs,
   return true;
 }
 
-
 double JunctionClusterUtil::BoxHorizontalDistance(const JunctionBox3D& lhs,
                                                   const JunctionBox3D& rhs) {
   if (!lhs.valid || !rhs.valid) {

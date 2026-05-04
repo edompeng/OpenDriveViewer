@@ -84,7 +84,8 @@ TEST(SpatialGridIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
   EXPECT_NEAR(hits[0].distance, 1.0f, 1e-5f);
 }
 
-TEST(SpatialGridIndexTest, RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) {
+TEST(SpatialGridIndexTest,
+     RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) {
   // Create two triangles at different Y heights (stacked vertically)
   odr::Mesh3D mesh;
   mesh.vertices = {

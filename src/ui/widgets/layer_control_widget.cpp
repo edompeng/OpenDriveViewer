@@ -9,8 +9,8 @@
 #include <QLabel>
 #include <QSignalBlocker>
 #include <QStyle>
-#include <QToolButton>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include "src/core/thread_pool.h"
 #include "src/ui/widgets/layer_tree_model.h"
@@ -93,10 +93,11 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
 
   auto* collapse_btn = new QToolButton(tree_box);
   collapse_btn->setToolTip(tr("Collapse All"));
-  collapse_btn->setIcon(style()->standardIcon(QStyle::SP_ToolBarVerticalExtensionButton)); // Better icon
+  collapse_btn->setIcon(style()->standardIcon(
+      QStyle::SP_ToolBarVerticalExtensionButton));  // Better icon
   search_layout->addWidget(collapse_btn);
   connect(collapse_btn, &QToolButton::clicked, this, [this]() {
-    search_edit_->clear(); // Clear search to show everything before collapsing
+    search_edit_->clear();  // Clear search to show everything before collapsing
     tree_->collapseAll();
   });
 
@@ -105,12 +106,12 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
 
   search_timer_ = new QTimer(this);
   search_timer_->setSingleShot(true);
-  search_timer_->setInterval(300); // 300ms debounce
-  connect(search_timer_, &QTimer::timeout, this, &LayerControlWidget::HandleSearch);
+  search_timer_->setInterval(300);  // 300ms debounce
+  connect(search_timer_, &QTimer::timeout, this,
+          &LayerControlWidget::HandleSearch);
 
-  connect(search_edit_, &QLineEdit::textChanged, this, [this](const QString&) {
-    search_timer_->start();
-  });
+  connect(search_edit_, &QLineEdit::textChanged, this,
+          [this](const QString&) { search_timer_->start(); });
 
   main_layout->addWidget(tree_box);
 
@@ -620,9 +621,9 @@ void LayerControlWidget::HandleElementVisibilityChanged(const QString& id,
 
 void LayerControlWidget::HandleSearch() {
   QString query = search_edit_->text().trimmed();
-  
+
   tree_->setUpdatesEnabled(false);
-  
+
   if (query.isEmpty()) {
     // Show everything
     QTreeWidgetItemIterator it(tree_);
@@ -646,7 +647,8 @@ void LayerControlWidget::HandleSearch() {
     return;
   }
 
-  // Use a temporary list to collect matching items to avoid redundant materialization calls
+  // Use a temporary list to collect matching items to avoid redundant
+  // materialization calls
   struct Match {
     QString road_id;
     TreeNodeType type;
@@ -665,11 +667,13 @@ void LayerControlWidget::HandleSearch() {
     }
     for (const auto& obj : road.objects) {
       if (obj.element_id.contains(query, Qt::CaseInsensitive))
-        matches.push_back({road.road_id, TreeNodeType::kObject, obj.element_id});
+        matches.push_back(
+            {road.road_id, TreeNodeType::kObject, obj.element_id});
     }
     for (const auto& light : road.lights) {
       if (light.element_id.contains(query, Qt::CaseInsensitive))
-        matches.push_back({road.road_id, TreeNodeType::kLight, light.element_id});
+        matches.push_back(
+            {road.road_id, TreeNodeType::kLight, light.element_id});
     }
     for (const auto& sign : road.signs) {
       if (sign.element_id.contains(query, Qt::CaseInsensitive))
@@ -679,17 +683,19 @@ void LayerControlWidget::HandleSearch() {
 
   for (const auto& group : tree_snapshot_->junction_groups) {
     if (group.group_id.contains(query, Qt::CaseInsensitive))
-      matches.push_back({group.group_id, TreeNodeType::kJunctionGroup, group.group_id});
+      matches.push_back(
+          {group.group_id, TreeNodeType::kJunctionGroup, group.group_id});
     for (const auto& jid : group.junction_ids) {
       if (jid.contains(query, Qt::CaseInsensitive))
         matches.push_back({group.group_id, TreeNodeType::kJunction, jid});
     }
   }
 
-  // 2. Materialize and show matches (Limit to first 100 matches to prevent UI freeze)
+  // 2. Materialize and show matches (Limit to first 100 matches to prevent UI
+  // freeze)
   int count = 0;
   for (const auto& m : matches) {
-    if (++count > 100) break; 
+    if (++count > 100) break;
     EnsureItemMaterialized(m.road_id, m.type, m.id);
     QString full_id = BuildFullId(m.road_id, m.type, m.id);
     auto item_it = items_by_full_id_.find(full_id);

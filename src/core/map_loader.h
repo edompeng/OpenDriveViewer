@@ -2,9 +2,9 @@
 
 #include <memory>
 #include <string>
+#include "RoadNetworkMesh.h"
 #include "src/core/junction_grouping.h"
 #include "src/core/scene_enums.h"
-#include "RoadNetworkMesh.h"
 
 namespace odr {
 class OpenDriveMap;

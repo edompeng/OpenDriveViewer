@@ -5,7 +5,8 @@ project(OpenDriveViewer LANGUAGES CXX)
 if(MSVC)
   # Basic MSVC options that are safe for all targets
   add_compile_options(/Zc:__cplusplus /utf-8 /wd4005 /wd4267 /FIiterator)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES -DPUGIXML_STATIC)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES
+                  -DPUGIXML_STATIC)
 else()
   add_compile_options(-Wall -Wextra)
 endif()
@@ -21,20 +22,30 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_BIN_DIR})
 
 # --- Global Control Macros ---
 if(WIN32)
-  # Use STATIC on Windows for internal libraries to ensure robust linkage with a unified macro.
-  set(LIB_TYPE STATIC CACHE INTERNAL "Library linkage type")
+  # Use STATIC on Windows for internal libraries to ensure robust linkage with a
+  # unified macro.
+  set(LIB_TYPE
+      STATIC
+      CACHE INTERNAL "Library linkage type")
   add_definitions(-DGEOVIEWER_STATIC)
 else()
-  set(LIB_TYPE SHARED CACHE INTERNAL "Library linkage type")
+  set(LIB_TYPE
+      SHARED
+      CACHE INTERNAL "Library linkage type")
 endif()
 
 # --- Find Dependencies ---
 # Attempt to use VCPKG if present
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+  set(CMAKE_TOOLCHAIN_FILE
+      "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      CACHE STRING "")
 endif()
 
-find_package(Qt6 COMPONENTS Widgets Gui OpenGL OpenGLWidgets Concurrent LinguistTools REQUIRED)
+find_package(
+  Qt6
+  COMPONENTS Widgets Gui OpenGL OpenGLWidgets Concurrent LinguistTools
+  REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # Proj finding with PkgConfig fallback for Linux
@@ -64,7 +75,9 @@ if(NOT PROJ_FOUND AND PROJ_ROOT)
   set(PROJ_FOUND TRUE)
 endif()
 
-if(PROJ_FOUND AND NOT PROJ_LIBRARIES AND PROJ_LIBRARY)
+if(PROJ_FOUND
+   AND NOT PROJ_LIBRARIES
+   AND PROJ_LIBRARY)
   set(PROJ_LIBRARIES ${PROJ_LIBRARY})
   set(PROJ_INCLUDE_DIRS ${PROJ_INCLUDE_DIR})
 endif()
@@ -82,47 +95,47 @@ include(FetchContent)
 FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
+      DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 # For Windows: prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(gtest_force_shared_crt
+    ON
+    CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 FetchContent_Declare(
-  pugixml
-  URL https://github.com/zeux/pugixml/archive/refs/tags/v1.15.tar.gz
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
+  pugixml URL https://github.com/zeux/pugixml/archive/refs/tags/v1.15.tar.gz
+              DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 FetchContent_MakeAvailable(pugixml)
 
 FetchContent_Declare(
   libOpenDRIVE
   URL https://github.com/pageldev/libOpenDRIVE/archive/refs/tags/0.5.0.tar.gz
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-  PATCH_COMMAND ${CMAKE_COMMAND} -E echo "// Patched by GeoViewer" > thirdparty/pugixml/pugixml.cpp
-)
+      DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  PATCH_COMMAND ${CMAKE_COMMAND} -E echo "// Patched by GeoViewer" >
+                thirdparty/pugixml/pugixml.cpp)
 FetchContent_MakeAvailable(libOpenDRIVE)
 
 # Update the variable name to what FetchContent_MakeAvailable sets (lowercase)
 set(libOpenDRIVE_SOURCE_DIR "${libopendrive_SOURCE_DIR}")
 
-# Create a compatibility include directory for pugixml to match "pugixml/pugixml.hpp" structure
+# Create a compatibility include directory for pugixml to match
+# "pugixml/pugixml.hpp" structure
 set(PUGIXML_COMPAT_DIR "${CMAKE_BINARY_DIR}/pugixml_compat")
 file(MAKE_DIRECTORY "${PUGIXML_COMPAT_DIR}/pugixml")
-configure_file("${pugixml_SOURCE_DIR}/src/pugixml.hpp" "${PUGIXML_COMPAT_DIR}/pugixml/pugixml.hpp" COPYONLY)
-configure_file("${pugixml_SOURCE_DIR}/src/pugiconfig.hpp" "${PUGIXML_COMPAT_DIR}/pugixml/pugiconfig.hpp" COPYONLY)
+configure_file("${pugixml_SOURCE_DIR}/src/pugixml.hpp"
+               "${PUGIXML_COMPAT_DIR}/pugixml/pugixml.hpp" COPYONLY)
+configure_file("${pugixml_SOURCE_DIR}/src/pugiconfig.hpp"
+               "${PUGIXML_COMPAT_DIR}/pugixml/pugiconfig.hpp" COPYONLY)
 
 # Fix for libOpenDRIVE 0.5.0
 target_link_libraries(OpenDrive PUBLIC pugixml-static)
-target_include_directories(OpenDrive SYSTEM BEFORE PUBLIC
-  $<BUILD_INTERFACE:${PUGIXML_COMPAT_DIR}>
-)
-target_include_directories(OpenDrive SYSTEM PUBLIC
-  $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/include>
-)
-target_include_directories(OpenDrive SYSTEM PRIVATE
-  $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/thirdparty>
-)
+target_include_directories(OpenDrive SYSTEM BEFORE
+                           PUBLIC $<BUILD_INTERFACE:${PUGIXML_COMPAT_DIR}>)
+target_include_directories(
+  OpenDrive SYSTEM PUBLIC $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/include>)
+target_include_directories(
+  OpenDrive SYSTEM
+  PRIVATE $<BUILD_INTERFACE:${libOpenDRIVE_SOURCE_DIR}/thirdparty>)
 # Set project-specific compiler options after dependencies
 if(MSVC)
   target_compile_options(OpenDrive PRIVATE /w)
@@ -138,34 +151,29 @@ add_subdirectory(src)
 macro(add_geoviewer_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(${name} PRIVATE
-    GeoViewerCore
-    GeoViewerLogic
-    GeoViewerUIWidgets
-    gtest_main
-    Qt6::Gui
-  )
+  target_link_libraries(${name} PRIVATE GeoViewerCore GeoViewerLogic
+                                        GeoViewerUIWidgets gtest_main Qt6::Gui)
   if(MSVC)
     target_compile_options(${name} PRIVATE /WX)
   else()
     target_compile_options(${name} PRIVATE -Werror)
   endif()
-  target_compile_definitions(${name} PRIVATE
-    GEOVIEWER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_compile_definitions(
+    ${name} PRIVATE GEOVIEWER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
   if(WIN32)
-    add_custom_command(TARGET ${name} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "$<TARGET_FILE:OpenDrive>"
-      "$<TARGET_FILE_DIR:${name}>"
-    )
+    add_custom_command(
+      TARGET ${name}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:OpenDrive>"
+              "$<TARGET_FILE_DIR:${name}>")
   endif()
 
   add_test(NAME ${name} COMMAND ${name})
 endmacro()
 
-
-add_geoviewer_test(ViewerCoreTests
+add_geoviewer_test(
+  ViewerCoreTests
   tests/scene_index_builder_test.cpp
   tests/spatial_grid_index_test.cpp
   tests/viewer_text_util_test.cpp
@@ -176,5 +184,4 @@ add_geoviewer_test(ViewerCoreTests
   tests/camera_controller_test.cpp
   tests/measure_tool_controller_test.cpp
   tests/crash_handler_test.cpp
-  ${GEOVIEWER_APP_TEST_SOURCES}
-)
+  ${GEOVIEWER_APP_TEST_SOURCES})

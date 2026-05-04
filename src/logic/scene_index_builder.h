@@ -2,8 +2,8 @@
 
 #include <functional>
 #include <vector>
-#include "src/core/scene_geometry_types.h"
 #include "Mesh.h"
+#include "src/core/scene_geometry_types.h"
 
 struct SceneLayerIndexResult {
   std::vector<uint32_t> indices;

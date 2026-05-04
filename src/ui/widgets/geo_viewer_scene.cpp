@@ -536,15 +536,16 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   if (!gl_renderer_ || !network_mesh_ || !junction_mesh_) return {};
   auto& network_mesh = *network_mesh_;
   auto& junction_mesh = *junction_mesh_;
-  
+
   // Pre-calculate total size to avoid reallocations
-  size_t total_vertices = network_mesh.lanes_mesh.vertices.size() +
-                         network_mesh.roadmarks_mesh.vertices.size() +
-                         network_mesh.road_objects_mesh.vertices.size() +
-                         (facility_mesh_ ? facility_mesh_->vertices.size() : 0) +
-                         junction_mesh.vertices.size() +
-                         network_mesh.road_signals_mesh.vertices.size();
-  
+  size_t total_vertices =
+      network_mesh.lanes_mesh.vertices.size() +
+      network_mesh.roadmarks_mesh.vertices.size() +
+      network_mesh.road_objects_mesh.vertices.size() +
+      (facility_mesh_ ? facility_mesh_->vertices.size() : 0) +
+      junction_mesh.vertices.size() +
+      network_mesh.road_signals_mesh.vertices.size();
+
   std::vector<float> vertices;
   vertices.reserve(total_vertices * 3);
 
@@ -559,10 +560,12 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
 
   // Lanes
   append_mesh(network_mesh.lanes_mesh, LayerType::kLanes);
-  gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLines,
-                                     gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
-  gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLinesDashed,
-                                     gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
+  gl_renderer_->SetLayerVertexOffset(
+      LayerType::kLaneLines,
+      gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
+  gl_renderer_->SetLayerVertexOffset(
+      LayerType::kLaneLinesDashed,
+      gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
 
   // Roadmarks
   append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks);
@@ -581,12 +584,15 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   append_mesh(junction_mesh, LayerType::kJunctions);
 
   // Reference Lines (Special case: generated on the fly)
-  gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines, vertices.size() / 3);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
+                                     vertices.size() / 3);
   GenerateRefLinePoints(map_, vertices, road_ref_line_vert_ranges_);
 
   // Signals (Lights and Signs share the same mesh)
-  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights, vertices.size() / 3);
-  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns, vertices.size() / 3);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalLights,
+                                     vertices.size() / 3);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns,
+                                     vertices.size() / 3);
   for (const auto& vertex : network_mesh.road_signals_mesh.vertices) {
     vertices.push_back(static_cast<float>(vertex[0]));
     vertices.push_back(static_cast<float>(vertex[1]));

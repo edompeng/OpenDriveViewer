@@ -37,8 +37,10 @@ void CameraController::OrbitByDelta(const QPoint& delta) {
   // Guard against occasional anomalous input spikes that can cause abrupt
   // camera jumps when drag event sequencing is interrupted.
   constexpr int kMaxPixelsPerEvent = 200;
-  const int safe_dx = qBound(-kMaxPixelsPerEvent, delta.x(), kMaxPixelsPerEvent);
-  const int safe_dy = qBound(-kMaxPixelsPerEvent, delta.y(), kMaxPixelsPerEvent);
+  const int safe_dx =
+      qBound(-kMaxPixelsPerEvent, delta.x(), kMaxPixelsPerEvent);
+  const int safe_dy =
+      qBound(-kMaxPixelsPerEvent, delta.y(), kMaxPixelsPerEvent);
 
   yaw_ += static_cast<float>(safe_dx) * kSensitivity;
   pitch_ += static_cast<float>(safe_dy) * kSensitivity;

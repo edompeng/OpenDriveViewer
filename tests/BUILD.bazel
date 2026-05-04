@@ -10,34 +10,34 @@ COMMON_DEPS = [
 ]
 
 COMMON_DEFINES = ["GEOVIEWER_SOURCE_DIR=\\\".\\\""]
+
 COMMON_DATA = ["//:test_data"]
 
 cc_test(
     name = "ViewerCoreTests",
     srcs = [
+        "camera_controller_test.cpp",
+        "crash_handler_test.cpp",
+        "favorites_store_test.cpp",
+        "input_parsing_test.cpp",
+        "layer_tree_model_test.cpp",
+        "routing_logic_test.cpp",
         "scene_index_builder_test.cpp",
         "spatial_grid_index_test.cpp",
         "viewer_text_util_test.cpp",
-        "favorites_store_test.cpp",
-        "routing_logic_test.cpp",
-        "layer_tree_model_test.cpp",
-        "input_parsing_test.cpp",
-        "camera_controller_test.cpp",
-        "crash_handler_test.cpp",
     ],
     copts = QT_COPTS,
-    defines = COMMON_DEFINES,
     data = COMMON_DATA,
+    defines = COMMON_DEFINES,
     deps = COMMON_DEPS,
 )
-
 
 cc_test(
     name = "CoordinateModePolicyTests",
     srcs = ["coordinate_mode_policy_test.cpp"],
     copts = QT_COPTS,
-    defines = COMMON_DEFINES,
     data = COMMON_DATA,
+    defines = COMMON_DEFINES,
     deps = COMMON_DEPS,
 )
 
@@ -45,7 +45,7 @@ cc_test(
     name = "MeasureToolTests",
     srcs = ["measure_tool_controller_test.cpp"],
     copts = QT_COPTS,
-    defines = COMMON_DEFINES,
     data = COMMON_DATA,
+    defines = COMMON_DEFINES,
     deps = COMMON_DEPS,
 )

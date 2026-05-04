@@ -1,10 +1,10 @@
 #include "src/logic/spatial_grid_index.h"
 
 #include <algorithm>
-#include <limits>
-#include <unordered_set>
 #include <cmath>
 #include <future>
+#include <limits>
+#include <unordered_set>
 #include "src/core/thread_pool.h"
 
 SpatialGridData BuildSpatialGridBoxes(
@@ -52,7 +52,7 @@ SpatialGridData BuildSpatialGridBoxes(
 
   // Use a temporary vector of vectors to collect indices, then flatten
   std::vector<std::vector<uint32_t>> temp_boxes(grid_data.boxes.size());
-  
+
   // For large maps, we can parallelize this by layer or even by triangle chunks
   auto& pool = geoviewer::utility::ThreadPool::Instance();
   std::vector<std::future<void>> futures;
@@ -64,9 +64,10 @@ SpatialGridData BuildSpatialGridBoxes(
 
   for (const auto& layer_view : layer_views) {
     if (!layer_view.mesh) continue;
-    
+
     futures.push_back(pool.Enqueue([&, layer_view]() {
-      const int triangle_count = static_cast<int>(layer_view.mesh->indices.size() / 3);
+      const int triangle_count =
+          static_cast<int>(layer_view.mesh->indices.size() / 3);
       if (triangle_count == 0) return;
 
       for (int triangle = 0; triangle < triangle_count; ++triangle) {
@@ -74,23 +75,40 @@ SpatialGridData BuildSpatialGridBoxes(
         const uint32_t i0 = layer_view.mesh->indices[base];
         const uint32_t i1 = layer_view.mesh->indices[base + 1];
         const uint32_t i2 = layer_view.mesh->indices[base + 2];
-        
-        QVector3D v0(layer_view.mesh->vertices[i0][0], layer_view.mesh->vertices[i0][1], layer_view.mesh->vertices[i0][2]);
-        QVector3D v1(layer_view.mesh->vertices[i1][0], layer_view.mesh->vertices[i1][1], layer_view.mesh->vertices[i1][2]);
-        QVector3D v2(layer_view.mesh->vertices[i2][0], layer_view.mesh->vertices[i2][1], layer_view.mesh->vertices[i2][2]);
+
+        QVector3D v0(layer_view.mesh->vertices[i0][0],
+                     layer_view.mesh->vertices[i0][1],
+                     layer_view.mesh->vertices[i0][2]);
+        QVector3D v1(layer_view.mesh->vertices[i1][0],
+                     layer_view.mesh->vertices[i1][1],
+                     layer_view.mesh->vertices[i1][2]);
+        QVector3D v2(layer_view.mesh->vertices[i2][0],
+                     layer_view.mesh->vertices[i2][1],
+                     layer_view.mesh->vertices[i2][2]);
 
         const float min_x = std::min({v0.x(), v1.x(), v2.x()});
         const float max_x = std::max({v0.x(), v1.x(), v2.x()});
         const float min_z = std::min({v0.z(), v1.z(), v2.z()});
         const float max_z = std::max({v0.z(), v1.z(), v2.z()});
 
-        const int min_col = std::max(0, std::min(resolved_resolution - 1, static_cast<int>((min_x - mesh_min.x()) / step_x)));
-        const int max_col = std::max(0, std::min(resolved_resolution - 1, static_cast<int>((max_x - mesh_min.x()) / step_x)));
-        const int min_row = std::max(0, std::min(resolved_resolution - 1, static_cast<int>((min_z - mesh_min.z()) / step_z)));
-        const int max_row = std::max(0, std::min(resolved_resolution - 1, static_cast<int>((max_z - mesh_min.z()) / step_z)));
+        const int min_col = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((min_x - mesh_min.x()) / step_x)));
+        const int max_col = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((max_x - mesh_min.x()) / step_x)));
+        const int min_row = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((min_z - mesh_min.z()) / step_z)));
+        const int max_row = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((max_z - mesh_min.z()) / step_z)));
 
-        const uint32_t layer_tag = layer_view.resolve_layer_tag ? layer_view.resolve_layer_tag(i0) : layer_view.default_layer_tag;
-        const uint32_t encoded = (layer_tag << 28) | static_cast<uint32_t>(triangle);
+        const uint32_t layer_tag = layer_view.resolve_layer_tag
+                                       ? layer_view.resolve_layer_tag(i0)
+                                       : layer_view.default_layer_tag;
+        const uint32_t encoded =
+            (layer_tag << 28) | static_cast<uint32_t>(triangle);
 
         for (int c = min_col; c <= max_col; ++c) {
           for (int r = min_row; r <= max_row; ++r) {
@@ -111,9 +129,12 @@ SpatialGridData BuildSpatialGridBoxes(
   grid_data.flat_indices.reserve(total_indices);
 
   for (size_t i = 0; i < grid_data.boxes.size(); ++i) {
-    grid_data.boxes[i].index_offset = static_cast<uint32_t>(grid_data.flat_indices.size());
-    grid_data.boxes[i].index_count = static_cast<uint32_t>(temp_boxes[i].size());
-    grid_data.flat_indices.insert(grid_data.flat_indices.end(), temp_boxes[i].begin(), temp_boxes[i].end());
+    grid_data.boxes[i].index_offset =
+        static_cast<uint32_t>(grid_data.flat_indices.size());
+    grid_data.boxes[i].index_count =
+        static_cast<uint32_t>(temp_boxes[i].size());
+    grid_data.flat_indices.insert(grid_data.flat_indices.end(),
+                                  temp_boxes[i].begin(), temp_boxes[i].end());
   }
 
   return grid_data;
@@ -123,9 +144,15 @@ bool RayIntersectsSceneAabb(const QVector3D& ray_origin,
                             const QVector3D& ray_dir, const QVector3D& box_min,
                             const QVector3D& box_max, float& hit_distance) {
   const float kEpsilon = 1e-8f;
-  QVector3D inv_dir(1.0f / (std::abs(ray_dir.x()) < kEpsilon ? (ray_dir.x() < 0 ? -kEpsilon : kEpsilon) : ray_dir.x()),
-                    1.0f / (std::abs(ray_dir.y()) < kEpsilon ? (ray_dir.y() < 0 ? -kEpsilon : kEpsilon) : ray_dir.y()),
-                    1.0f / (std::abs(ray_dir.z()) < kEpsilon ? (ray_dir.z() < 0 ? -kEpsilon : kEpsilon) : ray_dir.z()));
+  QVector3D inv_dir(1.0f / (std::abs(ray_dir.x()) < kEpsilon
+                                ? (ray_dir.x() < 0 ? -kEpsilon : kEpsilon)
+                                : ray_dir.x()),
+                    1.0f / (std::abs(ray_dir.y()) < kEpsilon
+                                ? (ray_dir.y() < 0 ? -kEpsilon : kEpsilon)
+                                : ray_dir.y()),
+                    1.0f / (std::abs(ray_dir.z()) < kEpsilon
+                                ? (ray_dir.z() < 0 ? -kEpsilon : kEpsilon)
+                                : ray_dir.z()));
   float t1 = (box_min.x() - ray_origin.x()) * inv_dir.x();
   float t2 = (box_max.x() - ray_origin.x()) * inv_dir.x();
   float tmin = std::min(t1, t2);
@@ -202,21 +229,27 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
   float start_t = std::max(0.0f, t_min);
   QVector3D p = ray_origin + ray_dir * start_t;
 
-  int curr_x = std::clamp(static_cast<int>((p.x() - g_min.x()) / step_x), 0, resolution - 1);
-  int curr_z = std::clamp(static_cast<int>((p.z() - g_min.z()) / step_z), 0, resolution - 1);
+  int curr_x = std::clamp(static_cast<int>((p.x() - g_min.x()) / step_x), 0,
+                          resolution - 1);
+  int curr_z = std::clamp(static_cast<int>((p.z() - g_min.z()) / step_z), 0,
+                          resolution - 1);
 
   const int step_xi = (ray_dir.x() > 0) ? 1 : -1;
   const int step_zi = (ray_dir.z() > 0) ? 1 : -1;
 
-  const float t_delta_x = std::abs(step_x / (std::abs(ray_dir.x()) > 1e-8f ? ray_dir.x() : 1e-8f));
-  const float t_delta_z = std::abs(step_z / (std::abs(ray_dir.z()) > 1e-8f ? ray_dir.z() : 1e-8f));
+  const float t_delta_x =
+      std::abs(step_x / (std::abs(ray_dir.x()) > 1e-8f ? ray_dir.x() : 1e-8f));
+  const float t_delta_z =
+      std::abs(step_z / (std::abs(ray_dir.z()) > 1e-8f ? ray_dir.z() : 1e-8f));
 
-  float t_next_x = (ray_dir.x() > 0) 
-      ? (g_min.x() + (curr_x + 1) * step_x - ray_origin.x()) / ray_dir.x()
-      : (g_min.x() + curr_x * step_x - ray_origin.x()) / ray_dir.x();
-  float t_next_z = (ray_dir.z() > 0)
-      ? (g_min.z() + (curr_z + 1) * step_z - ray_origin.z()) / ray_dir.z()
-      : (g_min.z() + curr_z * step_z - ray_origin.z()) / ray_dir.z();
+  float t_next_x =
+      (ray_dir.x() > 0)
+          ? (g_min.x() + (curr_x + 1) * step_x - ray_origin.x()) / ray_dir.x()
+          : (g_min.x() + curr_x * step_x - ray_origin.x()) / ray_dir.x();
+  float t_next_z =
+      (ray_dir.z() > 0)
+          ? (g_min.z() + (curr_z + 1) * step_z - ray_origin.z()) / ray_dir.z()
+          : (g_min.z() + curr_z * step_z - ray_origin.z()) / ray_dir.z();
 
   if (std::abs(ray_dir.x()) < 1e-8f) t_next_x = 1e9f;
   if (std::abs(ray_dir.z()) < 1e-8f) t_next_z = 1e9f;
@@ -224,7 +257,8 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
   float closest_t = std::numeric_limits<float>::max();
   std::optional<SpatialPickResult> result;
 
-  while (curr_x >= 0 && curr_x < resolution && curr_z >= 0 && curr_z < resolution) {
+  while (curr_x >= 0 && curr_x < resolution && curr_z >= 0 &&
+         curr_z < resolution) {
     const auto& box = grid_data.boxes[curr_x * resolution + curr_z];
     if (box.index_count > 0) {
       for (uint32_t k = 0; k < box.index_count; ++k) {
@@ -239,11 +273,16 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
         if (!is_triangle_visible(layer_tag, triangle_index, idx0)) continue;
         const size_t idx1 = mesh->indices[base + 1];
         const size_t idx2 = mesh->indices[base + 2];
-        QVector3D v0(mesh->vertices[idx0][0], mesh->vertices[idx0][1], mesh->vertices[idx0][2]);
-        QVector3D v1(mesh->vertices[idx1][0], mesh->vertices[idx1][1], mesh->vertices[idx1][2]);
-        QVector3D v2(mesh->vertices[idx2][0], mesh->vertices[idx2][1], mesh->vertices[idx2][2]);
+        QVector3D v0(mesh->vertices[idx0][0], mesh->vertices[idx0][1],
+                     mesh->vertices[idx0][2]);
+        QVector3D v1(mesh->vertices[idx1][0], mesh->vertices[idx1][1],
+                     mesh->vertices[idx1][2]);
+        QVector3D v2(mesh->vertices[idx2][0], mesh->vertices[idx2][1],
+                     mesh->vertices[idx2][2]);
         float t = 0, u = 0, v = 0;
-        if (RayIntersectsSceneTriangle(ray_origin, ray_dir, v0, v1, v2, t, u, v) && t < closest_t) {
+        if (RayIntersectsSceneTriangle(ray_origin, ray_dir, v0, v1, v2, t, u,
+                                       v) &&
+            t < closest_t) {
           closest_t = t;
           result = SpatialPickResult{layer_tag, idx0, t};
         }
@@ -317,27 +356,34 @@ std::vector<RaycastHitPoint> RaycastAllHits(
 
   float start_t = std::max(0.0f, t_min);
   QVector3D p = ray_origin + ray_dir * start_t;
-  int curr_x = std::clamp(static_cast<int>((p.x() - g_min.x()) / step_x), 0, resolution - 1);
-  int curr_z = std::clamp(static_cast<int>((p.z() - g_min.z()) / step_z), 0, resolution - 1);
+  int curr_x = std::clamp(static_cast<int>((p.x() - g_min.x()) / step_x), 0,
+                          resolution - 1);
+  int curr_z = std::clamp(static_cast<int>((p.z() - g_min.z()) / step_z), 0,
+                          resolution - 1);
 
   const int step_xi = (ray_dir.x() > 0) ? 1 : -1;
   const int step_zi = (ray_dir.z() > 0) ? 1 : -1;
-  const float t_delta_x = std::abs(step_x / (std::abs(ray_dir.x()) > 1e-8f ? ray_dir.x() : 1e-8f));
-  const float t_delta_z = std::abs(step_z / (std::abs(ray_dir.z()) > 1e-8f ? ray_dir.z() : 1e-8f));
+  const float t_delta_x =
+      std::abs(step_x / (std::abs(ray_dir.x()) > 1e-8f ? ray_dir.x() : 1e-8f));
+  const float t_delta_z =
+      std::abs(step_z / (std::abs(ray_dir.z()) > 1e-8f ? ray_dir.z() : 1e-8f));
 
-  float t_next_x = (ray_dir.x() > 0) 
-      ? (g_min.x() + (curr_x + 1) * step_x - ray_origin.x()) / ray_dir.x()
-      : (g_min.x() + curr_x * step_x - ray_origin.x()) / ray_dir.x();
-  float t_next_z = (ray_dir.z() > 0)
-      ? (g_min.z() + (curr_z + 1) * step_z - ray_origin.z()) / ray_dir.z()
-      : (g_min.z() + curr_z * step_z - ray_origin.z()) / ray_dir.z();
+  float t_next_x =
+      (ray_dir.x() > 0)
+          ? (g_min.x() + (curr_x + 1) * step_x - ray_origin.x()) / ray_dir.x()
+          : (g_min.x() + curr_x * step_x - ray_origin.x()) / ray_dir.x();
+  float t_next_z =
+      (ray_dir.z() > 0)
+          ? (g_min.z() + (curr_z + 1) * step_z - ray_origin.z()) / ray_dir.z()
+          : (g_min.z() + curr_z * step_z - ray_origin.z()) / ray_dir.z();
 
   if (std::abs(ray_dir.x()) < 1e-8f) t_next_x = 1e9f;
   if (std::abs(ray_dir.z()) < 1e-8f) t_next_z = 1e9f;
 
   std::unordered_set<uint64_t> visited_triangles;
 
-  while (curr_x >= 0 && curr_x < resolution && curr_z >= 0 && curr_z < resolution) {
+  while (curr_x >= 0 && curr_x < resolution && curr_z >= 0 &&
+         curr_z < resolution) {
     const auto& box = grid_data.boxes[curr_x * resolution + curr_z];
     for (uint32_t k = 0; k < box.index_count; ++k) {
       uint32_t encoded = grid_data.flat_indices[box.index_offset + k];
@@ -354,11 +400,15 @@ std::vector<RaycastHitPoint> RaycastAllHits(
       if (!is_triangle_visible(layer_tag, triangle_index, idx0)) continue;
       const size_t idx1 = mesh->indices[base + 1];
       const size_t idx2 = mesh->indices[base + 2];
-      QVector3D v0(mesh->vertices[idx0][0], mesh->vertices[idx0][1], mesh->vertices[idx0][2]);
-      QVector3D v1(mesh->vertices[idx1][0], mesh->vertices[idx1][1], mesh->vertices[idx1][2]);
-      QVector3D v2(mesh->vertices[idx2][0], mesh->vertices[idx2][1], mesh->vertices[idx2][2]);
+      QVector3D v0(mesh->vertices[idx0][0], mesh->vertices[idx0][1],
+                   mesh->vertices[idx0][2]);
+      QVector3D v1(mesh->vertices[idx1][0], mesh->vertices[idx1][1],
+                   mesh->vertices[idx1][2]);
+      QVector3D v2(mesh->vertices[idx2][0], mesh->vertices[idx2][1],
+                   mesh->vertices[idx2][2]);
       float t = 0, u = 0, v = 0;
-      if (RayIntersectsSceneTriangle(ray_origin, ray_dir, v0, v1, v2, t, u, v)) {
+      if (RayIntersectsSceneTriangle(ray_origin, ray_dir, v0, v1, v2, t, u,
+                                     v)) {
         hits.push_back({ray_origin + ray_dir * t, layer_tag, idx0, t});
       }
     }
