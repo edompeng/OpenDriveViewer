@@ -10,6 +10,7 @@
 #include <QSignalBlocker>
 #include <QStyle>
 #include <QToolButton>
+#include <QTimer>
 #include <QVBoxLayout>
 #include "src/core/thread_pool.h"
 #include "src/ui/widgets/layer_tree_model.h"
@@ -102,8 +103,14 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   tree_layout->addLayout(search_layout);
   tree_layout->addWidget(tree_);
 
-  connect(search_edit_, &QLineEdit::textChanged, this,
-          &LayerControlWidget::HandleSearch);
+  search_timer_ = new QTimer(this);
+  search_timer_->setSingleShot(true);
+  search_timer_->setInterval(300); // 300ms debounce
+  connect(search_timer_, &QTimer::timeout, this, &LayerControlWidget::HandleSearch);
+
+  connect(search_edit_, &QLineEdit::textChanged, this, [this](const QString&) {
+    search_timer_->start();
+  });
 
   main_layout->addWidget(tree_box);
 
@@ -614,7 +621,6 @@ void LayerControlWidget::HandleElementVisibilityChanged(const QString& id,
 void LayerControlWidget::HandleSearch() {
   QString query = search_edit_->text().trimmed();
   
-  // Disable updates to avoid flicker
   tree_->setUpdatesEnabled(false);
   
   if (query.isEmpty()) {
@@ -640,47 +646,61 @@ void LayerControlWidget::HandleSearch() {
     return;
   }
 
-  // 1. Find all matches in snapshot and materialize them
-  auto matchAndShow = [&](const QString& id, TreeNodeType type, const QString& road_id) {
-    if (id.contains(query, Qt::CaseInsensitive)) {
-      EnsureItemMaterialized(road_id, type, id);
-      QString full_id = BuildFullId(road_id, type, id);
-      auto item_it = items_by_full_id_.find(full_id);
-      if (item_it != items_by_full_id_.end()) {
-        QTreeWidgetItem* item = item_it.value();
-        // Show item and all its parents
-        while (item) {
-          item->setHidden(false);
-          item->setExpanded(true);
-          item = item->parent();
-        }
-      }
-    }
+  // Use a temporary list to collect matching items to avoid redundant materialization calls
+  struct Match {
+    QString road_id;
+    TreeNodeType type;
+    QString id;
   };
+  std::vector<Match> matches;
 
+  // 1. Snapshot search (Fast)
   for (const auto& road : tree_snapshot_->roads) {
     if (road.road_id.contains(query, Qt::CaseInsensitive)) {
-      // Show road root
-      auto item_it = items_by_full_id_.find("R:" + road.road_id);
-      if (item_it != items_by_full_id_.end()) {
-        item_it.value()->setHidden(false);
-      }
+      matches.push_back({road.road_id, TreeNodeType::kRoad, road.road_id});
     }
-    for (const auto& lane : road.lanes) matchAndShow(lane.element_id, TreeNodeType::kLane, road.road_id);
-    for (const auto& obj : road.objects) matchAndShow(obj.element_id, TreeNodeType::kObject, road.road_id);
-    for (const auto& light : road.lights) matchAndShow(light.element_id, TreeNodeType::kLight, road.road_id);
-    for (const auto& sign : road.signs) matchAndShow(sign.element_id, TreeNodeType::kSign, road.road_id);
+    for (const auto& lane : road.lanes) {
+      if (lane.element_id.contains(query, Qt::CaseInsensitive))
+        matches.push_back({road.road_id, TreeNodeType::kLane, lane.element_id});
+    }
+    for (const auto& obj : road.objects) {
+      if (obj.element_id.contains(query, Qt::CaseInsensitive))
+        matches.push_back({road.road_id, TreeNodeType::kObject, obj.element_id});
+    }
+    for (const auto& light : road.lights) {
+      if (light.element_id.contains(query, Qt::CaseInsensitive))
+        matches.push_back({road.road_id, TreeNodeType::kLight, light.element_id});
+    }
+    for (const auto& sign : road.signs) {
+      if (sign.element_id.contains(query, Qt::CaseInsensitive))
+        matches.push_back({road.road_id, TreeNodeType::kSign, sign.element_id});
+    }
   }
 
   for (const auto& group : tree_snapshot_->junction_groups) {
-    if (group.group_id.contains(query, Qt::CaseInsensitive)) {
-       auto item_it = items_by_full_id_.find("JG:" + group.group_id);
-       if (item_it != items_by_full_id_.end()) {
-         item_it.value()->setHidden(false);
-         if (item_it.value()->parent()) item_it.value()->parent()->setHidden(false);
-       }
+    if (group.group_id.contains(query, Qt::CaseInsensitive))
+      matches.push_back({group.group_id, TreeNodeType::kJunctionGroup, group.group_id});
+    for (const auto& jid : group.junction_ids) {
+      if (jid.contains(query, Qt::CaseInsensitive))
+        matches.push_back({group.group_id, TreeNodeType::kJunction, jid});
     }
-    for (const auto& jid : group.junction_ids) matchAndShow(jid, TreeNodeType::kJunction, group.group_id);
+  }
+
+  // 2. Materialize and show matches (Limit to first 100 matches to prevent UI freeze)
+  int count = 0;
+  for (const auto& m : matches) {
+    if (++count > 100) break; 
+    EnsureItemMaterialized(m.road_id, m.type, m.id);
+    QString full_id = BuildFullId(m.road_id, m.type, m.id);
+    auto item_it = items_by_full_id_.find(full_id);
+    if (item_it != items_by_full_id_.end()) {
+      QTreeWidgetItem* item = item_it.value();
+      while (item) {
+        item->setHidden(false);
+        item->setExpanded(true);
+        item = item->parent();
+      }
+    }
   }
 
   tree_->setUpdatesEnabled(true);

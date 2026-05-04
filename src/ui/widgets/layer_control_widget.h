@@ -57,6 +57,7 @@ class LayerControlWidget : public QWidget {
   std::atomic<uint64_t> snapshot_generation_{0};
   uint64_t last_displayed_generation_ = 0;
 
+  QTimer* search_timer_ = nullptr;
   void RequestSnapshotBuild();
   void PopulateTopLevelItems();
   void EnsureChildrenLoaded(QTreeWidgetItem* item);
