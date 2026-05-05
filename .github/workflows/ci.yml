@@ -48,6 +48,11 @@ jobs:
             qt_version: '6.9.1'
             artifact_name: 'app-windows.zip'
 
+    env:
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg_downloads
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
@@ -76,8 +81,15 @@ jobs:
           # More specific cache key to avoid architecture/version mismatches
           cache-key-prefix: qt-${{ matrix.os }}-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
 
-      # Use the pre-installed vcpkg on the runner to save time on cloning.
-      # Binary caching (x-gha) handles package persistence.
+      # Use the vcpkg from cache or let it be cloned/built once.
+      # x-gha handles package persistence.
+
+      - name: Cache vcpkg tool
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VCPKG_ROOT }}
+          key: vcpkg-tool-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Cache vcpkg Installed Libraries
         if: matrix.os == 'windows-2022'
@@ -92,21 +104,20 @@ jobs:
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v5
         with:
-          path: |
-            ${{ env.VCPKG_INSTALLATION_ROOT }}/downloads
+          path: ${{ env.VCPKG_DOWNLOADS }}
           key: vcpkg-downloads-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgDirectory: ${{ env.VCPKG_INSTALLATION_ROOT }}
-          vcpkgJsonGlob: '**/vcpkg.json'
+          vcpkgDirectory: ${{ env.VCPKG_ROOT }}
+          vcpkgJsonGlob: 'vcpkg.json'
           runVcpkgInstall: true
         env:
           VCPKG_DEFAULT_TRIPLET: ${{ matrix.vcpkg_triplet }}
           VCPKG_INSTALLED_DIR: '${{ github.workspace }}/vcpkg_installed'
-          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+          VCPKG_DOWNLOADS: ${{ env.VCPKG_DOWNLOADS }}
 
 
 
@@ -221,6 +232,11 @@ jobs:
           - os: windows-2022
             vcpkg_triplet: 'x64-windows'
             qt_version: '6.9.1'
+
+    env:
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg_downloads
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
@@ -243,36 +259,42 @@ jobs:
           variant: ccache
           append-timestamp: false
 
-      # Use pre-installed vcpkg to save time
+      # Use vcpkg from cache or clone/build once.
+      
+      - name: Cache vcpkg tool
+        if: matrix.os == 'windows-2022'
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VCPKG_ROOT }}
+          key: vcpkg-tool-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Cache vcpkg Installed Libraries
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/vcpkg_installed
-          key: vcpkg-installed-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            vcpkg-installed-cmake-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
+            vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
 
       - name: Cache vcpkg Downloads
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v5
         with:
-          path: |
-            ${{ env.VCPKG_INSTALLATION_ROOT }}/downloads
-          key: vcpkg-downloads-cmake-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+          path: ${{ env.VCPKG_DOWNLOADS }}
+          key: vcpkg-downloads-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgDirectory: ${{ env.VCPKG_INSTALLATION_ROOT }}
-          vcpkgJsonGlob: '**/vcpkg.json'
+          vcpkgDirectory: ${{ env.VCPKG_ROOT }}
+          vcpkgJsonGlob: 'vcpkg.json'
           runVcpkgInstall: true
         env:
           VCPKG_DEFAULT_TRIPLET: ${{ matrix.vcpkg_triplet }}
           VCPKG_INSTALLED_DIR: '${{ github.workspace }}/vcpkg_installed'
-          VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+          VCPKG_DOWNLOADS: ${{ env.VCPKG_DOWNLOADS }}
 
       - name: Setup MSVC
         if: matrix.os == 'windows-2022'
