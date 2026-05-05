@@ -4,10 +4,7 @@ load("//bazel:qt.bzl", "QT_COPTS")
 cc_library(
     name = "OpenDriveViewer_resources",
     srcs = select({
-        "@platforms//os:windows": [
-            "resources/app.ico",
-            "resources/app.rc",
-        ],
+        "@platforms//os:windows": ["resources/app.rc"],
         "//conditions:default": [],
     }),
 )
@@ -24,7 +21,6 @@ cc_binary(
         "@platforms//os:windows": [
             "/SUBSYSTEM:WINDOWS",
             "/ENTRY:mainCRTStartup",
-            # Pass the manifest to the linker
             "/MANIFEST:EMBED",
             "/MANIFESTINPUT:$(location resources/app.manifest)",
         ],
