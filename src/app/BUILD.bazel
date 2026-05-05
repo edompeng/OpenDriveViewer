@@ -1,13 +1,22 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("//bazel:qt.bzl", "QT_COPTS")
+
+cc_library(
+    name = "OpenDriveViewer_resources",
+    srcs = select({
+        "@platforms//os:windows": [
+            "resources/app.ico",
+            "resources/app.rc",
+        ],
+        "//conditions:default": [],
+    }),
+)
 
 cc_binary(
     name = "OpenDriveViewer",
-    srcs = ["main.cpp"] + select({
-        "@platforms//os:windows": [
-            "resources/app.rc",
-            "resources/app.ico",
-        ],
+    srcs = ["main.cpp"],
+    additional_linker_inputs = select({
+        "@platforms//os:windows": ["resources/app.manifest"],
         "//conditions:default": [],
     }),
     copts = QT_COPTS,
@@ -21,11 +30,8 @@ cc_binary(
         ],
         "//conditions:default": [],
     }),
-    additional_linker_inputs = select({
-        "@platforms//os:windows": ["resources/app.manifest"],
-        "//conditions:default": [],
-    }),
     deps = [
+        ":OpenDriveViewer_resources",
         "//bazel:qt6",
         "//src/core",
         "//src/ui:main_window",
