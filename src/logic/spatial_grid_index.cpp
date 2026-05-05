@@ -50,46 +50,104 @@ SpatialGridData BuildSpatialGridBoxes(
     }
   }
 
-  // Use a temporary vector of vectors to collect indices, then flatten
-  std::vector<std::vector<uint32_t>> temp_boxes(grid_data.boxes.size());
+  // Two-pass approach to avoid vector<vector<...>> memory fragmentation
+  std::vector<std::atomic<uint32_t>> box_counts(grid_data.boxes.size());
+  for (auto& count : box_counts) count.store(0);
 
-  // For large maps, we can parallelize this by layer or even by triangle chunks
   auto& pool = geoviewer::utility::ThreadPool::Instance();
   std::vector<std::future<void>> futures;
 
-  std::vector<std::unique_ptr<std::mutex>> row_mutexes;
-  for (int i = 0; i < resolved_resolution; ++i) {
-    row_mutexes.push_back(std::make_unique<std::mutex>());
-  }
-
+  // Pass 1: Count
   for (const auto& layer_view : layer_views) {
     if (!layer_view.mesh) continue;
-
     futures.push_back(pool.Enqueue([&, layer_view]() {
       const int triangle_count =
           static_cast<int>(layer_view.mesh->indices.size() / 3);
-      if (triangle_count == 0) return;
-
       for (int triangle = 0; triangle < triangle_count; ++triangle) {
         const std::size_t base = static_cast<std::size_t>(triangle) * 3;
         const uint32_t i0 = layer_view.mesh->indices[base];
         const uint32_t i1 = layer_view.mesh->indices[base + 1];
         const uint32_t i2 = layer_view.mesh->indices[base + 2];
 
-        QVector3D v0(layer_view.mesh->vertices[i0][0],
-                     layer_view.mesh->vertices[i0][1],
-                     layer_view.mesh->vertices[i0][2]);
-        QVector3D v1(layer_view.mesh->vertices[i1][0],
-                     layer_view.mesh->vertices[i1][1],
-                     layer_view.mesh->vertices[i1][2]);
-        QVector3D v2(layer_view.mesh->vertices[i2][0],
-                     layer_view.mesh->vertices[i2][1],
-                     layer_view.mesh->vertices[i2][2]);
+        const float min_x =
+            std::min({static_cast<float>(layer_view.mesh->vertices[i0][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][0])});
+        const float max_x =
+            std::max({static_cast<float>(layer_view.mesh->vertices[i0][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][0])});
+        const float min_z =
+            std::min({static_cast<float>(layer_view.mesh->vertices[i0][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][2])});
+        const float max_z =
+            std::max({static_cast<float>(layer_view.mesh->vertices[i0][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][2])});
 
-        const float min_x = std::min({v0.x(), v1.x(), v2.x()});
-        const float max_x = std::max({v0.x(), v1.x(), v2.x()});
-        const float min_z = std::min({v0.z(), v1.z(), v2.z()});
-        const float max_z = std::max({v0.z(), v1.z(), v2.z()});
+        const int min_col = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((min_x - mesh_min.x()) / step_x)));
+        const int max_col = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((max_x - mesh_min.x()) / step_x)));
+        const int min_row = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((min_z - mesh_min.z()) / step_z)));
+        const int max_row = std::max(
+            0, std::min(resolved_resolution - 1,
+                        static_cast<int>((max_z - mesh_min.z()) / step_z)));
+
+        for (int c = min_col; c <= max_col; ++c) {
+          for (int r = min_row; r <= max_row; ++r) {
+            box_counts[c * resolved_resolution + r].fetch_add(1);
+          }
+        }
+      }
+    }));
+  }
+  for (auto& f : futures) f.get();
+  futures.clear();
+
+  // Prefix sum to get offsets
+  uint32_t total_indices = 0;
+  for (size_t i = 0; i < grid_data.boxes.size(); ++i) {
+    grid_data.boxes[i].index_offset = total_indices;
+    grid_data.boxes[i].index_count = box_counts[i].load();
+    total_indices += grid_data.boxes[i].index_count;
+    box_counts[i].store(0);  // Reuse for tracking current fill position
+  }
+  grid_data.flat_indices.resize(total_indices);
+
+  // Pass 2: Fill
+  for (const auto& layer_view : layer_views) {
+    if (!layer_view.mesh) continue;
+    futures.push_back(pool.Enqueue([&, layer_view]() {
+      const int triangle_count =
+          static_cast<int>(layer_view.mesh->indices.size() / 3);
+      for (int triangle = 0; triangle < triangle_count; ++triangle) {
+        const std::size_t base = static_cast<std::size_t>(triangle) * 3;
+        const uint32_t i0 = layer_view.mesh->indices[base];
+        const uint32_t i1 = layer_view.mesh->indices[base + 1];
+        const uint32_t i2 = layer_view.mesh->indices[base + 2];
+
+        const float min_x =
+            std::min({static_cast<float>(layer_view.mesh->vertices[i0][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][0])});
+        const float max_x =
+            std::max({static_cast<float>(layer_view.mesh->vertices[i0][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][0]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][0])});
+        const float min_z =
+            std::min({static_cast<float>(layer_view.mesh->vertices[i0][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][2])});
+        const float max_z =
+            std::max({static_cast<float>(layer_view.mesh->vertices[i0][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i1][2]),
+                      static_cast<float>(layer_view.mesh->vertices[i2][2])});
 
         const int min_col = std::max(
             0, std::min(resolved_resolution - 1,
@@ -108,34 +166,21 @@ SpatialGridData BuildSpatialGridBoxes(
                                        ? layer_view.resolve_layer_tag(i0)
                                        : layer_view.default_layer_tag;
         const uint32_t encoded =
-            (layer_tag << 28) | static_cast<uint32_t>(triangle);
+            (layer_tag << 28) | (static_cast<uint32_t>(triangle) & 0x0FFFFFFF);
 
         for (int c = min_col; c <= max_col; ++c) {
           for (int r = min_row; r <= max_row; ++r) {
-            const int box_index = c * resolved_resolution + r;
-            std::lock_guard<std::mutex> lock(*row_mutexes[r]);
-            temp_boxes[box_index].push_back(encoded);
+            const int box_idx = c * resolved_resolution + r;
+            uint32_t pos = box_counts[box_idx].fetch_add(1);
+            grid_data
+                .flat_indices[grid_data.boxes[box_idx].index_offset + pos] =
+                encoded;
           }
         }
       }
     }));
   }
-
   for (auto& f : futures) f.get();
-
-  // Flattening
-  size_t total_indices = 0;
-  for (const auto& tb : temp_boxes) total_indices += tb.size();
-  grid_data.flat_indices.reserve(total_indices);
-
-  for (size_t i = 0; i < grid_data.boxes.size(); ++i) {
-    grid_data.boxes[i].index_offset =
-        static_cast<uint32_t>(grid_data.flat_indices.size());
-    grid_data.boxes[i].index_count =
-        static_cast<uint32_t>(temp_boxes[i].size());
-    grid_data.flat_indices.insert(grid_data.flat_indices.end(),
-                                  temp_boxes[i].begin(), temp_boxes[i].end());
-  }
 
   return grid_data;
 }

@@ -20,6 +20,10 @@ std::vector<uint32_t> CollectSceneIndices(
     if (!predicate(element)) continue;
     for (const auto& range : element.ranges) {
       const std::size_t base = static_cast<std::size_t>(range.start) * 3;
+      if (base + static_cast<std::size_t>(range.count) * 3 >
+          source_indices.size()) {
+        continue;
+      }
       for (uint32_t k = 0; k < range.count * 3; ++k) {
         indices.push_back(source_indices[base + k] +
                           static_cast<uint32_t>(vertex_offset));

@@ -21,11 +21,12 @@ constexpr double kPi = 3.14159265358979323846;
 double DegToRad(double degrees) { return degrees * kPi / 180.0; }
 
 double NormalizeAngle(double angle_rad) {
-  while (angle_rad < 0.0) {
-    angle_rad += 2.0 * kPi;
+  if (!std::isfinite(angle_rad)) {
+    return 0.0;
   }
-  while (angle_rad >= 2.0 * kPi) {
-    angle_rad -= 2.0 * kPi;
+  angle_rad = std::fmod(angle_rad, 2.0 * kPi);
+  if (angle_rad < 0.0) {
+    angle_rad += 2.0 * kPi;
   }
   return angle_rad;
 }

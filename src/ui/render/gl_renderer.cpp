@@ -532,6 +532,8 @@ bool GlRenderer::InitShaders() {
 
   if (!CheckShaderErrors(vertex_shader, "VERTEX") ||
       !CheckShaderErrors(fragment_shader, "FRAGMENT")) {
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
     return false;
   }
 
@@ -540,11 +542,17 @@ bool GlRenderer::InitShaders() {
   glAttachShader(shader_program_, fragment_shader);
   glLinkProgram(shader_program_);
 
-  if (!CheckProgramErrors(shader_program_)) {
-    return false;
-  }
+  // Shaders can be detached and deleted after linking
+  glDetachShader(shader_program_, vertex_shader);
+  glDetachShader(shader_program_, fragment_shader);
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
+
+  if (!CheckProgramErrors(shader_program_)) {
+    glDeleteProgram(shader_program_);
+    shader_program_ = 0;
+    return false;
+  }
 
   // Cache uniform locations
   uniforms_.model = glGetUniformLocation(shader_program_, "model");
