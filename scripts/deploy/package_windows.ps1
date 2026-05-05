@@ -45,6 +45,61 @@ New-Item -ItemType Directory -Path "${BUNDLE_DIR}\share\proj" | Out-Null
 Copy-Item $BAZEL_BINARY "${BUNDLE_DIR}\bin\"
 Write-Host "  -> Copied $BINARY_NAME.exe"
 
+# --- Embed Windows Resources (post-build) ---
+# Bazel's rules_cc does not support .rc files, so we embed resources after build.
+Write-Host "`n=== Embedding Windows Resources ==="
+$TARGET_EXE = "${BUNDLE_DIR}\bin\${BINARY_NAME}.exe"
+
+# Download rcedit for setting version info and icon
+$RCEDIT_URL = "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe"
+$RCEDIT = "$env:TEMP\rcedit-x64.exe"
+if (-not (Test-Path $RCEDIT)) {
+    Write-Host "  -> Downloading rcedit..."
+    Invoke-WebRequest -Uri $RCEDIT_URL -OutFile $RCEDIT -UseBasicParsing
+}
+
+# Set version info
+$RC_DIR = "src\app\resources"
+Write-Host "  -> Setting version information..."
+& $RCEDIT $TARGET_EXE `
+    --set-version-string "CompanyName" "GeoViewer Team" `
+    --set-version-string "FileDescription" "GeoViewer - 3D GIS and OpenDrive Viewer" `
+    --set-version-string "LegalCopyright" "Copyright (C) 2026 GeoViewer" `
+    --set-version-string "OriginalFilename" "OpenDriveViewer.exe" `
+    --set-version-string "ProductName" "GeoViewer" `
+    --set-file-version "1.0.0.0" `
+    --set-product-version "1.0.0.0"
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "  -> rcedit version info failed (non-fatal)"
+}
+
+# Set icon
+$ICON_FILE = "${RC_DIR}\app.ico"
+if (Test-Path $ICON_FILE) {
+    Write-Host "  -> Setting application icon..."
+    & $RCEDIT $TARGET_EXE --set-icon $ICON_FILE
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "  -> rcedit icon failed (non-fatal)"
+    }
+}
+
+# Embed manifest using mt.exe (part of Windows SDK)
+$MANIFEST_FILE = "${RC_DIR}\app.manifest"
+if (Test-Path $MANIFEST_FILE) {
+    $MT = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Filter "mt.exe" -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match "x64" } | Select-Object -First 1
+    if ($MT) {
+        Write-Host "  -> Embedding application manifest..."
+        & $MT.FullName -manifest $MANIFEST_FILE -outputresource:"${TARGET_EXE};#1" -nologo
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "  -> mt.exe manifest embedding failed (non-fatal)"
+        }
+    } else {
+        Write-Warning "  -> mt.exe not found, skipping manifest embedding"
+    }
+}
+Write-Host "  -> Resource embedding complete"
+
 # Package PDB
 Write-Host "`n=== Extracting Debug Symbols ==="
 $PDB_FILE = "bazel-bin\src\app\${BINARY_NAME}.pdb"
