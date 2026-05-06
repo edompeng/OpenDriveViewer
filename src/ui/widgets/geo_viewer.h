@@ -179,6 +179,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void HighlightRoads(const QStringList& road_ids);
   void JumpToLocation(double lon, double lat, double alt = 0.0);
   void JumpToLocalLocation(double x, double y, double z = 0.0);
+  void JumpToRendererLocation(const QVector3D& world_pos);
 
   // ---------- Multi-routing Support ----------
   int AddRoutingPath(const std::vector<odr::LaneKey>& path,

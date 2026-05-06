@@ -213,7 +213,7 @@ void GeoViewerWidget::HandlePickSelection(int x, int y, bool is_double_click) {
       emit ElementSelected(road_id, node_type, element_id);
     }
     if (is_double_click) {
-      JumpToLocalLocation(world_pos.x(), world_pos.y(), world_pos.z());
+      JumpToRendererLocation(world_pos);
     }
   }
 }
@@ -241,7 +241,7 @@ void GeoViewerWidget::mouseMoveEvent(QMouseEvent* ev) {
   const QPoint delta = currentPos - camera_.LastPos();
 
   if (camera_.PressedButton() == Qt::LeftButton) {
-    camera_.PanByDelta(delta);
+    camera_.PanByDelta(delta, gl_renderer_->GetViewportSize());
     update();
   } else if (camera_.PressedButton() == Qt::RightButton) {
     camera_.OrbitByDelta(delta);
@@ -293,7 +293,7 @@ bool GeoViewerWidget::event(QEvent* ev) {
         const QPoint delta_pixels(static_cast<int>(delta.x()),
                                   static_cast<int>(delta.y()));
         if (gesture_ev->modifiers().testFlag(Qt::ShiftModifier)) {
-          camera_.PanByDelta(delta_pixels);
+          camera_.PanByDelta(delta_pixels, gl_renderer_->GetViewportSize());
         } else {
           camera_.OrbitByDelta(delta_pixels);
         }

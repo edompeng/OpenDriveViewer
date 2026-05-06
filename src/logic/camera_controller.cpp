@@ -23,8 +23,16 @@ void CameraController::BeginDrag(const QPoint& pos, Qt::MouseButton button) {
 
 void CameraController::EndDrag() { pressed_button_ = Qt::NoButton; }
 
-void CameraController::PanByDelta(const QPoint& delta) {
-  const float factor = distance_ * 0.002f;
+void CameraController::PanByDelta(const QPoint& delta, const QSize& viewport_size) {
+  if (viewport_size.height() <= 0) return;
+
+  // Calculate factor to match pixels to world units at target distance
+  // world_height = 2 * distance * tan(fov_y / 2)
+  // tan(45/2) = 0.41421356
+  constexpr float kTanHalfFov = 0.41421356f;
+  const float factor = (2.0f * distance_ * kTanHalfFov) /
+                       static_cast<float>(viewport_size.height());
+
   const QMatrix4x4 view = GetViewMatrix();
   const QVector3D right(view(0, 0), view(0, 1), view(0, 2));
   const QVector3D up(view(1, 0), view(1, 1), view(1, 2));

@@ -28,7 +28,7 @@ class GEOVIEWER_EXPORT CameraController {
   void EndDrag();
 
   /// 处理左键平移
-  void PanByDelta(const QPoint& delta);
+  void PanByDelta(const QPoint& delta, const QSize& viewport_size);
   /// 处理右键旋转
   void OrbitByDelta(const QPoint& delta);
   /// 滚轮缩放，同时以 worldFocusPoint 为锚点

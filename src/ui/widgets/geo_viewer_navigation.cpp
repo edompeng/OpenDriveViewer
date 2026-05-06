@@ -104,3 +104,12 @@ bool GeoViewerWidget::GetWorldPosAt(int x, int y, QVector3D& world_pos,
 
   return false;
 }
+
+void GeoViewerWidget::JumpToRendererLocation(const QVector3D& world_pos) {
+  if (!std::isfinite(world_pos.x()) || !std::isfinite(world_pos.y()) ||
+      !std::isfinite(world_pos.z())) {
+    return;
+  }
+  camera_.SetTarget(world_pos);
+  update();
+}
