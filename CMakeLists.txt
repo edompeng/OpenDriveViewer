@@ -175,7 +175,7 @@ endmacro()
 add_geoviewer_test(
   ViewerCoreTests
   tests/scene_index_builder_test.cpp
-  tests/spatial_grid_index_test.cpp
+  tests/spatial_index_test.cpp
   tests/viewer_text_util_test.cpp
   tests/favorites_store_test.cpp
   tests/routing_logic_test.cpp

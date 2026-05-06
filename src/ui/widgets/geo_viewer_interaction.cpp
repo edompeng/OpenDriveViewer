@@ -407,8 +407,8 @@ void GeoViewerWidget::StartSpatialIndexBuild() {
 }
 
 void GeoViewerWidget::ForceRebuildSpatialIndex() {
-  spatial_index_data_ = BuildSpatialIndexData(map_, *network_mesh_,
-                                             *junction_mesh_);
+  spatial_index_data_ =
+      BuildSpatialIndexData(map_, *network_mesh_, *junction_mesh_);
   spatial_index_ready_ = true;
 }
 
@@ -418,39 +418,43 @@ SpatialIndexData GeoViewerWidget::BuildSpatialIndexData(
     const odr::Mesh3D& junction_mesh) const {
   std::vector<SceneMeshLayerView> views = {
       SceneMeshLayerView{&network_mesh.lanes_mesh,
-                         static_cast<uint32_t>(LayerType::kLanes), {}},
+                         static_cast<uint32_t>(LayerType::kLanes),
+                         {}},
       SceneMeshLayerView{&network_mesh.roadmarks_mesh,
-                         static_cast<uint32_t>(LayerType::kRoadmarks), {}},
+                         static_cast<uint32_t>(LayerType::kRoadmarks),
+                         {}},
       SceneMeshLayerView{&network_mesh.road_objects_mesh,
-                         static_cast<uint32_t>(LayerType::kObjects), {}},
-      SceneMeshLayerView{&junction_mesh,
-                         static_cast<uint32_t>(LayerType::kJunctions), {}},
-      SceneMeshLayerView{&network_mesh.road_signals_mesh,
-                         static_cast<uint32_t>(LayerType::kSignalLights),
-                         [this, map, &network_mesh](uint32_t vertex_index) {
-                           std::string signal_id =
-                               network_mesh.road_signals_mesh.get_road_signal_id(
-                                   vertex_index);
-                           std::string road_id = GetRoadIdBySignalId(signal_id);
-                           bool is_light = false;
-                           if (map && map->id_to_road.count(road_id)) {
-                             const auto& road = map->id_to_road.at(road_id);
-                             if (road.id_to_signal.count(signal_id)) {
-                               is_light = (road.id_to_signal.at(signal_id).name ==
-                                           "TrafficLight");
-                             }
-                           }
-                           return static_cast<uint32_t>(
-                               is_light ? LayerType::kSignalLights
-                                        : LayerType::kSignalSigns);
-                         }}};
+                         static_cast<uint32_t>(LayerType::kObjects),
+                         {}},
+      SceneMeshLayerView{
+          &junction_mesh, static_cast<uint32_t>(LayerType::kJunctions), {}},
+      SceneMeshLayerView{
+          &network_mesh.road_signals_mesh,
+          static_cast<uint32_t>(LayerType::kSignalLights),
+          [this, map, &network_mesh](uint32_t vertex_index) {
+            std::string signal_id =
+                network_mesh.road_signals_mesh.get_road_signal_id(vertex_index);
+            std::string road_id = GetRoadIdBySignalId(signal_id);
+            bool is_light = false;
+            if (map && map->id_to_road.count(road_id)) {
+              const auto& road = map->id_to_road.at(road_id);
+              if (road.id_to_signal.count(signal_id)) {
+                is_light =
+                    (road.id_to_signal.at(signal_id).name == "TrafficLight");
+              }
+            }
+            return static_cast<uint32_t>(is_light ? LayerType::kSignalLights
+                                                  : LayerType::kSignalSigns);
+          }}};
 
   if (facility_mesh_) {
-    views.push_back(SceneMeshLayerView{
-        facility_mesh_.get(), static_cast<uint32_t>(LayerType::kFacilities), {}});
+    views.push_back(
+        SceneMeshLayerView{facility_mesh_.get(),
+                           static_cast<uint32_t>(LayerType::kFacilities),
+                           {}});
   }
 
-  return BuildSpatialIndex(network_mesh.lanes_mesh, views);
+  return BuildSpatialIndex(views);
 }
 
 std::optional<GeoViewerWidget::PickResult>

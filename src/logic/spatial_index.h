@@ -34,7 +34,7 @@ struct BVHNode {
   uint32_t left_child = 0;
   uint32_t right_child = 0;
   uint32_t tri_start = 0;
-  uint32_t tri_count = 0; // 0 if not a leaf
+  uint32_t tri_count = 0;  // 0 if not a leaf
 };
 
 struct SpatialIndexData {
@@ -44,7 +44,6 @@ struct SpatialIndexData {
 };
 
 SpatialIndexData BuildSpatialIndex(
-    const odr::Mesh3D& reference_mesh,
     const std::vector<SceneMeshLayerView>& layer_views);
 
 std::optional<SpatialPickResult> PickFromSpatialIndex(

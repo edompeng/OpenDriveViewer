@@ -18,19 +18,18 @@ odr::Mesh3D MakeSingleTriangleMesh() {
 
 TEST(SpatialIndexTest, SpatialIndexBuilderCreatesValidBVH) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
-  const auto index_data =
-      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 1, {}}});
+  const auto index_data = BuildSpatialIndex({SceneMeshLayerView{&mesh, 1, {}}});
 
   ASSERT_TRUE(index_data.is_ready);
   ASSERT_FALSE(index_data.nodes.empty());
-  
+
   // Root node should encapsulate the triangle
   const auto& root = index_data.nodes[0];
   EXPECT_LE(root.min_bound.x(), 0.01f);
   EXPECT_GE(root.max_bound.x(), 0.99f);
   EXPECT_LE(root.min_bound.z(), 0.01f);
   EXPECT_GE(root.max_bound.z(), 0.99f);
-  
+
   EXPECT_GT(index_data.flat_indices.size(), std::size_t(0));
   uint32_t encoded = index_data.flat_indices[0];
   EXPECT_EQ((encoded >> 28), uint32_t(1));
@@ -38,8 +37,7 @@ TEST(SpatialIndexTest, SpatialIndexBuilderCreatesValidBVH) {
 
 TEST(SpatialIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
-  const auto index_data =
-      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 2, {}}});
+  const auto index_data = BuildSpatialIndex({SceneMeshLayerView{&mesh, 2, {}}});
 
   const auto result = PickFromSpatialIndex(
       index_data, QVector3D(0.1f, 1.0f, 0.1f), QVector3D(0.0f, -1.0f, 0.0f),
@@ -71,8 +69,7 @@ TEST(SpatialIndexTest, ScreenRayBuilderConvertsViewportPositionToWorldRay) {
 
 TEST(SpatialIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
-  const auto index_data =
-      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 2, {}}});
+  const auto index_data = BuildSpatialIndex({SceneMeshLayerView{&mesh, 2, {}}});
 
   const auto hits = RaycastAllHits(
       index_data, QVector3D(0.1f, 1.0f, 0.1f), QVector3D(0.0f, -1.0f, 0.0f),
@@ -87,8 +84,7 @@ TEST(SpatialIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
   EXPECT_NEAR(hits[0].distance, 1.0f, 1e-5f);
 }
 
-TEST(SpatialIndexTest,
-     RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) {
+TEST(SpatialIndexTest, RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) {
   // Create two triangles at different Y heights (stacked vertically)
   odr::Mesh3D mesh;
   mesh.vertices = {
@@ -103,8 +99,7 @@ TEST(SpatialIndexTest,
   };
   mesh.indices = {0, 1, 2, 3, 4, 5};
 
-  const auto index_data =
-      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 1, {}}});
+  const auto index_data = BuildSpatialIndex({SceneMeshLayerView{&mesh, 1, {}}});
 
   // Ray from Y=10 looking straight down at (0.5, 0.5)
   const auto hits = RaycastAllHits(
