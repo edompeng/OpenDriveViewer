@@ -272,3 +272,9 @@ void RoutingWidget::SetEndLane(const QString& lane_pos) {
   if (is_collapsed_) ToggleCollapse();
   end_input_->setText(lane_pos);
 }
+
+void RoutingWidget::Clear() {
+  start_input_->clear();
+  end_input_->clear();
+  history_tree_->clear();
+}

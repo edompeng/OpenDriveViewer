@@ -22,6 +22,7 @@ class GEOVIEWER_EXPORT FavoritesStore {
   const FavoriteEntry* At(int index) const;
   const std::vector<FavoriteEntry>& Entries() const { return entries_; }
   int Size() const { return static_cast<int>(entries_.size()); }
+  void Clear() { entries_.clear(); }
 
  private:
   std::vector<FavoriteEntry> entries_;

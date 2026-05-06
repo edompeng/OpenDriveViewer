@@ -61,6 +61,18 @@ void GlRenderer::Resize(int w, int h) {
   glViewport(0, 0, w, h);
 }
 
+void GlRenderer::Clear() {
+  if (highlight_mgr_) highlight_mgr_->Clear();
+  if (routing_buf_mgr_) routing_buf_mgr_->Clear();
+
+  for (int i = 0; i < kLayerCount; ++i) {
+    layers_[i].index_count = 0;
+    layers_[i].chunks.clear();
+    layers_[i].layer_min = QVector3D(1e9f, 1e9f, 1e9f);
+    layers_[i].layer_max = QVector3D(-1e9f, -1e9f, -1e9f);
+  }
+}
+
 // ============ Scene Vertex Data ============
 
 void GlRenderer::UploadSceneVertices(const std::vector<float>& vertices) {

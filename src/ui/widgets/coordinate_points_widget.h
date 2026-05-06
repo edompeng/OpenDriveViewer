@@ -22,6 +22,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   explicit CoordinatePointsWidget(GeoViewerWidget* viewer,
                                   QWidget* parent = nullptr);
   void SetCoordinateMode(CoordinateMode mode);
+  void Clear();
 
  protected:
   void RetranslateUi() override;

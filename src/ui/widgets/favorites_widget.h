@@ -28,6 +28,7 @@ class FavoritesWidget : public FloatingPanelWidget {
   void AddFavorite(const QString& road_id, TreeNodeType type,
                    const QString& element_id, const QString& name = "");
   void ToggleCollapse();
+  void Clear();
 
  private slots:
   void HandleCustomContextMenu(const QPoint& pos);

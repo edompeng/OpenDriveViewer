@@ -429,6 +429,14 @@ void MainWindow::SetupConnections() {
       }
     });
   });
+
+  connect(view_, &GeoViewerWidget::SceneReset, routing_panel_,
+          &RoutingWidget::Clear);
+  connect(view_, &GeoViewerWidget::SceneReset, coordinate_points_panel_,
+          &CoordinatePointsWidget::Clear);
+  connect(view_, &GeoViewerWidget::SceneReset, favorites_panel_,
+          &FavoritesWidget::Clear);
+
   connect(view_, &GeoViewerWidget::ViewResized, this, [this]() {
     if (favorites_panel_) {
       favorites_panel_->move(view_->width() - favorites_panel_->width() - 20,

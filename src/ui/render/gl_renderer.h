@@ -103,6 +103,9 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   /// Handle viewport resize. Called from resizeGL.
   void Resize(int w, int h);
 
+  /// Clear all scene data, managers and highlights.
+  void Clear();
+
   // ============ Scene Vertex Data ============
 
   /// Upload the combined scene vertex buffer (all layers share one VBO).

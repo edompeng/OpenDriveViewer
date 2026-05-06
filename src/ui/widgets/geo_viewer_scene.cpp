@@ -99,6 +99,18 @@ void GeoViewerWidget::ResetSceneData() {
     network_mesh_ = std::make_shared<odr::RoadNetworkMesh>();
     junction_cluster_result_ = JunctionClusterResult();
   }
+
+  if (gl_renderer_) {
+    makeCurrent();
+    gl_renderer_->Clear();
+    doneCurrent();
+  }
+
+  if (measure_ctrl_) {
+    measure_ctrl_->ClearPoints();
+  }
+
+  hidden_elements_.clear();
   lane_element_items_.clear();
   roadmark_element_items_.clear();
   object_element_items_.clear();
@@ -118,6 +130,12 @@ void GeoViewerWidget::ResetSceneData() {
   routing_graph_.reset();
   spatial_index_ready_ = false;
   spatial_index_data_ = SpatialIndexData();
+
+  selected_junction_group_id_.clear();
+  selected_junction_id_.clear();
+  last_wheel_pick_pos_ = QPoint(-1, -1);
+
+  emit SceneReset();
 }
 
 void GeoViewerWidget::ClearMeshAuxiliaryData(odr::Mesh3D& mesh) {

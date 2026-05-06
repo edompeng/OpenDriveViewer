@@ -174,6 +174,11 @@ void CoordinatePointsWidget::HandleClearPoints() {
   // List is refreshed via the UserPointsChanged signal
 }
 
+void CoordinatePointsWidget::Clear() {
+  input_points_edit_->clear();
+  HandleClearPoints();
+}
+
 void CoordinatePointsWidget::HandlePointsChanged() {
   points_list_dirty_ = true;
   if (!isVisible()) return;

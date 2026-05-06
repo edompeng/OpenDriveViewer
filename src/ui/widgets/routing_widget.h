@@ -21,6 +21,7 @@ class RoutingWidget : public FloatingPanelWidget {
  public slots:
   void SetStartLane(const QString& lane_pos);
   void SetEndLane(const QString& lane_pos);
+  void Clear();
 
  protected:
   void RetranslateUi() override;

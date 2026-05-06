@@ -168,3 +168,8 @@ void FavoritesWidget::RefreshListIndices() {
     list_->item(i)->setData(Qt::UserRole, i);
   }
 }
+
+void FavoritesWidget::Clear() {
+  favorites_.Clear();
+  list_->clear();
+}

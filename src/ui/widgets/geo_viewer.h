@@ -158,6 +158,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void TotalDistanceChanged(double distance);
   void MeasureModeChanged(bool active);
   void UserPointsChanged();
+  void SceneReset();
 
  protected:
   void initializeGL() override;
