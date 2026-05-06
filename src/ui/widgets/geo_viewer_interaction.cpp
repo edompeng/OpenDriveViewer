@@ -4,7 +4,7 @@
 #include <QPainter>
 
 #include "src/core/thread_pool.h"
-#include "src/logic/spatial_grid_index.h"
+#include "src/logic/spatial_index.h"
 
 void GeoViewerWidget::initializeGL() {
   gl_renderer_ = std::make_unique<geoviewer::render::GlRenderer>();
@@ -315,10 +315,22 @@ bool GeoViewerWidget::event(QEvent* ev) {
 
         QVector3D world_pos;
         std::optional<PickResult> picked_idx;
-        const QPointF pos = gesture_ev->position();
-        const bool has_pick =
-            GetWorldPosAt(static_cast<int>(pos.x()), static_cast<int>(pos.y()),
-                          world_pos, picked_idx);
+        bool has_pick = false;
+        const QPoint current_pos = gesture_ev->position().toPoint();
+
+        if (current_pos == last_wheel_pick_pos_) {
+          world_pos = last_wheel_world_pos_;
+          has_pick = last_wheel_has_pick_;
+          picked_idx = last_wheel_picked_idx_;
+        } else {
+          has_pick = GetWorldPosAt(current_pos.x(), current_pos.y(), world_pos,
+                                   picked_idx);
+          last_wheel_pick_pos_ = current_pos;
+          last_wheel_world_pos_ = world_pos;
+          last_wheel_has_pick_ = has_pick;
+          last_wheel_picked_idx_ = picked_idx;
+        }
+
         camera_.ZoomToward(wheel_delta, max_dist, world_pos, has_pick);
         update();
         ev->accept();
@@ -373,84 +385,78 @@ void GeoViewerWidget::CalculateMeshCenter() {
   camera_.FitToScene(minVec, maxVec);
 }
 
-void GeoViewerWidget::StartSpatialGridBuild() {
+void GeoViewerWidget::StartSpatialIndexBuild() {
   if (!map_ || !network_mesh_ || !junction_mesh_) return;
-  const std::uint64_t generation = ++spatial_grid_generation_;
+  const std::uint64_t generation = ++spatial_index_generation_;
   auto map = map_;
   auto network_mesh = network_mesh_;
   auto junction_mesh = junction_mesh_;
-  const int grid_resolution = grid_resolution_;
 
   geoviewer::utility::ThreadPool::Instance().Enqueue(
-      [this, map, network_mesh, junction_mesh, grid_resolution, generation]() {
-        auto result = BuildSpatialGridData(map, *network_mesh, *junction_mesh,
-                                           grid_resolution);
+      [this, map, network_mesh, junction_mesh, generation]() {
+        auto result = BuildSpatialIndexData(map, *network_mesh, *junction_mesh);
         QMetaObject::invokeMethod(
             this, [this, res = std::move(result), generation]() mutable {
-              if (generation == spatial_grid_generation_.load()) {
-                spatial_grid_data_ = std::move(res);
-                spatial_grid_ready_ = true;
+              if (generation == spatial_index_generation_.load()) {
+                spatial_index_data_ = std::move(res);
+                spatial_index_ready_ = true;
                 update();
               }
             });
       });
 }
 
-void GeoViewerWidget::BuildSpatialGrid() {
-  spatial_grid_data_ = BuildSpatialGridData(map_, *network_mesh_,
-                                            *junction_mesh_, grid_resolution_);
-  spatial_grid_ready_ = true;
+void GeoViewerWidget::ForceRebuildSpatialIndex() {
+  spatial_index_data_ = BuildSpatialIndexData(map_, *network_mesh_,
+                                             *junction_mesh_);
+  spatial_index_ready_ = true;
 }
 
-SpatialGridData GeoViewerWidget::BuildSpatialGridData(
+SpatialIndexData GeoViewerWidget::BuildSpatialIndexData(
     std::shared_ptr<odr::OpenDriveMap> map,
-    const odr::RoadNetworkMesh& network_mesh, const odr::Mesh3D& junction_mesh,
-    int grid_resolution) const {
-  return BuildSpatialGridBoxes(
-      network_mesh.lanes_mesh,
-      {
-          SceneMeshLayerView{&network_mesh.lanes_mesh,
-                             static_cast<uint32_t>(LayerType::kLanes),
-                             {}},
-          SceneMeshLayerView{&network_mesh.roadmarks_mesh,
-                             static_cast<uint32_t>(LayerType::kRoadmarks),
-                             {}},
-          SceneMeshLayerView{&network_mesh.road_objects_mesh,
-                             static_cast<uint32_t>(LayerType::kObjects),
-                             {}},
-          SceneMeshLayerView{
-              &junction_mesh, static_cast<uint32_t>(LayerType::kJunctions), {}},
-          SceneMeshLayerView{
-              &network_mesh.road_signals_mesh,
-              static_cast<uint32_t>(LayerType::kSignalLights),
-              [this, map, &network_mesh](uint32_t vertex_index) {
-                std::string signal_id =
-                    network_mesh.road_signals_mesh.get_road_signal_id(
-                        vertex_index);
-                std::string road_id = GetRoadIdBySignalId(signal_id);
-                bool is_light = false;
-                if (map && map->id_to_road.count(road_id)) {
-                  const auto& road = map->id_to_road.at(road_id);
-                  if (road.id_to_signal.count(signal_id)) {
-                    is_light = (road.id_to_signal.at(signal_id).name ==
-                                "TrafficLight");
-                  }
-                }
-                return static_cast<uint32_t>(is_light
-                                                 ? LayerType::kSignalLights
-                                                 : LayerType::kSignalSigns);
-              }},
-          SceneMeshLayerView{facility_mesh_.get(),
-                             static_cast<uint32_t>(LayerType::kFacilities),
-                             {}},
-      },
-      grid_resolution);
+    const odr::RoadNetworkMesh& network_mesh,
+    const odr::Mesh3D& junction_mesh) const {
+  std::vector<SceneMeshLayerView> views = {
+      SceneMeshLayerView{&network_mesh.lanes_mesh,
+                         static_cast<uint32_t>(LayerType::kLanes), {}},
+      SceneMeshLayerView{&network_mesh.roadmarks_mesh,
+                         static_cast<uint32_t>(LayerType::kRoadmarks), {}},
+      SceneMeshLayerView{&network_mesh.road_objects_mesh,
+                         static_cast<uint32_t>(LayerType::kObjects), {}},
+      SceneMeshLayerView{&junction_mesh,
+                         static_cast<uint32_t>(LayerType::kJunctions), {}},
+      SceneMeshLayerView{&network_mesh.road_signals_mesh,
+                         static_cast<uint32_t>(LayerType::kSignalLights),
+                         [this, map, &network_mesh](uint32_t vertex_index) {
+                           std::string signal_id =
+                               network_mesh.road_signals_mesh.get_road_signal_id(
+                                   vertex_index);
+                           std::string road_id = GetRoadIdBySignalId(signal_id);
+                           bool is_light = false;
+                           if (map && map->id_to_road.count(road_id)) {
+                             const auto& road = map->id_to_road.at(road_id);
+                             if (road.id_to_signal.count(signal_id)) {
+                               is_light = (road.id_to_signal.at(signal_id).name ==
+                                           "TrafficLight");
+                             }
+                           }
+                           return static_cast<uint32_t>(
+                               is_light ? LayerType::kSignalLights
+                                        : LayerType::kSignalSigns);
+                         }}};
+
+  if (facility_mesh_) {
+    views.push_back(SceneMeshLayerView{
+        facility_mesh_.get(), static_cast<uint32_t>(LayerType::kFacilities), {}});
+  }
+
+  return BuildSpatialIndex(network_mesh.lanes_mesh, views);
 }
 
 std::optional<GeoViewerWidget::PickResult>
 GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
   if (!gl_renderer_ || !network_mesh_ ||
-      network_mesh_->lanes_mesh.vertices.empty() || !spatial_grid_ready_) {
+      network_mesh_->lanes_mesh.vertices.empty() || !spatial_index_ready_) {
     return std::nullopt;
   }
   QVector3D origin;
@@ -459,8 +465,8 @@ GeoViewerWidget::GetPickedVertexIndex(int x, int y) {
                           gl_renderer_->GetProjectionMatrix() * GetViewMatrix(),
                           origin, direction);
 
-  const auto result = PickFromSpatialGrid(
-      spatial_grid_data_, origin, direction,
+  const auto result = PickFromSpatialIndex(
+      spatial_index_data_, origin, direction,
       [this](uint32_t layer_tag) {
         return MeshForLayer(static_cast<LayerType>(layer_tag));
       },

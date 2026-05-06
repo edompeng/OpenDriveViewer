@@ -91,15 +91,34 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
   std::vector<uint32_t> indices;
   size_t v_offset = gl_renderer_->GetLayerVertexOffset(type);
 
-  for (size_t i = 0; i < mesh->indices.size(); i += 3) {
-    uint32_t i0 = mesh->indices[i];
-    uint32_t i1 = mesh->indices[i + 1];
-    uint32_t i2 = mesh->indices[i + 2];
-    if (i0 >= start && i0 < end && i1 >= start && i1 < end && i2 >= start &&
-        i2 < end) {
-      indices.push_back(i0 + v_offset);
-      indices.push_back(i1 + v_offset);
-      indices.push_back(i2 + v_offset);
+  // Optimized: Use cached element ranges instead of O(N) scan of all indices
+  const std::vector<SceneCachedElement>* elements = nullptr;
+  if (type == LayerType::kLanes) elements = &lane_element_items_;
+  else if (type == LayerType::kRoadmarks) elements = &roadmark_element_items_;
+  else if (type == LayerType::kObjects) elements = &object_element_items_;
+  else if (type == LayerType::kSignalLights || type == LayerType::kSignalSigns) elements = &signal_element_items_;
+  else if (type == LayerType::kJunctions) elements = &junction_element_items_;
+
+  if (elements) {
+    for (const auto& el : *elements) {
+      // Find the element that contains this vertex index.
+      // This is still a scan of elements, but much smaller than scanning millions of triangles.
+      bool el_match = false;
+      // Heuristic: for lanes/objects/signals, we can check if any vertex in the first range matches the interval.
+      // A more robust way is checking the interval we got from get_idx_interval_*.
+      if (!el.ranges.empty()) {
+        const uint32_t first_v = mesh->indices[el.ranges[0].start * 3];
+        if (first_v >= start && first_v < end) el_match = true;
+      }
+
+      if (el_match) {
+        for (const auto& range : el.ranges) {
+          for (uint32_t k = 0; k < range.count * 3; ++k) {
+            indices.push_back(mesh->indices[range.start * 3 + k] + static_cast<uint32_t>(v_offset));
+          }
+        }
+        break; // Found the matching element
+      }
     }
   }
 

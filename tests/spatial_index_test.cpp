@@ -1,4 +1,4 @@
-#include "src/logic/spatial_grid_index.h"
+#include "src/logic/spatial_index.h"
 #include <gtest/gtest.h>
 
 namespace {
@@ -16,30 +16,33 @@ odr::Mesh3D MakeSingleTriangleMesh() {
 
 }  // namespace
 
-TEST(SpatialGridIndexTest, SpatialGridBuilderPlacesTrianglesIntoBoxes) {
+TEST(SpatialIndexTest, SpatialIndexBuilderCreatesValidBVH) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
-  const auto grid_data =
-      BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 1, {}}}, 2);
+  const auto index_data =
+      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 1, {}}});
 
-  ASSERT_EQ(grid_data.boxes.size(), std::size_t(4));
-  bool found_triangle = false;
-  for (const auto& box : grid_data.boxes) {
-    if (box.index_count > 0) {
-      found_triangle = true;
-      uint32_t encoded = grid_data.flat_indices[box.index_offset];
-      EXPECT_EQ((encoded >> 28), uint32_t(1));
-    }
-  }
-  EXPECT_TRUE(found_triangle);
+  ASSERT_TRUE(index_data.is_ready);
+  ASSERT_FALSE(index_data.nodes.empty());
+  
+  // Root node should encapsulate the triangle
+  const auto& root = index_data.nodes[0];
+  EXPECT_LE(root.min_bound.x(), 0.01f);
+  EXPECT_GE(root.max_bound.x(), 0.99f);
+  EXPECT_LE(root.min_bound.z(), 0.01f);
+  EXPECT_GE(root.max_bound.z(), 0.99f);
+  
+  EXPECT_GT(index_data.flat_indices.size(), std::size_t(0));
+  uint32_t encoded = index_data.flat_indices[0];
+  EXPECT_EQ((encoded >> 28), uint32_t(1));
 }
 
-TEST(SpatialGridIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
+TEST(SpatialIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
-  const auto grid_data =
-      BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 2, {}}}, 2);
+  const auto index_data =
+      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 2, {}}});
 
-  const auto result = PickFromSpatialGrid(
-      grid_data, QVector3D(0.1f, 1.0f, 0.1f), QVector3D(0.0f, -1.0f, 0.0f),
+  const auto result = PickFromSpatialIndex(
+      index_data, QVector3D(0.1f, 1.0f, 0.1f), QVector3D(0.0f, -1.0f, 0.0f),
       [&mesh](uint32_t layer_tag) -> const odr::Mesh3D* {
         return layer_tag == 2 ? &mesh : nullptr;
       },
@@ -52,7 +55,7 @@ TEST(SpatialGridIndexTest, SpatialPickReturnsNearestVisibleTriangle) {
   EXPECT_NEAR(result->distance, 1.0f, 1e-5f);
 }
 
-TEST(SpatialGridIndexTest, ScreenRayBuilderConvertsViewportPositionToWorldRay) {
+TEST(SpatialIndexTest, ScreenRayBuilderConvertsViewportPositionToWorldRay) {
   QVector3D origin;
   QVector3D direction;
   BuildRayFromScreenPoint(50, 50, QSize(100, 100), QMatrix4x4(), origin,
@@ -66,13 +69,13 @@ TEST(SpatialGridIndexTest, ScreenRayBuilderConvertsViewportPositionToWorldRay) {
   EXPECT_NEAR(direction.z(), 1.0f, 1e-5f);
 }
 
-TEST(SpatialGridIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
+TEST(SpatialIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
   const odr::Mesh3D mesh = MakeSingleTriangleMesh();
-  const auto grid_data =
-      BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 2, {}}}, 2);
+  const auto index_data =
+      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 2, {}}});
 
   const auto hits = RaycastAllHits(
-      grid_data, QVector3D(0.1f, 1.0f, 0.1f), QVector3D(0.0f, -1.0f, 0.0f),
+      index_data, QVector3D(0.1f, 1.0f, 0.1f), QVector3D(0.0f, -1.0f, 0.0f),
       [&mesh](uint32_t layer_tag) -> const odr::Mesh3D* {
         return layer_tag == 2 ? &mesh : nullptr;
       },
@@ -84,7 +87,7 @@ TEST(SpatialGridIndexTest, RaycastAllHitsReturnsSingleHitOnOneTriangle) {
   EXPECT_NEAR(hits[0].distance, 1.0f, 1e-5f);
 }
 
-TEST(SpatialGridIndexTest,
+TEST(SpatialIndexTest,
      RaycastAllHitsReturnsMultipleHitsOnStackedTriangles) {
   // Create two triangles at different Y heights (stacked vertically)
   odr::Mesh3D mesh;
@@ -100,12 +103,12 @@ TEST(SpatialGridIndexTest,
   };
   mesh.indices = {0, 1, 2, 3, 4, 5};
 
-  const auto grid_data =
-      BuildSpatialGridBoxes(mesh, {SceneMeshLayerView{&mesh, 1, {}}}, 2);
+  const auto index_data =
+      BuildSpatialIndex(mesh, {SceneMeshLayerView{&mesh, 1, {}}});
 
   // Ray from Y=10 looking straight down at (0.5, 0.5)
   const auto hits = RaycastAllHits(
-      grid_data, QVector3D(0.5f, 10.0f, 0.5f), QVector3D(0.0f, -1.0f, 0.0f),
+      index_data, QVector3D(0.5f, 10.0f, 0.5f), QVector3D(0.0f, -1.0f, 0.0f),
       [&mesh](uint32_t layer_tag) -> const odr::Mesh3D* {
         return layer_tag == 1 ? &mesh : nullptr;
       },

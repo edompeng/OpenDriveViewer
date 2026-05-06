@@ -23,7 +23,7 @@ cc_test(
         "layer_tree_model_test.cpp",
         "routing_logic_test.cpp",
         "scene_index_builder_test.cpp",
-        "spatial_grid_index_test.cpp",
+        "spatial_index_test.cpp",
         "viewer_text_util_test.cpp",
     ],
     copts = QT_COPTS,

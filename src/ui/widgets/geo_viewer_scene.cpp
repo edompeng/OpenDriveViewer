@@ -116,8 +116,8 @@ void GeoViewerWidget::ResetSceneData() {
   facility_element_items_.clear();
   facility_mesh_ = std::make_shared<odr::Mesh3D>();
   routing_graph_.reset();
-  spatial_grid_ready_ = false;
-  spatial_grid_data_ = SpatialGridData();
+  spatial_index_ready_ = false;
+  spatial_index_data_ = SpatialIndexData();
 }
 
 void GeoViewerWidget::ClearMeshAuxiliaryData(odr::Mesh3D& mesh) {
@@ -665,9 +665,9 @@ void GeoViewerWidget::ApplyDefaultLayerStyles() {
 void GeoViewerWidget::FinalizeSceneUpdate() {
   mesh_updated_ = true;
   CalculateMeshCenter();
-  spatial_grid_ready_ = false;
-  spatial_grid_data_ = SpatialGridData();
-  StartSpatialGridBuild();
+  spatial_index_ready_ = false;
+  spatial_index_data_ = SpatialIndexData();
+  StartSpatialIndexBuild();
 }
 
 std::string GeoViewerWidget::GetRoadIdBySignalId(

@@ -34,7 +34,7 @@
 #include "src/core/scene_geometry_types.h"
 #include "src/logic/camera_controller.h"
 #include "src/logic/measure_tool_controller.h"
-#include "src/logic/spatial_grid_index.h"
+#include "src/logic/spatial_index.h"
 #include "src/ui/render/gl_renderer.h"
 
 #include "src/geo_viewer_export.h"
@@ -298,17 +298,15 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
                                 const std::string& group,
                                 const std::string& element_id) const;
 
-  // ---- Spatial Grid Acceleration ----
-  SpatialGridData spatial_grid_data_;
-  int grid_resolution_ = 32;
-  void BuildSpatialGrid();
-  void StartSpatialGridBuild();
-  SpatialGridData BuildSpatialGridData(std::shared_ptr<odr::OpenDriveMap> map,
-                                       const odr::RoadNetworkMesh& network_mesh,
-                                       const odr::Mesh3D& junction_mesh,
-                                       int grid_resolution) const;
-  std::atomic<uint64_t> spatial_grid_generation_{0};
-  bool spatial_grid_ready_ = false;
+  // ---- Spatial Index Acceleration (BVH) ----
+  SpatialIndexData spatial_index_data_;
+  void ForceRebuildSpatialIndex();
+  void StartSpatialIndexBuild();
+  SpatialIndexData BuildSpatialIndexData(std::shared_ptr<odr::OpenDriveMap> map,
+                                         const odr::RoadNetworkMesh& network_mesh,
+                                         const odr::Mesh3D& junction_mesh) const;
+  std::atomic<uint64_t> spatial_index_generation_{0};
+  bool spatial_index_ready_ = false;
 
   // ---- Ray Detection ----
   struct PickResult {

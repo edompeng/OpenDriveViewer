@@ -168,6 +168,10 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
   selected_pen.setWidth(3);
   painter.setFont(QFont("Menlo", 9));
 
+  const float camera_dist = camera_.GetDistance();
+  const bool show_labels = camera_dist < 1000.0f;
+  const bool show_members = camera_dist < 3000.0f;
+
   for (const auto& group : junction_cluster_result_.groups) {
     const QString group_id = QString::fromStdString(group.group_id);
     if (!IsJunctionVisible(group_id)) continue;
@@ -177,7 +181,7 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
     if (clip_pos.w() <= 0.0f) continue;
     const float ndc_x = clip_pos.x() / clip_pos.w();
     const float ndc_y = clip_pos.y() / clip_pos.w();
-    if (ndc_x < -1.2f || ndc_x > 1.2f || ndc_y < -1.2f || ndc_y > 1.2f)
+    if (ndc_x < -1.1f || ndc_x > 1.1f || ndc_y < -1.1f || ndc_y > 1.1f)
       continue;
 
     const int sx = static_cast<int>((ndc_x + 1.0f) * width() * 0.5f);
@@ -190,41 +194,45 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
     painter.drawEllipse(QPointF(sx, sy), selected ? 9.0 : 7.0,
                         selected ? 9.0 : 7.0);
 
-    for (const auto& junction_id_itr : group.junction_ids) {
-      const QString junction_id = QString::fromStdString(junction_id_itr);
-      if (!IsJunctionVisible(group_id, junction_id)) continue;
-      const auto member_index_itr =
-          junction_member_index_by_id_.find(junction_id_itr);
-      if (member_index_itr == junction_member_index_by_id_.end()) continue;
+    if (show_members || selected) {
+      for (const auto& junction_id_itr : group.junction_ids) {
+        const QString junction_id = QString::fromStdString(junction_id_itr);
+        if (!IsJunctionVisible(group_id, junction_id)) continue;
+        const auto member_index_itr =
+            junction_member_index_by_id_.find(junction_id_itr);
+        if (member_index_itr == junction_member_index_by_id_.end()) continue;
 
-      const auto& member =
-          junction_cluster_result_.junctions[member_index_itr->second];
-      if (!member.incoming_box.valid) continue;
-      const odr::Vec3D local_center{
-          (member.incoming_box.min[0] + member.incoming_box.max[0]) * 0.5,
-          (member.incoming_box.min[1] + member.incoming_box.max[1]) * 0.5,
-          (member.incoming_box.min[2] + member.incoming_box.max[2]) * 0.5};
-      const QVector3D member_center = LocalToRendererPoint(local_center);
-      const QVector4D member_clip = view_proj * QVector4D(member_center, 1.0f);
-      if (member_clip.w() <= 0.0f) continue;
-      const int msx = static_cast<int>(
-          ((member_clip.x() / member_clip.w()) + 1.0f) * width() * 0.5f);
-      const int msy = static_cast<int>(
-          (1.0f - (member_clip.y() / member_clip.w())) * height() * 0.5f);
-      const bool member_selected =
-          selected && (selected_junction_id_.isEmpty() ||
-                       selected_junction_id_ == junction_id);
-      painter.setPen(Qt::NoPen);
-      painter.setBrush(member_selected ? QColor(80, 255, 140, 240)
-                                       : QColor(255, 230, 160, 220));
-      painter.drawEllipse(QPointF(msx, msy), member_selected ? 4.0 : 3.0,
-                          member_selected ? 4.0 : 3.0);
+        const auto& member =
+            junction_cluster_result_.junctions[member_index_itr->second];
+        if (!member.incoming_box.valid) continue;
+        const odr::Vec3D local_center{
+            (member.incoming_box.min[0] + member.incoming_box.max[0]) * 0.5,
+            (member.incoming_box.min[1] + member.incoming_box.max[1]) * 0.5,
+            (member.incoming_box.min[2] + member.incoming_box.max[2]) * 0.5};
+        const QVector3D member_center = LocalToRendererPoint(local_center);
+        const QVector4D member_clip = view_proj * QVector4D(member_center, 1.0f);
+        if (member_clip.w() <= 0.0f) continue;
+        const int msx = static_cast<int>(
+            ((member_clip.x() / member_clip.w()) + 1.0f) * width() * 0.5f);
+        const int msy = static_cast<int>(
+            (1.0f - (member_clip.y() / member_clip.w())) * height() * 0.5f);
+        const bool member_selected =
+            selected && (selected_junction_id_.isEmpty() ||
+                         selected_junction_id_ == junction_id);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(member_selected ? QColor(80, 255, 140, 240)
+                                         : QColor(255, 230, 160, 220));
+        painter.drawEllipse(QPointF(msx, msy), member_selected ? 4.0 : 3.0,
+                            member_selected ? 4.0 : 3.0);
+      }
     }
 
-    const QString text = QString("%1 [%2]").arg(group_id).arg(
-        JunctionClusterUtil::SemanticTypeToString(group.semantic_type));
-    painter.setPen(Qt::white);
-    painter.drawText(sx + 10, sy - 8, text);
+    if (show_labels || selected) {
+      const QString text = QString("%1 [%2]").arg(group_id).arg(
+          JunctionClusterUtil::SemanticTypeToString(group.semantic_type));
+      painter.setPen(Qt::white);
+      painter.drawText(sx + 10, sy - 8, text);
+    }
   }
 }
 

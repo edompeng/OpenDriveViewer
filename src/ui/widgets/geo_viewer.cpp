@@ -12,7 +12,7 @@
 #include "src/core/coordinate_util.h"
 #include "src/core/thread_pool.h"
 #include "src/logic/scene_index_builder.h"
-#include "src/logic/spatial_grid_index.h"
+#include "src/logic/spatial_index.h"
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
     : QOpenGLWidget(parent), right_hand_traffic_(true) {
@@ -34,7 +34,7 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
 }
 
 GeoViewerWidget::~GeoViewerWidget() {
-  spatial_grid_generation_++;
+  spatial_index_generation_++;
   makeCurrent();
   gl_renderer_.reset();
   doneCurrent();
@@ -164,9 +164,9 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
                          static_cast<float>(ry));
     QVector3D ray_dir(0.0f, -1.0f, 0.0f);  // Straight down
 
-    if (spatial_grid_ready_) {
+    if (spatial_index_ready_) {
       const auto hits = RaycastAllHits(
-          spatial_grid_data_, ray_origin, ray_dir,
+          spatial_index_data_, ray_origin, ray_dir,
           [this](uint32_t layer_tag) {
             return MeshForLayer(static_cast<LayerType>(layer_tag));
           },
@@ -235,9 +235,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
                          static_cast<float>(ry));
     QVector3D ray_dir(0.0f, -1.0f, 0.0f);
 
-    if (spatial_grid_ready_) {
+    if (spatial_index_ready_) {
       const auto hits = RaycastAllHits(
-          spatial_grid_data_, ray_origin, ray_dir,
+          spatial_index_data_, ray_origin, ray_dir,
           [this](uint32_t layer_tag) {
             return MeshForLayer(static_cast<LayerType>(layer_tag));
           },
@@ -448,6 +448,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
   futures.push_back(pool.Enqueue([&]() {
     std::vector<uint32_t> indices;
     std::size_t estimated = 0;
+    std::vector<SceneCachedElement> visible_elements;
     for (const auto& el : signal_element_items_) {
       if (el.group_key.find(":light") == std::string::npos) continue;
       if (hidden_elements_.count(el.road_key) ||
@@ -455,6 +456,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
           hidden_elements_.count(el.element_key)) {
         continue;
       }
+      visible_elements.push_back(el);
       for (const auto& range : el.ranges) {
         estimated += static_cast<std::size_t>(range.count) * 3;
       }
@@ -462,12 +464,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
     indices.reserve(estimated);
     size_t v_offset =
         gl_renderer_->GetLayerVertexOffset(LayerType::kSignalLights);
-    for (const auto& el : signal_element_items_) {
-      if (el.group_key.find(":light") == std::string::npos) continue;
-      if (hidden_elements_.count(el.road_key) ||
-          hidden_elements_.count(el.group_key) ||
-          hidden_elements_.count(el.element_key))
-        continue;
+    for (const auto& el : visible_elements) {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
@@ -476,12 +473,14 @@ void GeoViewerWidget::UpdateMeshIndices() {
         }
       }
     }
-    layerData[static_cast<int>(LayerType::kSignalLights)].indices =
-        std::move(indices);
+    layerData[static_cast<int>(LayerType::kSignalLights)].indices = indices;
+    layerData[static_cast<int>(LayerType::kSignalLights)].chunks =
+        BuildSceneMeshChunks(indices, v_offset, network_mesh.road_signals_mesh);
   }));
   futures.push_back(pool.Enqueue([&]() {
     std::vector<uint32_t> indices;
     std::size_t estimated = 0;
+    std::vector<SceneCachedElement> visible_elements;
     for (const auto& el : signal_element_items_) {
       if (el.group_key.find(":sign") == std::string::npos) continue;
       if (hidden_elements_.count(el.road_key) ||
@@ -489,6 +488,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
           hidden_elements_.count(el.element_key)) {
         continue;
       }
+      visible_elements.push_back(el);
       for (const auto& range : el.ranges) {
         estimated += static_cast<std::size_t>(range.count) * 3;
       }
@@ -496,12 +496,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
     indices.reserve(estimated);
     size_t v_offset =
         gl_renderer_->GetLayerVertexOffset(LayerType::kSignalSigns);
-    for (const auto& el : signal_element_items_) {
-      if (el.group_key.find(":sign") == std::string::npos) continue;
-      if (hidden_elements_.count(el.road_key) ||
-          hidden_elements_.count(el.group_key) ||
-          hidden_elements_.count(el.element_key))
-        continue;
+    for (const auto& el : visible_elements) {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
@@ -510,8 +505,9 @@ void GeoViewerWidget::UpdateMeshIndices() {
         }
       }
     }
-    layerData[static_cast<int>(LayerType::kSignalSigns)].indices =
-        std::move(indices);
+    layerData[static_cast<int>(LayerType::kSignalSigns)].indices = indices;
+    layerData[static_cast<int>(LayerType::kSignalSigns)].chunks =
+        BuildSceneMeshChunks(indices, v_offset, network_mesh.road_signals_mesh);
   }));
 
   for (auto& f : futures) f.get();

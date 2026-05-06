@@ -28,26 +28,34 @@ struct RaycastHitPoint {
   float distance = 0.0f;
 };
 
-struct SpatialGridData {
-  std::vector<SceneGridBox> boxes;
-  std::vector<uint32_t> flat_indices;
+struct BVHNode {
+  QVector3D min_bound;
+  QVector3D max_bound;
+  uint32_t left_child = 0;
+  uint32_t right_child = 0;
+  uint32_t tri_start = 0;
+  uint32_t tri_count = 0; // 0 if not a leaf
 };
 
-SpatialGridData BuildSpatialGridBoxes(
+struct SpatialIndexData {
+  std::vector<BVHNode> nodes;
+  std::vector<uint32_t> flat_indices;
+  bool is_ready = false;
+};
+
+SpatialIndexData BuildSpatialIndex(
     const odr::Mesh3D& reference_mesh,
-    const std::vector<SceneMeshLayerView>& layer_views, int grid_resolution);
+    const std::vector<SceneMeshLayerView>& layer_views);
 
-bool RayIntersectsSceneAabb(const QVector3D& ray_origin,
-                            const QVector3D& ray_dir, const QVector3D& box_min,
-                            const QVector3D& box_max, float& hit_distance);
+std::optional<SpatialPickResult> PickFromSpatialIndex(
+    const SpatialIndexData& index_data, const QVector3D& ray_origin,
+    const QVector3D& ray_dir,
+    const std::function<const odr::Mesh3D*(uint32_t)>& mesh_for_layer,
+    const std::function<bool(uint32_t)>& is_layer_visible,
+    const std::function<bool(uint32_t, uint32_t, size_t)>& is_triangle_visible);
 
-bool RayIntersectsSceneTriangle(const QVector3D& ray_origin,
-                                const QVector3D& ray_dir, const QVector3D& v0,
-                                const QVector3D& v1, const QVector3D& v2,
-                                float& t, float& u, float& v);
-
-std::optional<SpatialPickResult> PickFromSpatialGrid(
-    const SpatialGridData& grid_data, const QVector3D& ray_origin,
+std::vector<RaycastHitPoint> RaycastAllHits(
+    const SpatialIndexData& index_data, const QVector3D& ray_origin,
     const QVector3D& ray_dir,
     const std::function<const odr::Mesh3D*(uint32_t)>& mesh_for_layer,
     const std::function<bool(uint32_t)>& is_layer_visible,
@@ -56,12 +64,3 @@ std::optional<SpatialPickResult> PickFromSpatialGrid(
 void BuildRayFromScreenPoint(int x, int y, const QSize& viewport_size,
                              const QMatrix4x4& projection_times_view,
                              QVector3D& ray_origin, QVector3D& ray_dir);
-
-/// @brief Cast a ray and collect ALL triangle intersection points (not just the
-///        closest). Used for finding all road surface hits at a world position.
-std::vector<RaycastHitPoint> RaycastAllHits(
-    const SpatialGridData& grid_data, const QVector3D& ray_origin,
-    const QVector3D& ray_dir,
-    const std::function<const odr::Mesh3D*(uint32_t)>& mesh_for_layer,
-    const std::function<bool(uint32_t)>& is_layer_visible,
-    const std::function<bool(uint32_t, uint32_t, size_t)>& is_triangle_visible);

@@ -3,7 +3,7 @@
 #include <cmath>
 
 #include "src/core/coordinate_util.h"
-#include "src/logic/spatial_grid_index.h"
+#include "src/logic/spatial_index.h"
 
 int GeoViewerWidget::AddRoutingPath(const std::vector<odr::LaneKey>& path,
                                     const QString& /*name*/) {

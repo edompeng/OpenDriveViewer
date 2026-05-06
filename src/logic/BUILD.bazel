@@ -17,7 +17,7 @@ cc_library(
         "routing_buffer_manager.cpp",
         "routing_logic.cpp",
         "scene_index_builder.cpp",
-        "spatial_grid_index.cpp",
+        "spatial_index.cpp",
         ":moc_files",
     ],
     hdrs = [
@@ -29,7 +29,7 @@ cc_library(
         "routing_buffer_manager.h",
         "routing_logic.h",
         "scene_index_builder.h",
-        "spatial_grid_index.h",
+        "spatial_index.h",
     ],
     copts = QT_COPTS,
     local_defines = select({
