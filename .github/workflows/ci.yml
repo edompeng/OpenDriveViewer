@@ -91,37 +91,22 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.VCPKG_ROOT }}
-          key: vcpkg-tool-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-
-      - name: Cache vcpkg Installed Libraries
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v5
-        with:
-          path: ${{ github.workspace }}/vcpkg_installed
-          key: vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-tool-${{ runner.os }}-v1
           restore-keys: |
-            vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
-
-      - name: Cache vcpkg Downloads
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.VCPKG_DOWNLOADS }}
-          key: vcpkg-downloads-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+            vcpkg-tool-${{ runner.os }}-
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: ${{ env.VCPKG_ROOT }}
+          vcpkgGitCommitId: 'c3867e714dd3a51c272826eea77267876517ed99'
           vcpkgJsonGlob: 'vcpkg.json'
           runVcpkgInstall: true
         env:
           VCPKG_DEFAULT_TRIPLET: ${{ matrix.vcpkg_triplet }}
           VCPKG_INSTALLED_DIR: '${{ github.workspace }}/vcpkg_installed'
           VCPKG_DOWNLOADS: ${{ env.VCPKG_DOWNLOADS }}
-
-
 
       - name: Set Environment Variables
         shell: bash
@@ -180,7 +165,7 @@ jobs:
           ./scripts/deploy/package_linux.sh
           # Create archive for release
           tar -czvf ${{ github.workspace }}/${{ matrix.artifact_name }} -C dist/linux OpenDriveViewer_linux_x64
-
+      
       - name: Package (macOS)
         if: matrix.os == 'macos-14' && startsWith(github.ref, 'refs/tags/v')
         run: |
@@ -274,29 +259,16 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.VCPKG_ROOT }}
-          key: vcpkg-tool-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-
-      - name: Cache vcpkg Installed Libraries
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v5
-        with:
-          path: ${{ github.workspace }}/vcpkg_installed
-          key: vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-tool-${{ runner.os }}-v1
           restore-keys: |
-            vcpkg-installed-${{ matrix.os }}-${{ matrix.vcpkg_triplet }}-
-
-      - name: Cache vcpkg Downloads
-        if: matrix.os == 'windows-2022'
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.VCPKG_DOWNLOADS }}
-          key: vcpkg-downloads-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+            vcpkg-tool-${{ runner.os }}-
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: ${{ env.VCPKG_ROOT }}
+          vcpkgGitCommitId: 'c3867e714dd3a51c272826eea77267876517ed99'
           vcpkgJsonGlob: 'vcpkg.json'
           runVcpkgInstall: true
         env:
