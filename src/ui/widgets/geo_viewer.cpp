@@ -274,13 +274,14 @@ void GeoViewerWidget::SetUserPointVisible(int index, bool visible) {
   if (index < 0 || index >= static_cast<int>(user_points_.size())) return;
   if (user_points_[index].visible == visible) return;
   user_points_[index].visible = visible;
-  CommitUserPointsChange(false);
+  CommitUserPointsChange(true);
 }
 
 void GeoViewerWidget::SetUserPointColor(int index, const QVector3D& color) {
   if (index < 0 || index >= static_cast<int>(user_points_.size())) return;
+  if (user_points_[index].color == color) return;
   user_points_[index].color = color;
-  update();  // No buffer rebuild needed; color is applied via uniform
+  CommitUserPointsChange(true);
 }
 
 void GeoViewerWidget::ClearUserPoints() {

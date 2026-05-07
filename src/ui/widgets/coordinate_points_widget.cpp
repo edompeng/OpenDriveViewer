@@ -239,7 +239,6 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
     QApplication::clipboard()->setText(coordText);
   } else if (selected == toggle_vis) {
     viewer_->SetUserPointVisible(index, !snap.visible);
-    RefreshPointsList();
   } else if (selected == change_color) {
     QColor initial =
         QColor::fromRgbF(snap.color.x(), snap.color.y(), snap.color.z());
@@ -248,7 +247,6 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
     if (chosen.isValid()) {
       viewer_->SetUserPointColor(
           index, QVector3D(chosen.redF(), chosen.greenF(), chosen.blueF()));
-      RefreshPointsList();
     }
   } else if (selected == jump_to) {
     if (coord_mode_ == CoordinateMode::kWGS84) {
@@ -282,8 +280,6 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
       "QCheckBox::indicator { width: 14px; height: 14px; }");
   connect(checkbox, &QCheckBox::toggled, this, [this, index](bool checked) {
     viewer_->SetUserPointVisible(index, checked);
-    // Update the color swatch opacity to reflect visibility
-    RefreshPointsList();
   });
   layout->addWidget(checkbox);
 
@@ -304,7 +300,6 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
     if (chosen.isValid()) {
       viewer_->SetUserPointColor(
           index, QVector3D(chosen.redF(), chosen.greenF(), chosen.blueF()));
-      RefreshPointsList();
     }
   });
   layout->addWidget(color_btn);
