@@ -30,6 +30,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
+            job_name: linux
             qt_host: 'linux'
             qt_arch: 'linux_gcc_64'
             vcpkg_triplet: 'x64-linux'
@@ -37,6 +38,7 @@ jobs:
             artifact_name: 'app-linux.tar.gz'
             
           - os: macos-14
+            job_name: macos
             qt_host: 'mac'
             qt_arch: 'clang_64'
             vcpkg_triplet: 'arm64-osx'
@@ -44,6 +46,7 @@ jobs:
             artifact_name: 'app-macos.dmg'
             
           - os: windows-2022
+            job_name: windows
             qt_host: 'windows'
             qt_arch: 'win64_msvc2022_64'
             vcpkg_triplet: 'x64-windows'
@@ -91,8 +94,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.VCPKG_ROOT }}
-          key: vcpkg-tool-${{ runner.os }}-v1
+          key: vcpkg-tool-${{ runner.os }}-bazel-v1
           restore-keys: |
+            vcpkg-tool-${{ runner.os }}-bazel-
             vcpkg-tool-${{ runner.os }}-
 
       - name: Setup vcpkg (Windows only for PROJ)
@@ -209,6 +213,15 @@ jobs:
             ${{ github.workspace }}/*symbols.tar.gz
           retention-days: 1
 
+      - name: Cleanup Old Caches
+        if: always()
+        shell: bash
+        run: |
+          # Keep only the 10 most recent caches for the current branch to avoid hitting the 10GB limit
+          gh cache list --ref ${{ github.ref }} --limit 100 --json id,createdAt -q 'sort_by(.createdAt) | reverse | .[10:] | .[].id' | xargs -I {} gh cache delete {} || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   build-cmake:
     name: CMake Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -217,12 +230,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
+            job_name: linux-cmake
             vcpkg_triplet: 'x64-linux'
             qt_version: '6.9.*'
           - os: macos-14
+            job_name: macos-cmake
             vcpkg_triplet: 'arm64-osx'
             qt_version: '6.9.1'
           - os: windows-2022
+            job_name: windows-cmake
             vcpkg_triplet: 'x64-windows'
             qt_version: '6.9.1'
 
@@ -259,8 +275,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.VCPKG_ROOT }}
-          key: vcpkg-tool-${{ runner.os }}-v1
+          key: vcpkg-tool-${{ runner.os }}-cmake-v1
           restore-keys: |
+            vcpkg-tool-${{ runner.os }}-cmake-
             vcpkg-tool-${{ runner.os }}-
 
       - name: Setup vcpkg (Windows only for PROJ)
@@ -326,6 +343,15 @@ jobs:
           else
             ctest -C RelWithDebInfo --output-on-failure
           fi
+
+      - name: Cleanup Old Caches
+        if: always()
+        shell: bash
+        run: |
+          # Keep only the 10 most recent caches for the current branch to avoid hitting the 10GB limit
+          gh cache list --ref ${{ github.ref }} --limit 100 --json id,createdAt -q 'sort_by(.createdAt) | reverse | .[10:] | .[].id' | xargs -I {} gh cache delete {} || true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   release:
     name: Publish GitHub Release
