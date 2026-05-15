@@ -16,6 +16,7 @@
 #include <QWidget>
 #include "src/core/coordinate_mode_policy.h"
 #include "src/logic/input_parsing.h"
+#include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/layer_control_widget.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -258,6 +259,12 @@ void MainWindow::SetupToolbar() {
     act->setChecked(!w->isHidden());
     connect(act, &QAction::toggled, this,
             [this, w](bool checked) { ToggleWidgetVisibility(w, checked); });
+
+    // Synchronize UI state when widget is shown/hidden externally
+    if (auto* panel = qobject_cast<FloatingPanelWidget*>(w)) {
+      connect(panel, &FloatingPanelWidget::VisibilityChanged, act,
+              &QAction::setChecked);
+    }
   };
 
   QAction* layerAct = layer_control_dock_->toggleViewAction();

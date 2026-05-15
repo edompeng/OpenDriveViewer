@@ -10,10 +10,14 @@ class FloatingPanelWidget : public QWidget {
   Q_OBJECT
  public:
   explicit FloatingPanelWidget(QWidget* parent = nullptr);
+ signals:
+  void VisibilityChanged(bool visible);
 
  protected:
   virtual void RetranslateUi() {}
   void changeEvent(QEvent* event) override;
+  void showEvent(QShowEvent* event) override;
+  void hideEvent(QHideEvent* event) override;
 
   bool BeginPanelDrag(QMouseEvent* event, int draggable_height = 30);
   bool DragPanel(QMouseEvent* event, bool clamp_to_parent);

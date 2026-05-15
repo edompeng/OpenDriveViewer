@@ -13,6 +13,16 @@ void FloatingPanelWidget::changeEvent(QEvent* event) {
   QWidget::changeEvent(event);
 }
 
+void FloatingPanelWidget::showEvent(QShowEvent* event) {
+  QWidget::showEvent(event);
+  emit VisibilityChanged(true);
+}
+
+void FloatingPanelWidget::hideEvent(QHideEvent* event) {
+  QWidget::hideEvent(event);
+  emit VisibilityChanged(false);
+}
+
 bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,
                                          int draggable_height) {
   if (event->button() != Qt::LeftButton ||
