@@ -34,6 +34,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   void HandlePointsChanged();
   void HandleItemDoubleClicked(QListWidgetItem* item);
   void HandleCustomContextMenu(const QPoint& pos);
+  void HandlePickColor();
   void ToggleCollapse();
 
  private:
@@ -55,4 +56,6 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   bool is_collapsed_ = false;
   bool points_list_dirty_ = true;
   CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
+  QVector3D next_point_color_ = QVector3D(1.0f, 0.3f, 0.3f);
+  QToolButton* color_btn_ = nullptr;
 };

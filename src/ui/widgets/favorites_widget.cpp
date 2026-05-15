@@ -25,7 +25,7 @@ FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)
   title_layout->addStretch();
 
   collapse_button_ = new QToolButton(title_bar);
-  collapse_button_->setText("−");
+  collapse_button_->setText("-");
   collapse_button_->setStyleSheet(
       "color: white; border: none; font-weight: bold;");
   connect(collapse_button_, &QToolButton::clicked, this,

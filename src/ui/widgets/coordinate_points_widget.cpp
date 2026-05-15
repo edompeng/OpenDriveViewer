@@ -67,6 +67,18 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
 
   auto* btn_layout = new QHBoxLayout();
   btn_layout->setSpacing(4);
+
+  color_btn_ = new QToolButton(content_area_);
+  color_btn_->setFixedSize(24, 24);
+  color_btn_->setStyleSheet(
+      QString("background-color: %1; border: 1px solid rgba(255,255,255,0.3); "
+              "border-radius: 4px;")
+          .arg(QColor::fromRgbF(next_point_color_.x(), next_point_color_.y(),
+                                next_point_color_.z())
+                   .name()));
+  connect(color_btn_, &QToolButton::clicked, this,
+          &CoordinatePointsWidget::HandlePickColor);
+
   add_btn_ = new QPushButton(tr("Add"), content_area_);
   add_btn_->setStyleSheet(
       "background-color: #007bff; color: white; border-radius: 4px; "
@@ -81,6 +93,7 @@ CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
   connect(clear_btn_, &QPushButton::clicked, this,
           &CoordinatePointsWidget::HandleClearPoints);
 
+  btn_layout->addWidget(color_btn_);
   btn_layout->addWidget(add_btn_);
   btn_layout->addWidget(clear_btn_);
   content_layout->addLayout(btn_layout);
@@ -159,9 +172,9 @@ void CoordinatePointsWidget::HandleAddPoint() {
   viewer_->BeginUserPointsBatch();
   for (const auto& point : points) {
     if (coord_mode_ == CoordinateMode::kWGS84) {
-      viewer_->AddUserPoint(point.x, point.y, point.z);
+      viewer_->AddUserPoint(point.x, point.y, point.z, next_point_color_);
     } else {
-      viewer_->AddUserPointLocal(point.x, point.y, point.z);
+      viewer_->AddUserPointLocal(point.x, point.y, point.z, next_point_color_);
     }
   }
   viewer_->EndUserPointsBatch();
@@ -257,6 +270,21 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
   } else if (selected == remove) {
     viewer_->RemoveUserPoint(index);
     // List is refreshed via the UserPointsChanged signal
+  }
+}
+
+void CoordinatePointsWidget::HandlePickColor() {
+  QColor initial = QColor::fromRgbF(next_point_color_.x(), next_point_color_.y(),
+                                    next_point_color_.z());
+  QColor chosen =
+      QColorDialog::getColor(initial, this, tr("Select point color"));
+  if (chosen.isValid()) {
+    next_point_color_ =
+        QVector3D(chosen.redF(), chosen.greenF(), chosen.blueF());
+    color_btn_->setStyleSheet(
+        QString("background-color: %1; border: 1px solid rgba(255,255,255,0.3); "
+                "border-radius: 4px;")
+            .arg(chosen.name()));
   }
 }
 

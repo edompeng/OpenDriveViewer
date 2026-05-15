@@ -126,7 +126,8 @@ bool GeoViewerWidget::IsElementActuallyVisible(
 }
 
 void GeoViewerWidget::AddUserPoint(double lon, double lat,
-                                   std::optional<double> alt) {
+                                   std::optional<double> alt,
+                                   const std::optional<QVector3D>& color) {
   if (!map_) return;
   if (!georeference_valid_) return;
 
@@ -148,7 +149,9 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
     if (right_hand_traffic_) ry = -ry;
     QVector3D world_pos(static_cast<float>(lx), static_cast<float>(lz),
                         static_cast<float>(ry));
-    user_points_.push_back(UserPoint(world_pos, lon, lat, *alt));
+    UserPoint up(world_pos, lon, lat, *alt);
+    if (color.has_value()) up.color = *color;
+    user_points_.push_back(up);
   } else {
     // Raycast mode: cast a vertical ray downward at the (lx, ly) position
     // to find all lane surface intersections.
@@ -186,14 +189,18 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
         RendererToLocalCoord(hit.position, hit_lx, hit_ly, hit_lz);
         double p_lon, p_lat, p_alt;
         LocalToWGS84(hit_lx, hit_ly, hit_lz, p_lon, p_lat, p_alt);
-        user_points_.push_back(UserPoint(hit.position, p_lon, p_lat, p_alt));
+        UserPoint up(hit.position, p_lon, p_lat, p_alt);
+        if (color.has_value()) up.color = *color;
+        user_points_.push_back(up);
       }
     }
 
     if (user_points_.size() == points_before) {
       // Fallback: place at ground level (Y=0) if no hit or grid not ready
       QVector3D world_pos(static_cast<float>(lx), 0.0f, static_cast<float>(ry));
-      user_points_.push_back(UserPoint(world_pos, lon, lat, 0.0));
+      UserPoint up(world_pos, lon, lat, 0.0);
+      if (color.has_value()) up.color = *color;
+      user_points_.push_back(up);
     }
   }
 
@@ -207,7 +214,8 @@ void GeoViewerWidget::RemoveUserPoint(int index) {
 }
 
 void GeoViewerWidget::AddUserPointLocal(double x, double y,
-                                        std::optional<double> z) {
+                                        std::optional<double> z,
+                                        const std::optional<QVector3D>& color) {
   if (!map_) return;
   const double local_z = z.value_or(0.0);
   double ry = y;
@@ -227,7 +235,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
                         static_cast<float>(ry));
     double lon = x, lat = y, alt = local_z;
     resolve_lonlat(x, y, local_z, lon, lat, alt);
-    user_points_.push_back(UserPoint(world_pos, lon, lat, alt));
+    UserPoint up(world_pos, lon, lat, alt);
+    if (color.has_value()) up.color = *color;
+    user_points_.push_back(up);
   } else {
     const size_t points_before = user_points_.size();
     constexpr float kRayStartHeight = 10000.0f;
@@ -255,7 +265,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
         RendererToLocalCoord(hit.position, hit_lx, hit_ly, hit_lz);
         double lon = hit_lx, lat = hit_ly, alt = hit_lz;
         resolve_lonlat(hit_lx, hit_ly, hit_lz, lon, lat, alt);
-        user_points_.push_back(UserPoint(hit.position, lon, lat, alt));
+        UserPoint up(hit.position, lon, lat, alt);
+        if (color.has_value()) up.color = *color;
+        user_points_.push_back(up);
       }
     }
 
@@ -263,7 +275,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
       QVector3D world_pos(static_cast<float>(x), 0.0f, static_cast<float>(ry));
       double lon = x, lat = y, alt = 0.0;
       resolve_lonlat(x, y, 0.0, lon, lat, alt);
-      user_points_.push_back(UserPoint(world_pos, lon, lat, alt));
+      UserPoint up(world_pos, lon, lat, alt);
+      if (color.has_value()) up.color = *color;
+      user_points_.push_back(up);
     }
   }
 

@@ -99,10 +99,12 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
 
   // ---------- User Annotation Points ----------
   void AddUserPoint(double lon, double lat,
-                    std::optional<double> alt = std::nullopt);
+                    std::optional<double> alt = std::nullopt,
+                    const std::optional<QVector3D>& color = std::nullopt);
   // Add point using local coordinates (x, y, z)
   void AddUserPointLocal(double x, double y,
-                         std::optional<double> z = std::nullopt);
+                         std::optional<double> z = std::nullopt,
+                         const std::optional<QVector3D>& color = std::nullopt);
   void BeginUserPointsBatch();
   void EndUserPointsBatch();
   void RemoveUserPoint(int index);
