@@ -156,7 +156,11 @@ void RoutingWidget::HandleCalculate() {
   odr::RoutingGraph graph = map->get_routing_graph();
   std::vector<odr::LaneKey> path = graph.shortest_path(*start_key, *endKey);
 
-  if (path.empty()) {
+  // Check if path is valid and reaches destination
+  bool reached_destination =
+      !path.empty() && std::equal_to<odr::LaneKey>{}(path.back(), *endKey);
+
+  if (!reached_destination) {
     QMessageBox::information(this, "Result",
                              "No path found between selected lanes.");
     return;
