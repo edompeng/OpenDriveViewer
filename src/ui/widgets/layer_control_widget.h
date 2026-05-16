@@ -12,13 +12,17 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include "src/core/app_settings.h"
 #include "src/ui/widgets/geo_viewer.h"
 #include "src/ui/widgets/layer_tree_model.h"
+
+class QSettings;
 
 class LayerControlWidget : public QWidget {
   Q_OBJECT
  public:
   explicit LayerControlWidget(GeoViewerWidget* viewer,
+                              const geoviewer::core::AppSettings& settings,
                               QWidget* parent = nullptr);
   ~LayerControlWidget() override;
   void UpdateTree();
@@ -28,6 +32,7 @@ class LayerControlWidget : public QWidget {
  signals:
   void ItemHovered(const QString& road_id, TreeNodeType type,
                    const QString& element_id);
+  void SettingsChanged();
 
  protected:
   void RetranslateUi();
@@ -56,6 +61,7 @@ class LayerControlWidget : public QWidget {
   QHash<QString, int> junction_snapshot_index_by_id_;
   std::atomic<uint64_t> snapshot_generation_{0};
   uint64_t last_displayed_generation_ = 0;
+  const geoviewer::core::AppSettings& settings_;
 
   QTimer* search_timer_ = nullptr;
   void RequestSnapshotBuild();

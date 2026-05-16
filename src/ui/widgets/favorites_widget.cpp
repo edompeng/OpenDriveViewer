@@ -4,7 +4,9 @@
 #include <QDebug>
 #include "src/core/viewer_text_util.h"
 
-FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer, QWidget* parent)
+FavoritesWidget::FavoritesWidget(GeoViewerWidget* viewer,
+                                 const geoviewer::core::AppSettings& /*settings*/,
+                                 QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {
   auto* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(2, 2, 2, 2);

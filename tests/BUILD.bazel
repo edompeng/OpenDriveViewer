@@ -23,6 +23,7 @@ cc_test(
         "layer_tree_model_test.cpp",
         "routing_logic_test.cpp",
         "scene_index_builder_test.cpp",
+        "settings_persistence_test.cpp",
         "spatial_index_test.cpp",
         "viewer_text_util_test.cpp",
     ],

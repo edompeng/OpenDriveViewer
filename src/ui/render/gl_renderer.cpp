@@ -298,8 +298,9 @@ void GlRenderer::DrawTriangles() {
     }
     if (layers_[i].draw_mode != GL_TRIANGLES) continue;
 
-    // Coarse culling: check entire layer
-    if (!frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
+    // Coarse culling: check entire layer if chunks are present
+    if (!layers_[i].chunks.empty() &&
+        !frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
       continue;
     }
 
@@ -351,8 +352,9 @@ void GlRenderer::DrawLines() {
     }
     if (layers_[i].draw_mode != GL_LINES) continue;
 
-    // Coarse culling: check entire layer
-    if (!frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
+    // Coarse culling: check entire layer if chunks are present
+    if (!layers_[i].chunks.empty() &&
+        !frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
       continue;
     }
 

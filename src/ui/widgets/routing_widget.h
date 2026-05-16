@@ -10,13 +10,16 @@
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWidget>
+#include "src/core/app_settings.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/geo_viewer.h"
 
 class RoutingWidget : public FloatingPanelWidget {
   Q_OBJECT
  public:
-  explicit RoutingWidget(GeoViewerWidget* viewer, QWidget* parent = nullptr);
+  explicit RoutingWidget(GeoViewerWidget* viewer,
+                         const geoviewer::core::AppSettings& settings,
+                         QWidget* parent = nullptr);
 
  public slots:
   void SetStartLane(const QString& lane_pos);

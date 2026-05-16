@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QStatusBar>
+#include "src/core/app_settings.h"
 #include "src/core/scene_enums.h"
 #include "src/ui/widgets/async_map_loader.h"
 #include "src/ui/widgets/coordinate_points_widget.h"
@@ -34,6 +35,7 @@ class MainWindow : public QMainWindow {
   void HandleCopyMapBaseName();
   void ToggleWidgetVisibility(QWidget *widget, bool visible);
   void ChangeLanguage(const QString &locale);
+  void HandleSettingsChanged();
 
  protected:
   void resizeEvent(QResizeEvent *event) override;
@@ -50,15 +52,16 @@ class MainWindow : public QMainWindow {
   void UpdateWindowTitle();
   void StartMapLoad(const QString &path);
   void ApplyCoordinateModePolicy(bool georeference_valid);
+  void SaveSettingsToStruct();
 
-  GeoViewerWidget *view_;
-  QLineEdit *jump_to_coords_edit_;
-  QStatusBar *status_;
-  LayerControlWidget *layer_control_;
-  QDockWidget *layer_control_dock_;
-  RoutingWidget *routing_panel_;
-  FavoritesWidget *favorites_panel_;
-  CoordinatePointsWidget *coordinate_points_panel_;
+  GeoViewerWidget *view_ = nullptr;
+  QLineEdit *jump_to_coords_edit_ = nullptr;
+  QStatusBar *status_ = nullptr;
+  LayerControlWidget *layer_control_ = nullptr;
+  QDockWidget *layer_control_dock_ = nullptr;
+  RoutingWidget *routing_panel_ = nullptr;
+  FavoritesWidget *favorites_panel_ = nullptr;
+  CoordinatePointsWidget *coordinate_points_panel_ = nullptr;
   LoadingProgressWidget *load_progress_ = nullptr;
   QString current_map_path_;
   QString pending_map_path_;
@@ -68,13 +71,14 @@ class MainWindow : public QMainWindow {
   QTranslator *translator_;
 
   // UI Elements that need retranslation
-  QMenu *panels_menu_;
-  QToolButton *panels_btn_;
-  QMenu *lang_menu_;
-  QToolButton *lang_btn_;
-  QAction *load_action_;
-  QLabel *jump_label_;
+  QMenu *panels_menu_ = nullptr;
+  QToolButton *panels_btn_ = nullptr;
+  QMenu *lang_menu_ = nullptr;
+  QToolButton *lang_btn_ = nullptr;
+  QAction *load_action_ = nullptr;
+  QLabel *jump_label_ = nullptr;
   CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
   QComboBox *coord_mode_combo_ = nullptr;
   bool wgs84_mode_allowed_ = true;
+  geoviewer::core::AppSettings settings_;
 };

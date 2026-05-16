@@ -4,17 +4,21 @@ add_library(
   coordinate_util.cpp
   map_loader.cpp
   thread_pool.cpp
+  scene_enums.cpp
   viewer_text_util.cpp
   junction_grouping.cpp
   crash_handler.cpp
+  settings_persistence.cpp
   # Headers only
+  app_settings.h
   coordinate_mode_policy.h
   scene_enums.h
   scene_geometry_types.h
-  crash_handler.h)
+  crash_handler.h
+  settings_persistence.h)
 
 target_include_directories(GeoViewerCore
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../)
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
 # PROJ might be found as a target or as variables
 if(TARGET PROJ::proj)
@@ -33,4 +37,4 @@ else()
   endif()
 endif()
 
-target_link_libraries(GeoViewerCore PUBLIC Qt6::Core OpenDrive)
+target_link_libraries(GeoViewerCore PUBLIC Qt6::Core Qt6::Gui OpenDrive)

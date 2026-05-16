@@ -12,6 +12,7 @@ class FloatingPanelWidget : public QWidget {
   explicit FloatingPanelWidget(QWidget* parent = nullptr);
  signals:
   void VisibilityChanged(bool visible);
+  void SettingsChanged();
 
  protected:
   virtual void RetranslateUi() {}

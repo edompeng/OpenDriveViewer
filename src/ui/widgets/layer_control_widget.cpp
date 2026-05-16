@@ -1,4 +1,5 @@
 #include "src/ui/widgets/layer_control_widget.h"
+#include <QtGui/qkeysequence.h>
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -7,11 +8,14 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QStyle>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "src/core/app_settings.h"
+#include "src/core/scene_enums.h"
 #include "src/core/thread_pool.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
@@ -31,8 +35,10 @@ QTreeWidgetItem* CreateChildItem(QTreeWidgetItem* parent) {
 }
 }  // namespace
 
-LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
-    : QWidget(parent), viewer_(viewer) {
+LayerControlWidget::LayerControlWidget(
+    GeoViewerWidget* viewer, const geoviewer::core::AppSettings& settings,
+    QWidget* parent)
+    : QWidget(parent), viewer_(viewer), settings_(settings) {
   setWindowTitle(tr("Layer Control"));
   setWindowIcon(QIcon(":/icons/layers.png"));  // Optional if icon exists
 
@@ -44,35 +50,25 @@ LayerControlWidget::LayerControlWidget(GeoViewerWidget* viewer, QWidget* parent)
   auto* global_box = new QGroupBox(tr("Global Layer Visibility"), this);
   auto* global_layout = new QGridLayout(global_box);
   global_layout->setContentsMargins(10, 10, 10, 10);
-
-  struct LayerSpec {
-    const char* label;
-    LayerType type;
-    bool default_visible;
-  };
-
-  const LayerSpec layer_specs[] = {
-      {"Lanes", LayerType::kLanes, true},
-      {"Lines", LayerType::kLaneLines, true},
-      {"Marks", LayerType::kRoadmarks, true},
-      {"Objects", LayerType::kObjects, false},
-      {"Facilities", LayerType::kFacilities, true},
-      {"Signal Lights", LayerType::kSignalLights, true},
-      {"Signals", LayerType::kSignalSigns, false},
-      {"Ref Lines", LayerType::kReferenceLines, true},
-      {"Junctions", LayerType::kJunctions, false},
-  };
-
   global_layer_checkboxes_.clear();
-  for (int i = 0; i < 9; ++i) {
-    const auto& spec = layer_specs[i];
-    auto* cb = new QCheckBox(tr(spec.label), global_box);
-    cb->setChecked(viewer_->IsLayerVisible(spec.type));
-    connect(cb, &QCheckBox::toggled, this, [this, spec](bool checked) {
-      viewer_->SetLayerVisible(spec.type, checked);
+  int idx = 0;
+  for (const auto& [layer, visibility] : settings.global_layer_visibility) {
+    std::string layer_str = LayerTypeToString(layer);
+    if (layer_str.empty()) {
+      continue;
+    }
+    auto* cb = new QCheckBox(tr(layer_str.c_str()), global_box);
+    cb->setChecked(visibility);
+    viewer_->SetLayerVisible(layer, visibility);
+    connect(cb, &QCheckBox::toggled, this, [this, layer = layer](bool checked) {
+      if (viewer_->IsLayerVisible(layer) != checked) {
+        viewer_->SetLayerVisible(layer, checked);
+        emit SettingsChanged();
+      }
     });
-    global_layout->addWidget(cb, i / 3, i % 3);
+    global_layout->addWidget(cb, idx / 3, idx % 3);
     global_layer_checkboxes_.push_back(cb);
+    idx++;
   }
   main_layout->addWidget(global_box);
 
@@ -192,13 +188,17 @@ void LayerControlWidget::RetranslateUi() {
     group->setTitle(tr("Map Hierarchy"));
   }
 
-  const char* layer_labels[] = {"Lanes",   "Lines",      "Marks",
-                                "Objects", "Facilities", "Signal Lights",
-                                "Signals", "Ref Lines",  "Junctions"};
-  for (size_t i = 0; i < global_layer_checkboxes_.size() && i < 9; ++i) {
-    global_layer_checkboxes_[i]->setText(tr(layer_labels[i]));
+  size_t idx = 0;
+  for (const auto& [layer, _] : settings_.global_layer_visibility) {
+    auto str = LayerTypeToString(layer);
+    if (str.empty()) {
+      continue;
+    }
+    if (idx < global_layer_checkboxes_.size()) {
+      global_layer_checkboxes_[idx]->setText(tr(str.c_str()));
+      idx++;
+    }
   }
-
   search_edit_->setPlaceholderText(tr("Search ID..."));
   if (tree_snapshot_) {
     PopulateTopLevelItems();

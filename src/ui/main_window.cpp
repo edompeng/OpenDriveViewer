@@ -1,4 +1,5 @@
 #include "src/ui/main_window.h"
+#include <QtCore/qdebug.h>
 #include <QApplication>
 #include <QCheckBox>
 #include <QDragEnterEvent>
@@ -14,22 +15,28 @@
 #include <QToolBar>
 #include <QTranslator>
 #include <QWidget>
+#include "src/core/app_settings.h"
 #include "src/core/coordinate_mode_policy.h"
+#include "src/core/settings_persistence.h"
 #include "src/logic/input_parsing.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/layer_control_widget.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   translator_ = new QTranslator(this);
-  // Initial language setup based on system locale
-  QString locale = QLocale::system().name();
-  if (locale.isEmpty()) locale = "zh_CN";
-  if (!translator_->load(":/i18n/geoviewer_" + locale + ".qm")) {
-    if (!translator_->load(":/i18n/geoviewer_zh_CN.qm")) {
-      qWarning() << "Failed to load default translation file";
-    }
+
+  // Load Persistence Settings
+  settings_ =
+      geoviewer::core::SettingsPersistence::Load(qApp->applicationDirPath());
+
+  // Language setup from settings
+  if (!settings_.language.isEmpty()) {
+    ChangeLanguage(settings_.language);
+  } else {
+    QString locale = QLocale::system().name();
+    if (locale.isEmpty()) locale = "zh_CN";
+    ChangeLanguage(locale);
   }
-  qApp->installTranslator(translator_);
 
   view_ = new GeoViewerWidget(this);
   setCentralWidget(view_);
@@ -39,6 +46,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   status_ = statusBar();
   SetupPanels();
   SetupToolbar();
+
+  // Apply coordinate mode from settings
+  coord_mode_ = settings_.coordinate_mode;
+  if (coord_mode_combo_) {
+    coord_mode_combo_->setCurrentIndex(
+        coord_mode_ == CoordinateMode::kWGS84 ? 0 : 1);
+  }
+
   SetupConnections();
 
   setAcceptDrops(true);
@@ -146,6 +161,9 @@ void MainWindow::ChangeLanguage(const QString& locale) {
   // re-install
   qApp->removeTranslator(translator_);
   qApp->installTranslator(translator_);
+
+  settings_.language = locale;
+  HandleSettingsChanged();
 }
 
 void MainWindow::changeEvent(QEvent* event) {
@@ -215,25 +233,29 @@ void MainWindow::SetupPanels() {
   layer_control_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
                                        Qt::RightDockWidgetArea);
 
-  layer_control_ = new LayerControlWidget(view_, layer_control_dock_);
+  layer_control_ =
+      new LayerControlWidget(view_, settings_, layer_control_dock_);
   layer_control_dock_->setWidget(layer_control_);
   addDockWidget(Qt::LeftDockWidgetArea, layer_control_dock_);
-  layer_control_dock_->show();
 
-  routing_panel_ = new RoutingWidget(view_, view_);
+  routing_panel_ = new RoutingWidget(view_, settings_, view_);
   routing_panel_->move(20, 530);
-  routing_panel_->hide();
 
-  favorites_panel_ = new FavoritesWidget(view_, view_);
+  favorites_panel_ = new FavoritesWidget(view_, settings_, view_);
   favorites_panel_->move(view_->width() - 270, 20);
-  favorites_panel_->hide();
 
-  coordinate_points_panel_ = new CoordinatePointsWidget(view_, view_);
+  coordinate_points_panel_ =
+      new CoordinatePointsWidget(view_, settings_, view_);
   coordinate_points_panel_->move(290, 330);
-  coordinate_points_panel_->hide();
 
   load_progress_ = new LoadingProgressWidget(view_);
   load_progress_->move(view_->width() / 2 - 150, view_->height() / 2 - 50);
+
+  // Apply visibility from settings
+  layer_control_dock_->setVisible(settings_.layer_manager_visible);
+  routing_panel_->setVisible(settings_.routing_visible);
+  favorites_panel_->setVisible(settings_.favorites_visible);
+  coordinate_points_panel_->setVisible(settings_.coordinate_points_visible);
 }
 
 void MainWindow::ToggleWidgetVisibility(QWidget* widget, bool visible) {
@@ -335,6 +357,7 @@ QWidget* MainWindow::BuildCoordinateTools() {
             coordinate_points_panel_->SetCoordinateMode(coord_mode_);
             view_->SetCoordinateMode(coord_mode_);
             RetranslateUi();
+            HandleSettingsChanged();
           });
 
   layout->addWidget(coord_mode_combo_);
@@ -453,6 +476,18 @@ void MainWindow::SetupConnections() {
       routing_panel_->move(20, view_->height() - routing_panel_->height() - 20);
     }
   });
+
+  // Settings persistence connections
+  connect(layer_control_, &LayerControlWidget::SettingsChanged, this,
+          &MainWindow::HandleSettingsChanged);
+  connect(routing_panel_, &RoutingWidget::SettingsChanged, this,
+          &MainWindow::HandleSettingsChanged);
+  connect(favorites_panel_, &FavoritesWidget::SettingsChanged, this,
+          &MainWindow::HandleSettingsChanged);
+  connect(coordinate_points_panel_, &CoordinatePointsWidget::SettingsChanged,
+          this, &MainWindow::HandleSettingsChanged);
+  connect(layer_control_dock_, &QDockWidget::visibilityChanged, this,
+          &MainWindow::HandleSettingsChanged);
 }
 
 void MainWindow::StartMapLoad(const QString& path) {
@@ -526,4 +561,27 @@ void MainWindow::dropEvent(QDropEvent* event) {
       }
     }
   }
+}
+
+void MainWindow::HandleSettingsChanged() {
+  SaveSettingsToStruct();
+  geoviewer::core::SettingsPersistence::Save(settings_,
+                                             qApp->applicationDirPath());
+}
+
+void MainWindow::SaveSettingsToStruct() {
+  if (layer_control_dock_)
+    settings_.layer_manager_visible = !layer_control_dock_->isHidden();
+  if (routing_panel_) settings_.routing_visible = !routing_panel_->isHidden();
+  if (favorites_panel_)
+    settings_.favorites_visible = !favorites_panel_->isHidden();
+  if (coordinate_points_panel_)
+    settings_.coordinate_points_visible = !coordinate_points_panel_->isHidden();
+
+  if (view_) {
+    for (auto& [layer, visibility] : settings_.global_layer_visibility) {
+      visibility = view_->IsLayerVisible(layer);
+    }
+  }
+  settings_.coordinate_mode = coord_mode_;
 }

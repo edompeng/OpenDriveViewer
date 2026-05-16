@@ -7,14 +7,17 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
+#include <QSettings>
 #include <QShowEvent>
 #include <QToolButton>
 
 #include "src/logic/input_parsing.h"
 
-CoordinatePointsWidget::CoordinatePointsWidget(GeoViewerWidget* viewer,
-                                               QWidget* parent)
+CoordinatePointsWidget::CoordinatePointsWidget(
+    GeoViewerWidget* viewer, const geoviewer::core::AppSettings& settings,
+    QWidget* parent)
     : FloatingPanelWidget(parent), viewer_(viewer) {
+  next_point_color_ = settings.default_point_color;
   setMinimumSize(280, 50);
   resize(320, 380);
 
@@ -274,17 +277,19 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
 }
 
 void CoordinatePointsWidget::HandlePickColor() {
-  QColor initial = QColor::fromRgbF(next_point_color_.x(), next_point_color_.y(),
-                                    next_point_color_.z());
+  QColor initial = QColor::fromRgbF(
+      next_point_color_.x(), next_point_color_.y(), next_point_color_.z());
   QColor chosen =
       QColorDialog::getColor(initial, this, tr("Select point color"));
   if (chosen.isValid()) {
     next_point_color_ =
         QVector3D(chosen.redF(), chosen.greenF(), chosen.blueF());
     color_btn_->setStyleSheet(
-        QString("background-color: %1; border: 1px solid rgba(255,255,255,0.3); "
-                "border-radius: 4px;")
+        QString(
+            "background-color: %1; border: 1px solid rgba(255,255,255,0.3); "
+            "border-radius: 4px;")
             .arg(chosen.name()));
+    emit SettingsChanged();
   }
 }
 

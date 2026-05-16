@@ -19,15 +19,9 @@ GeoViewerWidget::GeoViewerWidget(QWidget* parent)
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
 
-  // Initialize visibility array with defaults
   for (int i = 0; i < static_cast<int>(LayerType::kCount); ++i) {
     layer_visibility_[i] = true;
   }
-  // Junctions and Signal Signs are hidden by default in UI
-  layer_visibility_[static_cast<size_t>(LayerType::kJunctions)] = false;
-  layer_visibility_[static_cast<size_t>(LayerType::kSignalSigns)] = false;
-  layer_visibility_[static_cast<size_t>(LayerType::kObjects)] = false;
-  layer_visibility_[static_cast<size_t>(LayerType::kFacilities)] = true;
 
   network_mesh_ = std::make_shared<odr::RoadNetworkMesh>();
   junction_mesh_ = std::make_shared<odr::Mesh3D>();

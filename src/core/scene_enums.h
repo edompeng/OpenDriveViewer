@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 enum class LayerType {
   kLanes = 0,
@@ -31,3 +32,6 @@ enum class TreeNodeType {
   kJunction
 };
 enum class CoordinateMode { kWGS84, kLocal };
+
+std::string LayerTypeToString(const LayerType& type) noexcept;
+LayerType StringToLayerType(const std::string& type_str) noexcept;

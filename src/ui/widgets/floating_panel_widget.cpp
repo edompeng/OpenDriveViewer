@@ -1,5 +1,6 @@
 #include "src/ui/widgets/floating_panel_widget.h"
 #include <QCoreApplication>
+#include <QSettings>
 #include <algorithm>
 
 FloatingPanelWidget::FloatingPanelWidget(QWidget* parent) : QWidget(parent) {
@@ -16,11 +17,13 @@ void FloatingPanelWidget::changeEvent(QEvent* event) {
 void FloatingPanelWidget::showEvent(QShowEvent* event) {
   QWidget::showEvent(event);
   emit VisibilityChanged(true);
+  emit SettingsChanged();
 }
 
 void FloatingPanelWidget::hideEvent(QHideEvent* event) {
   QWidget::hideEvent(event);
   emit VisibilityChanged(false);
+  emit SettingsChanged();
 }
 
 bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,
