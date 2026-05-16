@@ -113,3 +113,9 @@ void GeoViewerWidget::JumpToRendererLocation(const QVector3D& world_pos) {
   camera_.SetTarget(world_pos);
   update();
 }
+
+void GeoViewerWidget::SetViewMode(CameraController::ViewMode mode) {
+  camera_.SetViewMode(mode);
+  emit ViewModeChanged(mode);
+  update();
+}

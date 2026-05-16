@@ -36,6 +36,8 @@ class MainWindow : public QMainWindow {
   void ToggleWidgetVisibility(QWidget *widget, bool visible);
   void ChangeLanguage(const QString &locale);
   void HandleSettingsChanged();
+  void HandleViewModeToggle(bool is_2d);
+
 
  protected:
   void resizeEvent(QResizeEvent *event) override;
@@ -66,7 +68,9 @@ class MainWindow : public QMainWindow {
   QString current_map_path_;
   QString pending_map_path_;
   QAction *measure_action_;
+  QAction *view_mode_action_ = nullptr;
   QAction *copy_map_name_action_ = nullptr;
+
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
 

@@ -23,7 +23,17 @@ void CameraController::BeginDrag(const QPoint& pos, Qt::MouseButton button) {
 
 void CameraController::EndDrag() { pressed_button_ = Qt::NoButton; }
 
-void CameraController::PanByDelta(const QPoint& delta, const QSize& viewport_size) {
+void CameraController::SetViewMode(ViewMode mode) {
+  if (mode_ == mode) return;
+  mode_ = mode;
+  if (mode_ == ViewMode::k2D) {
+    yaw_ = 0.0f;
+    pitch_ = -89.999f;
+  }
+}
+
+void CameraController::PanByDelta(const QPoint& delta,
+                                  const QSize& viewport_size) {
   if (viewport_size.height() <= 0) return;
 
   // Calculate factor to match pixels to world units at target distance
@@ -51,8 +61,11 @@ void CameraController::OrbitByDelta(const QPoint& delta) {
       qBound(-kMaxPixelsPerEvent, delta.y(), kMaxPixelsPerEvent);
 
   yaw_ += static_cast<float>(safe_dx) * kSensitivity;
-  pitch_ += static_cast<float>(safe_dy) * kSensitivity;
-  pitch_ = qBound(-89.0f, pitch_, 89.0f);
+
+  if (mode_ != ViewMode::k2D) {
+    pitch_ += static_cast<float>(safe_dy) * kSensitivity;
+    pitch_ = qBound(-89.0f, pitch_, 89.0f);
+  }
 }
 
 void CameraController::ZoomToward(float wheel_delta, float max_dist,

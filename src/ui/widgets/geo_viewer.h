@@ -61,6 +61,9 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
     return junction_cluster_result_;
   }
   QMatrix4x4 GetViewMatrix() const;
+  CameraController::ViewMode GetViewMode() const {
+    return camera_.GetViewMode();
+  }
 
   // ---------- Layer Visibility ----------
   void SetLayerVisible(LayerType type, bool visible);
@@ -161,6 +164,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void MeasureModeChanged(bool active);
   void UserPointsChanged();
   void SceneReset();
+  void ViewModeChanged(CameraController::ViewMode mode);
 
  protected:
   void initializeGL() override;
@@ -183,6 +187,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void JumpToLocation(double lon, double lat, double alt = 0.0);
   void JumpToLocalLocation(double x, double y, double z = 0.0);
   void JumpToRendererLocation(const QVector3D& world_pos);
+  void SetViewMode(CameraController::ViewMode mode);
 
   // ---------- Multi-routing Support ----------
   int AddRoutingPath(const std::vector<odr::LaneKey>& path,
@@ -306,9 +311,10 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   SpatialIndexData spatial_index_data_;
   void ForceRebuildSpatialIndex();
   void StartSpatialIndexBuild();
-  SpatialIndexData BuildSpatialIndexData(std::shared_ptr<odr::OpenDriveMap> map,
-                                         const odr::RoadNetworkMesh& network_mesh,
-                                         const odr::Mesh3D& junction_mesh) const;
+  SpatialIndexData BuildSpatialIndexData(
+      std::shared_ptr<odr::OpenDriveMap> map,
+      const odr::RoadNetworkMesh& network_mesh,
+      const odr::Mesh3D& junction_mesh) const;
   std::atomic<uint64_t> spatial_index_generation_{0};
   bool spatial_index_ready_ = false;
 

@@ -9,6 +9,9 @@
 class GEOVIEWER_EXPORT CameraController {
  public:
   CameraController() = default;
+  
+  enum class ViewMode { k3D, k2D };
+
 
   // --- State Getters ---
   QMatrix4x4 GetViewMatrix() const;
@@ -16,6 +19,10 @@ class GEOVIEWER_EXPORT CameraController {
   float GetDistance() const { return distance_; }
   float GetYaw() const { return yaw_; }
   float GetPitch() const { return pitch_; }
+  ViewMode GetViewMode() const { return mode_; }
+
+  void SetViewMode(ViewMode mode);
+
 
   // --- Interaction Handling ---
 
@@ -51,8 +58,10 @@ class GEOVIEWER_EXPORT CameraController {
   float pitch_ = -30.0f;
   float distance_ = 100.0f;
   float mesh_radius_ = 0.0f;
+  ViewMode mode_ = ViewMode::k3D;
   QVector3D target_{0.0f, 0.0f, 0.0f};
 
   QPoint last_pos_;
   Qt::MouseButton pressed_button_ = Qt::NoButton;
 };
+

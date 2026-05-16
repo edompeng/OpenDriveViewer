@@ -182,6 +182,14 @@ void MainWindow::RetranslateUi() {
   lang_btn_->setText(tr("Language"));
   measure_action_->setText(tr("Measure"));
   measure_action_->setToolTip(tr("Measure distance between points"));
+  if (view_ && view_->GetViewMode() == CameraController::ViewMode::k2D) {
+    view_mode_action_->setText(tr("2D"));
+  } else {
+    view_mode_action_->setText(tr("3D"));
+  }
+  view_mode_action_->setToolTip(
+      tr("Toggle between 2D (Overhead) and 3D views"));
+
   if (copy_map_name_action_) {
     copy_map_name_action_->setText(tr("Copy Map Name"));
     copy_map_name_action_->setToolTip(
@@ -326,6 +334,14 @@ void MainWindow::SetupToolbar() {
 
   measure_action_ = toolbar->addAction(tr("Measure"));
   measure_action_->setCheckable(true);
+
+  view_mode_action_ = toolbar->addAction(tr("2D/3D"));
+  view_mode_action_->setCheckable(true);
+  view_mode_action_->setToolTip(
+      tr("Toggle between 2D (Overhead) and 3D views"));
+  connect(view_mode_action_, &QAction::toggled, this,
+          &MainWindow::HandleViewModeToggle);
+
   copy_map_name_action_ = toolbar->addAction(tr("Copy Map Name"));
   copy_map_name_action_->setToolTip(
       tr("Copy current map file name without extension"));
@@ -397,6 +413,15 @@ void MainWindow::SetupConnections() {
             statusBar()->showMessage(
                 tr("Total Distance: %1 m").arg(dist, 0, 'f', 2));
           });
+
+  connect(
+      view_, &GeoViewerWidget::ViewModeChanged, this,
+      [this](CameraController::ViewMode mode) {
+        const QSignalBlocker blocker(view_mode_action_);
+        view_mode_action_->setChecked(mode == CameraController::ViewMode::k2D);
+        view_mode_action_->setText(
+            mode == CameraController::ViewMode::k2D ? tr("2D") : tr("3D"));
+      });
 
   connect(map_loader_, &AsyncMapLoader::ProgressTextChanged, this,
           [this](const QString& text) {
@@ -584,4 +609,11 @@ void MainWindow::SaveSettingsToStruct() {
     }
   }
   settings_.coordinate_mode = coord_mode_;
+}
+
+void MainWindow::HandleViewModeToggle(bool is_2d) {
+  if (view_) {
+    view_->SetViewMode(is_2d ? CameraController::ViewMode::k2D
+                             : CameraController::ViewMode::k3D);
+  }
 }
