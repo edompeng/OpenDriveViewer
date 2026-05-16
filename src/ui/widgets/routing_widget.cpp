@@ -17,28 +17,7 @@ RoutingWidget::RoutingWidget(GeoViewerWidget* viewer,
   main_layout->setSpacing(0);
 
   // Title Bar
-  auto* title_bar = new QWidget(this);
-  title_bar->setStyleSheet(
-      "background-color: #445; border-top-left-radius: 8px; "
-      "border-top-right-radius: 8px;");
-  auto* title_layout = new QHBoxLayout(title_bar);
-  title_layout->setContentsMargins(10, 5, 5, 5);
-
-  title_label_ = new QLabel(tr("<b>Routing</b>"), title_bar);
-  title_label_->setStyleSheet("color: white;");
-  title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
-  title_layout->addWidget(title_label_);
-  title_layout->addStretch();
-
-  collapse_button_ = new QToolButton(title_bar);
-  collapse_button_->setText("−");
-  collapse_button_->setStyleSheet(
-      "color: white; border: none; font-weight: bold;");
-  connect(collapse_button_, &QToolButton::clicked, this,
-          &RoutingWidget::ToggleCollapse);
-  title_layout->addWidget(collapse_button_);
-
-  main_layout->addWidget(title_bar);
+  main_layout->addWidget(CreateTitleBar(tr("<b>Routing</b>"), "#445"));
 
   // Content Area
   content_area_ = new QWidget(this);
@@ -124,7 +103,7 @@ void RoutingWidget::leaveEvent(QEvent* event) {
 }
 
 void RoutingWidget::RetranslateUi() {
-  title_label_->setText(tr("<b>Routing</b>"));
+  if (title_label_) title_label_->setText(tr("<b>Routing</b>"));
   start_label_->setText(tr("Start (road/section/lane):"));
   start_input_->setPlaceholderText(tr("Start: road/section/lane"));
   end_label_->setText(tr("End (road/section/lane):"));

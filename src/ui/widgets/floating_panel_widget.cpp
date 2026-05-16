@@ -1,10 +1,53 @@
 #include "src/ui/widgets/floating_panel_widget.h"
 #include <QCoreApplication>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QSettings>
+
 #include <algorithm>
 
 FloatingPanelWidget::FloatingPanelWidget(QWidget* parent) : QWidget(parent) {
   setMouseTracking(true);
+}
+
+QWidget* FloatingPanelWidget::CreateTitleBar(const QString& title_text,
+                                             const QString& color_hex) {
+  auto* title_bar = new QWidget(this);
+  title_bar->setFixedHeight(30);
+  title_bar->setStyleSheet(
+      QString("background-color: %1; border-top-left-radius: 8px; "
+              "border-top-right-radius: 8px;")
+          .arg(color_hex));
+
+  auto* title_layout = new QHBoxLayout(title_bar);
+  title_layout->setContentsMargins(10, 5, 5, 5);
+  title_layout->setSpacing(5);
+
+  title_label_ = new QLabel(title_text, title_bar);
+  title_label_->setStyleSheet("color: white; font-weight: bold;");
+  title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
+  title_layout->addWidget(title_label_);
+
+  title_layout->addStretch();
+
+  collapse_button_ = new QToolButton(title_bar);
+  collapse_button_->setText("−");
+  collapse_button_->setFixedSize(20, 20);
+  collapse_button_->setStyleSheet(
+      "color: white; border: none; font-weight: bold; font-size: 14px;");
+  connect(collapse_button_, &QToolButton::clicked, this,
+          &FloatingPanelWidget::ToggleCollapse);
+  title_layout->addWidget(collapse_button_);
+
+  close_button_ = new QToolButton(title_bar);
+  close_button_->setText("✕");
+  close_button_->setFixedSize(20, 20);
+  close_button_->setStyleSheet(
+      "color: #ff6666; border: none; font-weight: bold; font-size: 14px;");
+  connect(close_button_, &QToolButton::clicked, this, &QWidget::hide);
+  title_layout->addWidget(close_button_);
+
+  return title_bar;
 }
 
 void FloatingPanelWidget::changeEvent(QEvent* event) {

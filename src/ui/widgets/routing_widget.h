@@ -28,6 +28,7 @@ class RoutingWidget : public FloatingPanelWidget {
 
  protected:
   void RetranslateUi() override;
+  void ToggleCollapse() override;
 
  protected:
   void mousePressEvent(QMouseEvent* event) override;
@@ -37,7 +38,6 @@ class RoutingWidget : public FloatingPanelWidget {
 
  private slots:
   void HandleCalculate();
-  void ToggleCollapse();
   void HandleHistoryItemChanged(QTreeWidgetItem* item, int column);
   void HandleHistoryContextMenu(const QPoint& pos);
   void HandleItemEntered(QTreeWidgetItem* item, int column);
@@ -49,11 +49,8 @@ class RoutingWidget : public FloatingPanelWidget {
   QLineEdit* end_input_;
   QTreeWidget* history_tree_;
   QWidget* content_area_;
-  QToolButton* collapse_button_;
-  QLabel* title_label_ = nullptr;
   QLabel* start_label_ = nullptr;
   QLabel* end_label_ = nullptr;
   QPushButton* calc_btn_ = nullptr;
   QLabel* history_label_ = nullptr;
-  bool is_collapsed_ = false;
 };

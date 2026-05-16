@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QEvent>
+#include <QLabel>
 #include <QMouseEvent>
 #include <QPoint>
 #include <QToolButton>
@@ -16,6 +17,10 @@ class FloatingPanelWidget : public QWidget {
 
  protected:
   virtual void RetranslateUi() {}
+  virtual void ToggleCollapse() = 0;
+
+  QWidget* CreateTitleBar(const QString& title_text, const QString& color_hex);
+
   void changeEvent(QEvent* event) override;
   void showEvent(QShowEvent* event) override;
   void hideEvent(QHideEvent* event) override;
@@ -29,6 +34,12 @@ class FloatingPanelWidget : public QWidget {
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
+
+ protected:
+  QLabel* title_label_ = nullptr;
+  QToolButton* collapse_button_ = nullptr;
+  QToolButton* close_button_ = nullptr;
+  bool is_collapsed_ = false;
 
  private:
   QPoint drag_origin_;

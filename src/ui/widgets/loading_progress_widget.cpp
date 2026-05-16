@@ -10,27 +10,20 @@ LoadingProgressWidget::LoadingProgressWidget(QWidget* parent)
   main_layout->setContentsMargins(2, 2, 2, 2);
   main_layout->setSpacing(0);
 
-  // Title Bar (Handle for dragging)
-  auto* title_bar = new QWidget(this);
-  title_bar->setFixedHeight(30);
-  title_bar->setStyleSheet(
-      "background-color: #556; border-top-left-radius: 8px; "
-      "border-top-right-radius: 8px;");
-  auto* title_layout = new QHBoxLayout(title_bar);
-  title_layout->setContentsMargins(10, 5, 10, 5);
+  // Title Bar
+  main_layout->addWidget(
+      CreateTitleBar(tr("<b>Loading Project...</b>"), "#556"));
 
-  auto* title = new QLabel("<b>Loading Project...</b>", title_bar);
-  title->setStyleSheet("color: white;");
-  title->setAttribute(Qt::WA_TransparentForMouseEvents);
-  title_layout->addWidget(title);
-  title_layout->addStretch();
-  main_layout->addWidget(title_bar);
+  // Progress bar doesn't usually need to be collapsed or closed manually,
+  // but we follow the base class requirements.
+  if (close_button_)
+    close_button_->hide();  // Hide close button for loading progress
 
   content_area_ = new QWidget(this);
   auto* content_layout = new QVBoxLayout(content_area_);
   content_layout->setContentsMargins(10, 5, 10, 10);
 
-  label_ = new QLabel("Initializing...", content_area_);
+  label_ = new QLabel(tr("Initializing..."), content_area_);
   label_->setStyleSheet("color: #eee;");
   content_layout->addWidget(label_);
 
@@ -73,3 +66,7 @@ void LoadingProgressWidget::ShowLoading() {
 }
 
 void LoadingProgressWidget::HideLoading() { hide(); }
+
+void LoadingProgressWidget::ToggleCollapse() {
+  TogglePanelCollapse(content_area_, is_collapsed_, collapse_button_, 30, 100);
+}

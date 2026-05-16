@@ -26,28 +26,8 @@ CoordinatePointsWidget::CoordinatePointsWidget(
   main_layout->setSpacing(0);
 
   // Title Bar
-  auto* title_bar = new QWidget(this);
-  title_bar->setFixedHeight(30);
-  title_bar->setStyleSheet(
-      "background-color: #445544; border-top-left-radius: 8px; "
-      "border-top-right-radius: 8px;");
-  auto* title_layout = new QHBoxLayout(title_bar);
-  title_layout->setContentsMargins(10, 5, 5, 5);
-
-  title_label_ = new QLabel(tr("<b>Coordinate Points</b>"), title_bar);
-  title_label_->setStyleSheet("color: white;");
-  title_label_->setAttribute(Qt::WA_TransparentForMouseEvents);
-  title_layout->addWidget(title_label_);
-  title_layout->addStretch();
-
-  collapse_button_ = new QToolButton(title_bar);
-  collapse_button_->setText("−");
-  collapse_button_->setStyleSheet(
-      "color: white; border: none; font-weight: bold;");
-  connect(collapse_button_, &QToolButton::clicked, this,
-          &CoordinatePointsWidget::ToggleCollapse);
-  title_layout->addWidget(collapse_button_);
-  main_layout->addWidget(title_bar);
+  main_layout->addWidget(
+      CreateTitleBar(tr("<b>Coordinate Points</b>"), "#445544"));
 
   // Content
   content_area_ = new QWidget(this);
@@ -151,7 +131,7 @@ void CoordinatePointsWidget::SetCoordinateMode(CoordinateMode mode) {
 }
 
 void CoordinatePointsWidget::RetranslateUi() {
-  title_label_->setText(tr("<b>Coordinate Points</b>"));
+  if (title_label_) title_label_->setText(tr("<b>Coordinate Points</b>"));
   if (coord_mode_ == CoordinateMode::kWGS84) {
     input_label_->setText(tr("(lon,lat[,alt]); ...:"));
     input_points_edit_->setPlaceholderText(

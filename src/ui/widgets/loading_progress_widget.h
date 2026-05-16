@@ -15,6 +15,9 @@ class LoadingProgressWidget : public FloatingPanelWidget {
   void ShowLoading();
   void HideLoading();
 
+ protected:
+  void ToggleCollapse() override;
+
  private:
   QLabel* label_;
   QProgressBar* progress_bar_;

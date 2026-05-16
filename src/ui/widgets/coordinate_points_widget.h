@@ -1,35 +1,29 @@
 #pragma once
 
-#include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
-#include <QToolButton>
 #include <QVBoxLayout>
 #include "src/core/app_settings.h"
 #include "src/core/scene_enums.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/geo_viewer.h"
 
-class QSettings;
-
-/// @brief Coordinate points management panel
-///
-/// Provides coordinate input and point list management (show/hide, color
-/// modification, deletion, double-click to jump). Follows SRP: Coordinate input
-/// and list management are combined in the same widget, but rendering logic is
-/// delegated to GeoViewerWidget.
 class CoordinatePointsWidget : public FloatingPanelWidget {
   Q_OBJECT
  public:
-  explicit CoordinatePointsWidget(GeoViewerWidget* viewer,
-                                  const geoviewer::core::AppSettings& settings,
-                                  QWidget* parent = nullptr);
+  CoordinatePointsWidget(GeoViewerWidget* viewer,
+                         const geoviewer::core::AppSettings& settings,
+                         QWidget* parent = nullptr);
+
   void SetCoordinateMode(CoordinateMode mode);
   void Clear();
 
  protected:
   void RetranslateUi() override;
+  void ToggleCollapse() override;
+
+ protected:
   void showEvent(QShowEvent* event) override;
 
  private slots:
@@ -39,27 +33,23 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   void HandleItemDoubleClicked(QListWidgetItem* item);
   void HandleCustomContextMenu(const QPoint& pos);
   void HandlePickColor();
-  void ToggleCollapse();
 
  private:
-  /// @brief Build a single list item widget with checkbox, color button, and
-  /// coordinates label
-  QWidget* BuildPointItemWidget(int index);
   void RefreshPointsList();
+  QWidget* BuildPointItemWidget(int index);
 
   GeoViewerWidget* viewer_;
+  CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
+  QVector3D next_point_color_;
+
   QLineEdit* input_points_edit_;
   QListWidget* points_list_;
   QWidget* content_area_;
-  QToolButton* collapse_button_;
-  QLabel* title_label_ = nullptr;
   QLabel* input_label_ = nullptr;
+  QToolButton* color_btn_ = nullptr;
   QPushButton* add_btn_ = nullptr;
   QPushButton* clear_btn_ = nullptr;
   QLabel* list_label_ = nullptr;
-  bool is_collapsed_ = false;
-  bool points_list_dirty_ = true;
-  CoordinateMode coord_mode_ = CoordinateMode::kWGS84;
-  QVector3D next_point_color_ = QVector3D(1.0f, 0.3f, 0.3f);
-  QToolButton* color_btn_ = nullptr;
+
+  bool points_list_dirty_ = false;
 };
