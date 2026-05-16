@@ -17,3 +17,5 @@ std::string BuildLanePosition(const std::string& road_id, const std::string& s0,
                               const std::string& lane_id);
 std::vector<std::string> UniqueRoadSequence(
     const std::vector<odr::LaneKey>& path);
+
+std::string LayerTypeToString(const LayerType& type) noexcept;

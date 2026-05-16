@@ -3,6 +3,7 @@
 #include <QFileInfo>
 #include <algorithm>
 #include "src/core/scene_enums.h"
+#include "src/core/viewer_text_util.h"
 
 namespace geoviewer::core {
 

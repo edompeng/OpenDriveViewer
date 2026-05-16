@@ -17,6 +17,7 @@
 #include "src/core/app_settings.h"
 #include "src/core/scene_enums.h"
 #include "src/core/thread_pool.h"
+#include "src/core/viewer_text_util.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
 namespace {

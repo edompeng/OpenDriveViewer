@@ -69,3 +69,24 @@ std::vector<std::string> UniqueRoadSequence(
   }
   return roads;
 }
+
+#include <unordered_map>
+#include "src/core/scene_enums.h"
+std::string LayerTypeToString(const LayerType& type) noexcept {
+  static const std::unordered_map<LayerType, std::string> kMapping = {
+      {LayerType::kLanes, "Lanes"},
+      {LayerType::kLaneLines, "Lines"},
+      {LayerType::kRoadmarks, "Marks"},
+      {LayerType::kObjects, "Objects"},
+      {LayerType::kFacilities, "Facilities"},
+      {LayerType::kSignalLights, "SignalLights"},
+      {LayerType::kSignalSigns, "Signals"},
+      {LayerType::kReferenceLines, "RefLines"},
+      {LayerType::kJunctions, "Junctions"},
+  };
+  auto itr = kMapping.find(type);
+  if (itr == kMapping.end()) {
+    return "";
+  }
+  return itr->second;
+}

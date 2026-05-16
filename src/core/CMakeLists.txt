@@ -4,7 +4,6 @@ add_library(
   coordinate_util.cpp
   map_loader.cpp
   thread_pool.cpp
-  scene_enums.cpp
   viewer_text_util.cpp
   junction_grouping.cpp
   crash_handler.cpp

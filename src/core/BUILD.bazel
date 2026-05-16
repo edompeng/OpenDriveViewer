@@ -8,7 +8,6 @@ cc_library(
         "crash_handler.cpp",
         "junction_grouping.cpp",
         "map_loader.cpp",
-        "scene_enums.cpp",
         "settings_persistence.cpp",
         "thread_pool.cpp",
         "viewer_text_util.cpp",
