@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 #include "OpenDriveMap.h"
-#include "RoutingGraph.h"
 #include "src/geo_viewer_export.h"
 
 /// @brief Manages the GPU buffer lifecycle of routing results (SRP)

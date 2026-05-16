@@ -6,7 +6,6 @@
 #include <optional>
 #include <vector>
 #include "Mesh.h"
-#include "src/core/scene_geometry_types.h"
 
 struct SceneMeshLayerView {
   const odr::Mesh3D* mesh = nullptr;

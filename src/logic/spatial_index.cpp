@@ -2,11 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <future>
 #include <limits>
 #include <stack>
 #include <unordered_set>
-#include "src/core/thread_pool.h"
 
 struct TriTemp {
   uint32_t encoded;
