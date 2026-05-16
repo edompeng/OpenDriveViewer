@@ -142,10 +142,6 @@ void GlRenderer::SetLayerChunks(LayerType type,
   }
 }
 
-size_t GlRenderer::GetLayerIndexCount(LayerType type) const {
-  return layers_[static_cast<int>(type)].index_count;
-}
-
 void GlRenderer::SetLayerVisible(LayerType type, bool visible) {
   if (type >= LayerType::kLanes && type < LayerType::kCount) {
     layers_[static_cast<int>(type)].visible = visible;
@@ -157,13 +153,6 @@ bool GlRenderer::IsLayerVisible(LayerType type) const {
     return layers_[static_cast<int>(type)].visible;
   }
   return false;
-}
-
-void GlRenderer::SetLayerStyle(LayerType type, const QVector3D& color,
-                               float alpha) {
-  int idx = static_cast<int>(type);
-  layers_[idx].color = color;
-  layers_[idx].alpha = alpha;
 }
 
 void GlRenderer::SetLayerColor(LayerType type, const QVector3D& color) {
@@ -232,15 +221,6 @@ void GlRenderer::UploadMeasurePointsData(const std::vector<QVector3D>& points) {
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(QVector3D), nullptr);
   glBindVertexArray(0);
-}
-
-// ============ Highlighting ============
-
-void GlRenderer::UploadHighlightIndices(const std::vector<uint32_t>& primary,
-                                        const std::vector<uint32_t>& neighbor) {
-  if (!highlight_mgr_) return;
-  highlight_mgr_->UploadHighlight(primary);
-  highlight_mgr_->UploadNeighborHighlight(neighbor);
 }
 
 // ============ Core Rendering ============
@@ -449,6 +429,21 @@ void GlRenderer::DrawHighlight() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Neighbor().ebo);
     glDrawElements(GL_TRIANGLES,
                    static_cast<GLsizei>(highlight_mgr_->Neighbor().count),
+                   GL_UNSIGNED_INT, nullptr);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+  }
+
+  // Predecessor highlight (blue)
+  if (highlight_mgr_ && highlight_mgr_->HasPredecessorHighlight()) {
+    glBindVertexArray(vao_);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.8f, -1.8f);
+    glUniform3f(uniforms_.object_color, 0.0f, 0.5f, 1.0f);
+    glUniform1f(uniforms_.alpha, 0.8f);
+    glUniform1i(uniforms_.is_dashed, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Predecessor().ebo);
+    glDrawElements(GL_TRIANGLES,
+                   static_cast<GLsizei>(highlight_mgr_->Predecessor().count),
                    GL_UNSIGNED_INT, nullptr);
     glDisable(GL_POLYGON_OFFSET_FILL);
   }

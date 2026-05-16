@@ -6,6 +6,7 @@ HighlightManager::HighlightManager(QOpenGLExtraFunctions* functions)
 void HighlightManager::Initialize() {
   gl_->glGenBuffers(1, &primary_.ebo);
   gl_->glGenBuffers(1, &neighbor_.ebo);
+  gl_->glGenBuffers(1, &predecessor_.ebo);
 }
 
 void HighlightManager::UploadHighlight(const std::vector<uint32_t>& indices) {
@@ -17,9 +18,15 @@ void HighlightManager::UploadNeighborHighlight(
   Upload(neighbor_, indices, GL_DYNAMIC_DRAW);
 }
 
+void HighlightManager::UploadPredecessorHighlight(
+    const std::vector<uint32_t>& indices) {
+  Upload(predecessor_, indices, GL_DYNAMIC_DRAW);
+}
+
 void HighlightManager::Clear() {
   primary_.count = 0;
   neighbor_.count = 0;
+  predecessor_.count = 0;
   bounds_valid = false;
   cur_start = SIZE_MAX;
   cur_end = 0;

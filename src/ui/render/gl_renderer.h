@@ -128,17 +128,11 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   /// Set frustum-culling chunks for a layer.
   void SetLayerChunks(LayerType type, std::vector<SceneMeshChunk> chunks);
 
-  /// Get the current index count for a layer.
-  size_t GetLayerIndexCount(LayerType type) const;
-
   /// Show/hide a layer.
   void SetLayerVisible(LayerType type, bool visible);
 
   /// Query layer visibility.
   bool IsLayerVisible(LayerType type) const;
-
-  /// Set layer color and alpha.
-  void SetLayerStyle(LayerType type, const QVector3D& color, float alpha);
 
   /// Set layer color.
   void SetLayerColor(LayerType type, const QVector3D& color);
@@ -157,16 +151,10 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   /// Upload user-annotation point vertex data.
   void UploadUserPointsData(const std::vector<float>& data);
 
-  /// Returns true if user-point VAO is allocated.
-  bool HasUserPointsVao() const { return user_points_vao_ != 0; }
-
   // ============ Measurement ============
 
   /// Upload measurement point vertex data.
   void UploadMeasurePointsData(const std::vector<QVector3D>& points);
-
-  /// Returns true if measurement VAO is allocated.
-  bool HasMeasureVao() const { return measure_vao_ != 0; }
 
   // ============ Highlighting ============
 
@@ -175,12 +163,6 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   const HighlightManager* GetHighlightManager() const {
     return highlight_mgr_.get();
   }
-
-  /// Upload primary and neighbor highlight indices.
-  void UploadHighlightIndices(const std::vector<uint32_t>& primary,
-                              const std::vector<uint32_t>& neighbor);
-
-  // ============ Routing ============
 
   /// Access the routing buffer manager for direct routing operations.
   RoutingBufferManager* GetRoutingBufferManager() {

@@ -36,6 +36,9 @@ class GEOVIEWER_EXPORT HighlightManager {
   /// 上传邻居高亮索引数据到 GPU
   void UploadNeighborHighlight(const std::vector<uint32_t>& indices);
 
+  /// 上传前继高亮索引数据到 GPU
+  void UploadPredecessorHighlight(const std::vector<uint32_t>& indices);
+
   /// 清除所有高亮数据（不释放 GPU 缓冲区）
   void Clear();
 
@@ -45,8 +48,12 @@ class GEOVIEWER_EXPORT HighlightManager {
   /// 是否有激活的邻居高亮
   bool HasNeighborHighlight() const { return neighbor_.count > 0; }
 
+  /// 是否有激活的前继高亮
+  bool HasPredecessorHighlight() const { return predecessor_.count > 0; }
+
   const HighlightBuffer& Primary() const { return primary_; }
   const HighlightBuffer& Neighbor() const { return neighbor_; }
+  const HighlightBuffer& Predecessor() const { return predecessor_; }
 
   // 当前高亮边界（用于相机居中）
   bool bounds_valid = false;
@@ -65,4 +72,5 @@ class GEOVIEWER_EXPORT HighlightManager {
   QOpenGLExtraFunctions* gl_;
   HighlightBuffer primary_;
   HighlightBuffer neighbor_;
+  HighlightBuffer predecessor_;
 };
