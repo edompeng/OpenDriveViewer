@@ -57,16 +57,13 @@ void FloatingPanelWidget::changeEvent(QEvent* event) {
   QWidget::changeEvent(event);
 }
 
-void FloatingPanelWidget::showEvent(QShowEvent* event) {
-  QWidget::showEvent(event);
-  emit VisibilityChanged(true);
-  emit SettingsChanged();
-}
-
-void FloatingPanelWidget::hideEvent(QHideEvent* event) {
-  QWidget::hideEvent(event);
-  emit VisibilityChanged(false);
-  emit SettingsChanged();
+void FloatingPanelWidget::setVisible(bool visible) {
+  bool was_visible = !isHidden();
+  QWidget::setVisible(visible);
+  if (visible != was_visible) {
+    emit VisibilityChanged(visible);
+    emit SettingsChanged();
+  }
 }
 
 bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,

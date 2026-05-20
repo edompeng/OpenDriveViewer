@@ -22,8 +22,11 @@ class FloatingPanelWidget : public QWidget {
   QWidget* CreateTitleBar(const QString& title_text, const QString& color_hex);
 
   void changeEvent(QEvent* event) override;
-  void showEvent(QShowEvent* event) override;
-  void hideEvent(QHideEvent* event) override;
+
+ public slots:
+  void setVisible(bool visible) override;
+
+ protected:
 
   bool BeginPanelDrag(QMouseEvent* event, int draggable_height = 30);
   bool DragPanel(QMouseEvent* event, bool clamp_to_parent);
