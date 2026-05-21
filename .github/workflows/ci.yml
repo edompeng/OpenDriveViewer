@@ -54,7 +54,8 @@ jobs:
             artifact_name: 'app-windows.zip'
 
     env:
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      VCPKG_BINARY_SOURCES: 'clear;default,readwrite'
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg_downloads
 
@@ -86,18 +87,19 @@ jobs:
           # More specific cache key to avoid architecture/version mismatches
           cache-key-prefix: qt-${{ matrix.os }}-${{ matrix.qt_version }}-${{ matrix.qt_arch }}
 
-      # Use the vcpkg from cache or let it be cloned/built once.
-      # x-gha handles package persistence.
+      # Cache built library packages (vcpkg ports) for maximum compilation speedup.
+      # We do not manually cache the vcpkg tool/repository itself since bootstrapping the exe is extremely fast (< 1s),
+      # and this avoids hitting GitHub's 10GB cache limit or caching corrupt/outdated repositories.
 
-      - name: Cache vcpkg tool
+      - name: Cache vcpkg binary packages
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v5
         with:
-          path: ${{ env.VCPKG_ROOT }}
-          key: vcpkg-tool-${{ runner.os }}-bazel-v1
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-binaries-${{ matrix.os }}-c3867e71-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            vcpkg-tool-${{ runner.os }}-bazel-
-            vcpkg-tool-${{ runner.os }}-
+            vcpkg-binaries-${{ matrix.os }}-c3867e71-
+            vcpkg-binaries-${{ matrix.os }}-
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
@@ -243,7 +245,8 @@ jobs:
             qt_version: '6.9.1'
 
     env:
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      VCPKG_BINARY_SOURCES: 'clear;default,readwrite'
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg_downloads
     steps:
@@ -268,17 +271,19 @@ jobs:
           variant: ccache
           append-timestamp: false
 
-      # Use vcpkg from cache or clone/build once.
+      # Cache built library packages (vcpkg ports) for maximum compilation speedup.
+      # We do not manually cache the vcpkg tool/repository itself since bootstrapping the exe is extremely fast (< 1s),
+      # and this avoids hitting GitHub's 10GB cache limit or caching corrupt/outdated repositories.
       
-      - name: Cache vcpkg tool
+      - name: Cache vcpkg binary packages
         if: matrix.os == 'windows-2022'
         uses: actions/cache@v5
         with:
-          path: ${{ env.VCPKG_ROOT }}
-          key: vcpkg-tool-${{ runner.os }}-cmake-v1
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-binaries-cmake-${{ matrix.os }}-c3867e71-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            vcpkg-tool-${{ runner.os }}-cmake-
-            vcpkg-tool-${{ runner.os }}-
+            vcpkg-binaries-cmake-${{ matrix.os }}-c3867e71-
+            vcpkg-binaries-cmake-${{ matrix.os }}-
 
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
