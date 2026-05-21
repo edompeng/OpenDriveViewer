@@ -50,7 +50,12 @@ void GeoViewerWidget::CommitUserPointsChange(bool buffer_dirty) {
   emit UserPointsChanged();
 }
 
-void GeoViewerWidget::BeginUserPointsBatch() { ++user_points_batch_depth_; }
+void GeoViewerWidget::BeginUserPointsBatch() {
+  if (user_points_batch_depth_ == 0) {
+    current_point_group_id_ = next_point_group_id_++;
+  }
+  ++user_points_batch_depth_;
+}
 
 void GeoViewerWidget::EndUserPointsBatch() {
   if (user_points_batch_depth_ <= 0) return;
@@ -143,7 +148,9 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
     if (right_hand_traffic_) ry = -ry;
     QVector3D world_pos(static_cast<float>(lx), static_cast<float>(lz),
                         static_cast<float>(ry));
-    UserPoint up(world_pos, lon, lat, *alt);
+    int gid = (user_points_batch_depth_ > 0) ? current_point_group_id_
+                                             : next_point_group_id_++;
+    UserPoint up(world_pos, lon, lat, *alt, gid);
     if (color.has_value()) up.color = *color;
     user_points_.push_back(up);
   } else {
@@ -183,7 +190,9 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
         RendererToLocalCoord(hit.position, hit_lx, hit_ly, hit_lz);
         double p_lon, p_lat, p_alt;
         LocalToWGS84(hit_lx, hit_ly, hit_lz, p_lon, p_lat, p_alt);
-        UserPoint up(hit.position, p_lon, p_lat, p_alt);
+        int gid = (user_points_batch_depth_ > 0) ? current_point_group_id_
+                                                 : next_point_group_id_++;
+        UserPoint up(hit.position, p_lon, p_lat, p_alt, gid);
         if (color.has_value()) up.color = *color;
         user_points_.push_back(up);
       }
@@ -192,7 +201,9 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
     if (user_points_.size() == points_before) {
       // Fallback: place at ground level (Y=0) if no hit or grid not ready
       QVector3D world_pos(static_cast<float>(lx), 0.0f, static_cast<float>(ry));
-      UserPoint up(world_pos, lon, lat, 0.0);
+      int gid = (user_points_batch_depth_ > 0) ? current_point_group_id_
+                                               : next_point_group_id_++;
+      UserPoint up(world_pos, lon, lat, 0.0, gid);
       if (color.has_value()) up.color = *color;
       user_points_.push_back(up);
     }
@@ -229,7 +240,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
                         static_cast<float>(ry));
     double lon = x, lat = y, alt = local_z;
     resolve_lonlat(x, y, local_z, lon, lat, alt);
-    UserPoint up(world_pos, lon, lat, alt);
+    int gid = (user_points_batch_depth_ > 0) ? current_point_group_id_
+                                             : next_point_group_id_++;
+    UserPoint up(world_pos, lon, lat, alt, gid);
     if (color.has_value()) up.color = *color;
     user_points_.push_back(up);
   } else {
@@ -259,7 +272,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
         RendererToLocalCoord(hit.position, hit_lx, hit_ly, hit_lz);
         double lon = hit_lx, lat = hit_ly, alt = hit_lz;
         resolve_lonlat(hit_lx, hit_ly, hit_lz, lon, lat, alt);
-        UserPoint up(hit.position, lon, lat, alt);
+        int gid = (user_points_batch_depth_ > 0) ? current_point_group_id_
+                                                 : next_point_group_id_++;
+        UserPoint up(hit.position, lon, lat, alt, gid);
         if (color.has_value()) up.color = *color;
         user_points_.push_back(up);
       }
@@ -269,7 +284,9 @@ void GeoViewerWidget::AddUserPointLocal(double x, double y,
       QVector3D world_pos(static_cast<float>(x), 0.0f, static_cast<float>(ry));
       double lon = x, lat = y, alt = 0.0;
       resolve_lonlat(x, y, 0.0, lon, lat, alt);
-      UserPoint up(world_pos, lon, lat, alt);
+      int gid = (user_points_batch_depth_ > 0) ? current_point_group_id_
+                                               : next_point_group_id_++;
+      UserPoint up(world_pos, lon, lat, alt, gid);
       if (color.has_value()) up.color = *color;
       user_points_.push_back(up);
     }
@@ -309,7 +326,8 @@ GeoViewerWidget::UserPointSnapshot GeoViewerWidget::GetUserPointSnapshot(
   const auto& p = user_points_[index];
   double lx, ly, lz;
   RendererToLocalCoord(p.world_pos, lx, ly, lz);
-  return UserPointSnapshot(p.lon, p.lat, p.alt, lx, ly, lz, p.visible, p.color);
+  return UserPointSnapshot(p.lon, p.lat, p.alt, lx, ly, lz, p.visible, p.color,
+                           p.group_id);
 }
 
 void GeoViewerWidget::UpdateUserPointsBuffers() {

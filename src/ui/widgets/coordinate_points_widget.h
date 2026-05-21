@@ -1,8 +1,8 @@
 #pragma once
 
 #include <QLineEdit>
-#include <QListWidget>
 #include <QPushButton>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 #include "src/core/app_settings.h"
 #include "src/core/scene_enums.h"
@@ -30,7 +30,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   void HandleAddPoint();
   void HandleClearPoints();
   void HandlePointsChanged();
-  void HandleItemDoubleClicked(QListWidgetItem* item);
+  void HandleItemDoubleClicked(QTreeWidgetItem* item, int column);
   void HandleCustomContextMenu(const QPoint& pos);
   void HandlePickColor();
 
@@ -43,7 +43,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   QVector3D next_point_color_;
 
   QLineEdit* input_points_edit_;
-  QListWidget* points_list_;
+  QTreeWidget* points_tree_;
   QWidget* content_area_;
   QLabel* input_label_ = nullptr;
   QToolButton* color_btn_ = nullptr;
@@ -51,5 +51,5 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
   QPushButton* clear_btn_ = nullptr;
   QLabel* list_label_ = nullptr;
 
-  bool points_list_dirty_ = false;
+  bool points_tree_dirty_ = false;
 };

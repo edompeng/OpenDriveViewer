@@ -11,6 +11,12 @@
 #include <QShowEvent>
 #include <QToolButton>
 
+#include <QHash>
+#include <QList>
+#include <QSet>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+
 #include "src/logic/input_parsing.h"
 
 CoordinatePointsWidget::CoordinatePointsWidget(
@@ -92,23 +98,25 @@ CoordinatePointsWidget::CoordinatePointsWidget(
   list_label_->setStyleSheet("color: #aaa; font-size: 11px;");
   content_layout->addWidget(list_label_);
 
-  points_list_ = new QListWidget(content_area_);
-  points_list_->setUniformItemSizes(true);
-  points_list_->setContextMenuPolicy(Qt::CustomContextMenu);
-  points_list_->setStyleSheet(
-      "QListWidget { background-color: rgba(0,0,0,0.2); color: #eee; "
+  points_tree_ = new QTreeWidget(content_area_);
+  points_tree_->setHeaderHidden(true);
+  points_tree_->setIndentation(12);
+  points_tree_->setUniformRowHeights(true);
+  points_tree_->setContextMenuPolicy(Qt::CustomContextMenu);
+  points_tree_->setStyleSheet(
+      "QTreeWidget { background-color: rgba(0,0,0,0.2); color: #eee; "
       "border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; "
       "padding: 2px; } "
-      "QListWidget::item { padding: 2px 4px; border-bottom: 1px solid "
+      "QTreeWidget::item { padding: 2px 4px; border-bottom: 1px solid "
       "rgba(255,255,255,0.05); } "
-      "QListWidget::item:hover { background-color: rgba(255,255,255,0.08); } "
-      "QListWidget::item:selected { background-color: rgba(255,255,255,0.15); "
+      "QTreeWidget::item:hover { background-color: rgba(255,255,255,0.08); } "
+      "QTreeWidget::item:selected { background-color: rgba(255,255,255,0.15); "
       "}");
-  content_layout->addWidget(points_list_, 1);
+  content_layout->addWidget(points_tree_, 1);
 
-  connect(points_list_, &QListWidget::itemDoubleClicked, this,
+  connect(points_tree_, &QTreeWidget::itemDoubleClicked, this,
           &CoordinatePointsWidget::HandleItemDoubleClicked);
-  connect(points_list_, &QListWidget::customContextMenuRequested, this,
+  connect(points_tree_, &QTreeWidget::customContextMenuRequested, this,
           &CoordinatePointsWidget::HandleCustomContextMenu);
 
   main_layout->addWidget(content_area_);
@@ -176,22 +184,24 @@ void CoordinatePointsWidget::Clear() {
 }
 
 void CoordinatePointsWidget::HandlePointsChanged() {
-  points_list_dirty_ = true;
+  points_tree_dirty_ = true;
   if (!isVisible()) return;
   RefreshPointsList();
-  points_list_dirty_ = false;
+  points_tree_dirty_ = false;
 }
 
 void CoordinatePointsWidget::showEvent(QShowEvent* event) {
   FloatingPanelWidget::showEvent(event);
-  if (!points_list_dirty_) return;
+  if (!points_tree_dirty_) return;
   RefreshPointsList();
-  points_list_dirty_ = false;
+  points_tree_dirty_ = false;
 }
 
-void CoordinatePointsWidget::HandleItemDoubleClicked(QListWidgetItem* item) {
+void CoordinatePointsWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
+                                                     int column) {
   if (!item) return;
-  int index = item->data(Qt::UserRole).toInt();
+  if (item->data(0, Qt::UserRole + 1).toBool()) return;  // is_group
+  int index = item->data(0, Qt::UserRole).toInt();
   auto snap = viewer_->GetUserPointSnapshot(index);
   if (coord_mode_ == CoordinateMode::kWGS84) {
     viewer_->JumpToLocation(snap.lon, snap.lat, snap.alt);
@@ -201,10 +211,11 @@ void CoordinatePointsWidget::HandleItemDoubleClicked(QListWidgetItem* item) {
 }
 
 void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
-  QListWidgetItem* item = points_list_->itemAt(pos);
+  QTreeWidgetItem* item = points_tree_->itemAt(pos);
   if (!item) return;
+  if (item->data(0, Qt::UserRole + 1).toBool()) return;  // is_group
 
-  int index = item->data(Qt::UserRole).toInt();
+  int index = item->data(0, Qt::UserRole).toInt();
   auto snap = viewer_->GetUserPointSnapshot(index);
 
   QMenu menu(this);
@@ -216,7 +227,7 @@ void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
   menu.addSeparator();
   QAction* remove = menu.addAction(tr("❌ Delete point"));
 
-  QAction* selected = menu.exec(points_list_->viewport()->mapToGlobal(pos));
+  QAction* selected = menu.exec(points_tree_->viewport()->mapToGlobal(pos));
   if (!selected) return;
 
   if (selected == copy_info) {
@@ -352,15 +363,110 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
 }
 
 void CoordinatePointsWidget::RefreshPointsList() {
-  points_list_->setUpdatesEnabled(false);
-  points_list_->clear();
-  const int count = viewer_->UserPointCount();
-  for (int i = 0; i < count; ++i) {
-    auto* item = new QListWidgetItem(points_list_);
-    item->setData(Qt::UserRole, i);
-    item->setSizeHint(QSize(0, 24));
-    points_list_->addItem(item);
-    points_list_->setItemWidget(item, BuildPointItemWidget(i));
+  points_tree_->setUpdatesEnabled(false);
+
+  QSet<int> expanded_groups;
+  bool had_items = points_tree_->topLevelItemCount() > 0;
+  for (int i = 0; i < points_tree_->topLevelItemCount(); ++i) {
+    auto* top_item = points_tree_->topLevelItem(i);
+    if (top_item->isExpanded()) {
+      expanded_groups.insert(top_item->data(0, Qt::UserRole).toInt());
+    }
   }
-  points_list_->setUpdatesEnabled(true);
+
+  points_tree_->clear();
+
+  const int count = viewer_->UserPointCount();
+
+  struct GroupData {
+    int group_id;
+    QList<int> indices;
+  };
+  QList<GroupData> groups;
+  QHash<int, int> group_to_list_idx;
+
+  for (int i = 0; i < count; ++i) {
+    auto snap = viewer_->GetUserPointSnapshot(i);
+    if (!group_to_list_idx.contains(snap.group_id)) {
+      group_to_list_idx[snap.group_id] = groups.size();
+      groups.append({snap.group_id, QList<int>()});
+    }
+    groups[group_to_list_idx[snap.group_id]].indices.append(i);
+  }
+
+  for (const auto& grp : groups) {
+    auto* group_item = new QTreeWidgetItem(points_tree_);
+    group_item->setData(0, Qt::UserRole, grp.group_id);
+    group_item->setData(0, Qt::UserRole + 1, true);  // is_group
+    group_item->setSizeHint(0, QSize(0, 26));
+
+    bool all_visible = true;
+    for (int idx : grp.indices) {
+      if (!viewer_->GetUserPointSnapshot(idx).visible) {
+        all_visible = false;
+        break;
+      }
+    }
+
+    auto* widget = new QWidget();
+    auto* layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(2, 2, 2, 2);
+    layout->setSpacing(4);
+
+    auto* checkbox = new QCheckBox(widget);
+    checkbox->setChecked(all_visible);
+    checkbox->setFixedSize(16, 16);
+    checkbox->setStyleSheet(
+        "QCheckBox::indicator { width: 14px; height: 14px; }");
+    int gid = grp.group_id;
+    connect(checkbox, &QCheckBox::toggled, this, [this, gid](bool checked) {
+      viewer_->BeginUserPointsBatch();
+      const int cnt = viewer_->UserPointCount();
+      for (int i = 0; i < cnt; ++i) {
+        if (viewer_->GetUserPointSnapshot(i).group_id == gid) {
+          viewer_->SetUserPointVisible(i, checked);
+        }
+      }
+      viewer_->EndUserPointsBatch();
+    });
+    layout->addWidget(checkbox);
+
+    auto* label = new QLabel(
+        tr("Group %1 (%2 points)").arg(gid).arg(grp.indices.size()), widget);
+    label->setStyleSheet("color: #ddd; font-weight: bold; font-size: 11px;");
+    layout->addWidget(label, 1);
+
+    auto* delete_btn = new QToolButton(widget);
+    delete_btn->setText("✕");
+    delete_btn->setFixedSize(18, 18);
+    delete_btn->setStyleSheet(
+        "color: #f66; border: none; font-weight: bold; font-size: 12px;");
+    connect(delete_btn, &QToolButton::clicked, this, [this, gid]() {
+      viewer_->BeginUserPointsBatch();
+      const int cnt = viewer_->UserPointCount();
+      for (int i = cnt - 1; i >= 0; --i) {
+        if (viewer_->GetUserPointSnapshot(i).group_id == gid) {
+          viewer_->RemoveUserPoint(i);
+        }
+      }
+      viewer_->EndUserPointsBatch();
+    });
+    layout->addWidget(delete_btn);
+
+    points_tree_->setItemWidget(group_item, 0, widget);
+
+    if (!had_items || expanded_groups.contains(gid)) {
+      group_item->setExpanded(true);
+    }
+
+    for (int idx : grp.indices) {
+      auto* item = new QTreeWidgetItem(group_item);
+      item->setData(0, Qt::UserRole, idx);
+      item->setData(0, Qt::UserRole + 1, false);  // is_group
+      item->setSizeHint(0, QSize(0, 24));
+      points_tree_->setItemWidget(item, 0, BuildPointItemWidget(idx));
+    }
+  }
+
+  points_tree_->setUpdatesEnabled(true);
 }

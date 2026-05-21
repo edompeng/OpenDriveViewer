@@ -117,9 +117,16 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   int UserPointCount() const;
   struct UserPointSnapshot {
     UserPointSnapshot()
-        : lon(0), lat(0), alt(0), x(0), y(0), z(0), visible(false) {}
+        : lon(0),
+          lat(0),
+          alt(0),
+          x(0),
+          y(0),
+          z(0),
+          visible(false),
+          group_id(0) {}
     UserPointSnapshot(double lo, double la, double al, double px, double py,
-                      double pz, bool vis, const QVector3D& col)
+                      double pz, bool vis, const QVector3D& col, int gid = 0)
         : lon(lo),
           lat(la),
           alt(al),
@@ -127,12 +134,14 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
           y(py),
           z(pz),
           visible(vis),
-          color(col) {}
+          color(col),
+          group_id(gid) {}
 
     double lon, lat, alt;
     double x, y, z;
     bool visible;
     QVector3D color;
+    int group_id;
   };
 
   UserPointSnapshot GetUserPointSnapshot(int index) const;
@@ -346,23 +355,28 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
 
   // ---- User Annotation Points ----
   struct UserPoint {
-    UserPoint(const QVector3D& pos, double lo, double la, double al)
+    UserPoint(const QVector3D& pos, double lo, double la, double al,
+              int gid = 0)
         : world_pos(pos),
           lon(lo),
           lat(la),
           alt(al),
           visible(true),
-          color(1.0f, 0.3f, 0.3f) {}
+          color(1.0f, 0.3f, 0.3f),
+          group_id(gid) {}
 
     QVector3D world_pos;
     double lon, lat, alt;
     bool visible;
     QVector3D color;
+    int group_id;
   };
   std::vector<UserPoint> user_points_;
   int user_points_batch_depth_ = 0;
   bool user_points_batch_dirty_ = false;
   bool user_points_batch_buffer_dirty_ = false;
+  int next_point_group_id_ = 1;
+  int current_point_group_id_ = 0;
   void CommitUserPointsChange(bool buffer_dirty);
 
   // ---- Interaction Cache ----
