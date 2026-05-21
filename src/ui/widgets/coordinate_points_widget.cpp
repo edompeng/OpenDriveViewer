@@ -199,6 +199,7 @@ void CoordinatePointsWidget::showEvent(QShowEvent* event) {
 
 void CoordinatePointsWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
                                                      int column) {
+  Q_UNUSED(column);
   if (!item) return;
   if (item->data(0, Qt::UserRole + 1).toBool()) return;  // is_group
   int index = item->data(0, Qt::UserRole).toInt();
