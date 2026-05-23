@@ -54,8 +54,7 @@ jobs:
             artifact_name: 'app-windows.zip'
 
     env:
-      VCPKG_BINARY_SOURCES: 'clear;default,readwrite'
-      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
+      VCPKG_BINARY_SOURCES: 'clear;files,${{ github.workspace }}/vcpkg_cache,readwrite'
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg_downloads
 
@@ -91,16 +90,35 @@ jobs:
       # We do not manually cache the vcpkg tool/repository itself since bootstrapping the exe is extremely fast (< 1s),
       # and this avoids hitting GitHub's 10GB cache limit or caching corrupt/outdated repositories.
 
+
+
+
       - name: Cache vcpkg binary packages
         if: matrix.os == 'windows-2022'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
-          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          path: ${{ github.workspace }}/vcpkg_cache
           key: vcpkg-binaries-${{ matrix.os }}-c3867e71-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
             vcpkg-binaries-${{ matrix.os }}-c3867e71-
             vcpkg-binaries-${{ matrix.os }}-
-
+      - name: Export GitHub Actions Cache Environment Variables
+        if: matrix.os == 'windows-2022'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Debug vcpkg caching env
+        if: matrix.os == 'windows-2022'
+        run: |
+          echo "VCPKG_BINARY_SOURCES: $env:VCPKG_BINARY_SOURCES"
+          # Ensure cache directory exists and fix path separators for vcpkg
+          New-Item -ItemType Directory -Force -Path ${{ github.workspace }}/vcpkg_cache
+          $VCPKG_CACHE_PATH = "${{ github.workspace }}/vcpkg_cache".Replace('\', '/')
+          echo "VCPKG_BINARY_SOURCES=clear;files,$VCPKG_CACHE_PATH,readwrite" >> $env:GITHUB_ENV
+          echo "ACTIONS_CACHE_URL: $env:ACTIONS_CACHE_URL"
+          echo "ACTIONS_RUNTIME_TOKEN: $env:ACTIONS_RUNTIME_TOKEN"
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
@@ -199,7 +217,7 @@ jobs:
 
       - name: Upload Intermediate Artifact
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ github.workspace }}/${{ matrix.artifact_name }}
@@ -207,12 +225,13 @@ jobs:
 
       - name: Upload Symbols Artifact
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: symbols-${{ matrix.os }}
           path: |
             ${{ github.workspace }}/*symbols.zip
             ${{ github.workspace }}/*symbols.tar.gz
+          if-no-files-found: ignore
           retention-days: 1
 
       - name: Cleanup Old Caches
@@ -245,8 +264,7 @@ jobs:
             qt_version: '6.9.1'
 
     env:
-      VCPKG_BINARY_SOURCES: 'clear;default,readwrite'
-      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg_cache
+      VCPKG_BINARY_SOURCES: 'clear;files,${{ github.workspace }}/vcpkg_cache,readwrite'
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg_downloads
     steps:
@@ -265,26 +283,45 @@ jobs:
           fi
 
       - name: Setup Ccache
-        uses: hendrikmuhs/ccache-action@v1
+        uses: hendrikmuhs/ccache-action@v1.2.23
         with:
           key: ${{ matrix.os }}-ccache
           variant: ccache
-          append-timestamp: false
+          append-timestamp: true
 
       # Cache built library packages (vcpkg ports) for maximum compilation speedup.
       # We do not manually cache the vcpkg tool/repository itself since bootstrapping the exe is extremely fast (< 1s),
       # and this avoids hitting GitHub's 10GB cache limit or caching corrupt/outdated repositories.
       
+
+
+
       - name: Cache vcpkg binary packages
         if: matrix.os == 'windows-2022'
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
-          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-binaries-cmake-${{ matrix.os }}-c3867e71-${{ hashFiles('vcpkg.json') }}
+          path: ${{ github.workspace }}/vcpkg_cache
+          key: vcpkg-binaries-${{ matrix.os }}-c3867e71-${{ hashFiles('vcpkg.json') }}
           restore-keys: |
-            vcpkg-binaries-cmake-${{ matrix.os }}-c3867e71-
-            vcpkg-binaries-cmake-${{ matrix.os }}-
-
+            vcpkg-binaries-${{ matrix.os }}-c3867e71-
+            vcpkg-binaries-${{ matrix.os }}-
+      - name: Export GitHub Actions Cache Environment Variables
+        if: matrix.os == 'windows-2022'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Debug vcpkg caching env
+        if: matrix.os == 'windows-2022'
+        run: |
+          echo "VCPKG_BINARY_SOURCES: $env:VCPKG_BINARY_SOURCES"
+          # Ensure cache directory exists and fix path separators for vcpkg
+          New-Item -ItemType Directory -Force -Path ${{ github.workspace }}/vcpkg_cache
+          $VCPKG_CACHE_PATH = "${{ github.workspace }}/vcpkg_cache".Replace('\', '/')
+          echo "VCPKG_BINARY_SOURCES=clear;files,$VCPKG_CACHE_PATH,readwrite" >> $env:GITHUB_ENV
+          echo "ACTIONS_CACHE_URL: $env:ACTIONS_CACHE_URL"
+          echo "ACTIONS_RUNTIME_TOKEN: $env:ACTIONS_RUNTIME_TOKEN"
       - name: Setup vcpkg (Windows only for PROJ)
         if: matrix.os == 'windows-2022'
         uses: lukka/run-vcpkg@v11
