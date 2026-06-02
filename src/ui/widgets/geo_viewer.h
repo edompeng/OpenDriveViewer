@@ -160,7 +160,9 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
  signals:
   void HoverInfoChanged(double x, double y, double z, double lon, double lat,
                         double alt, const QString& type_str,
-                        const QString& id_str, const QString& name_str);
+                        const QString& id_str, const QString& name_str,
+                        double hdg = 0.0, double s = 0.0, double t = 0.0,
+                        bool has_lane_info = false);
   void ElementSelected(const QString& road_id, TreeNodeType type,
                        const QString& element_id);
   void ViewResized();

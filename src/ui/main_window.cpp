@@ -71,7 +71,8 @@ void MainWindow::HandleLoadMap() {
 void MainWindow::HandleHoverInfo(double x, double y, double z, double lon,
                                  double lat, double alt,
                                  const QString& type_str, const QString& id_str,
-                                 const QString& name_str) {
+                                 const QString& name_str, double hdg, double s,
+                                 double t, bool has_lane_info) {
   QString status;
   if (coord_mode_ == CoordinateMode::kWGS84) {
     status = tr("Coords: %1, %2, %3")
@@ -91,6 +92,14 @@ void MainWindow::HandleHoverInfo(double x, double y, double z, double lon,
       status += tr(" [%1]").arg(name_str);
     }
   }
+
+  if (has_lane_info) {
+    status += tr(" | Hdg: %1 rad | s,t: (%2, %3)")
+                  .arg(hdg, 0, 'f', 6)
+                  .arg(s, 0, 'f', 3)
+                  .arg(t, 0, 'f', 3);
+  }
+
   status_->showMessage(status);
 }
 

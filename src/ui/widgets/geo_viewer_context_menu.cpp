@@ -11,6 +11,10 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
   camera_.EndDrag();
   QVector3D world_pos;
   std::optional<PickResult> picked_idx;
+  double hdg_val = 0.0;
+  double s_val = 0.0;
+  double t_val = 0.0;
+  bool has_lane_info = false;
   if (!GetWorldPosAt(ev->pos().x(), ev->pos().y(), world_pos, picked_idx)) {
     return;
   }
@@ -46,6 +50,26 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
                 .arg(road_id.c_str())
                 .arg(network_mesh_->lanes_mesh.get_lanesec_s0(vi), 0, 'f', 2)
                 .arg(network_mesh_->lanes_mesh.get_lane_id(vi));
+
+        const auto& road = map_->id_to_road.at(road_id);
+        double lx, ly, lz;
+        RendererToLocalCoord(world_pos, lx, ly, lz);
+        double matched_s = road.ref_line.match(lx, ly);
+        if (matched_s < 0.0) {
+          matched_s = 0.0;
+        } else if (matched_s > road.length) {
+          matched_s = road.length;
+        }
+        s_val = matched_s;
+
+        odr::Vec3D e_s, e_t, e_h;
+        odr::Vec3D p0 = road.get_xyz(matched_s, 0.0, 0.0, &e_s, &e_t, &e_h);
+
+        odr::Vec3D d = {lx - p0[0], ly - p0[1], lz - p0[2]};
+        t_val = d[0] * e_t[0] + d[1] * e_t[1] + d[2] * e_t[2];
+
+        hdg_val = std::atan2(e_s[1], e_s[0]);
+        has_lane_info = true;
       }
     } else if (picked_idx->layer == LayerType::kRoadmarks) {
       std::string road_id = network_mesh_->roadmarks_mesh.get_road_id(vi);
@@ -103,6 +127,18 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
     copy_all = menu.addAction(tr("📋 Copy all"));
   }
 
+  QAction* copy_heading = nullptr;
+  QAction* copy_st = nullptr;
+  QString heading_text = QString::number(hdg_val, 'f', 6);
+  QString st_text =
+      QString("%1, %2").arg(s_val, 0, 'f', 3).arg(t_val, 0, 'f', 3);
+
+  if (has_lane_info) {
+    copy_heading =
+        menu.addAction(tr("📋 Copy heading: %1 rad").arg(heading_text));
+    copy_st = menu.addAction(tr("📋 Copy s, t: %1").arg(st_text));
+  }
+
   QAction* hide_element = menu.addAction(tr("👁️ Hide current object"));
   QAction* add_fav = menu.addAction(tr("⭐ Add to favorites"));
 
@@ -154,8 +190,16 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
   } else if (selected == copy_info && copy_info) {
     QApplication::clipboard()->setText(info_text);
   } else if (selected == copy_all && copy_all) {
-    QApplication::clipboard()->setText(
-        QString("%1 | %2").arg(coord_text).arg(info_text));
+    QString all_text = QString("%1 | %2").arg(coord_text).arg(info_text);
+    if (has_lane_info) {
+      all_text +=
+          QString(" | Hdg: %1 rad | s,t: (%2)").arg(heading_text).arg(st_text);
+    }
+    QApplication::clipboard()->setText(all_text);
+  } else if (selected == copy_heading && copy_heading) {
+    QApplication::clipboard()->setText(heading_text);
+  } else if (selected == copy_st && copy_st) {
+    QApplication::clipboard()->setText(st_text);
   } else if (selected == add_fav) {
     QString road_id, element_id, name;
     TreeNodeType node_type = TreeNodeType::kRoad;
@@ -194,7 +238,8 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
     if (!road_id.isEmpty()) {
       emit AddFavoriteRequested(road_id, node_type, element_id, name);
     }
-  } else if (selected == set_start_routing || selected == set_end_routing) {
+  } else if (selected != nullptr &&
+             (selected == set_start_routing || selected == set_end_routing)) {
     size_t vi = picked_idx->vertex_index;
     QString road_id =
         QString::fromStdString(network_mesh_->lanes_mesh.get_road_id(vi));

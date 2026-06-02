@@ -6,6 +6,10 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
   QVector3D world_pos;
   std::optional<PickResult> picked_idx;
   QString type_str, id_str, name_str;
+  double hdg_val = 0.0;
+  double s_val = 0.0;
+  double t_val = 0.0;
+  bool has_lane_info = false;
 
   QSize viewport = gl_renderer_->GetViewportSize();
   float mouse_x = (2.0f * x) / viewport.width() - 1.0f;
@@ -45,6 +49,25 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
                            .arg(lanesec.id_to_lane.at(l_id).type.c_str());
           }
         }
+
+        double lx, ly, lz;
+        RendererToLocalCoord(world_pos, lx, ly, lz);
+        double matched_s = r.ref_line.match(lx, ly);
+        if (matched_s < 0.0) {
+          matched_s = 0.0;
+        } else if (matched_s > r.length) {
+          matched_s = r.length;
+        }
+        s_val = matched_s;
+
+        odr::Vec3D e_s, e_t, e_h;
+        odr::Vec3D p0 = r.get_xyz(matched_s, 0.0, 0.0, &e_s, &e_t, &e_h);
+
+        odr::Vec3D d = {lx - p0[0], ly - p0[1], lz - p0[2]};
+        t_val = d[0] * e_t[0] + d[1] * e_t[1] + d[2] * e_t[2];
+
+        hdg_val = std::atan2(e_s[1], e_s[0]);
+        has_lane_info = true;
       }
       UpdateHighlight(vi, picked_idx->layer);
     } else if (picked_idx->layer == LayerType::kRoadmarks) {
@@ -164,7 +187,7 @@ void GeoViewerWidget::UpdateHoverInfo(int x, int y) {
   }
 
   emit HoverInfoChanged(local_x, local_y, local_z, lon, lat, alt, type_str,
-                        id_str, name_str);
+                        id_str, name_str, hdg_val, s_val, t_val, has_lane_info);
 }
 
 void GeoViewerWidget::SearchObject(LayerType type, const QString& id_str) {

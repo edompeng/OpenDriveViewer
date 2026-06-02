@@ -29,7 +29,9 @@ class MainWindow : public QMainWindow {
   void HandleLoadMap();
   void HandleHoverInfo(double x, double y, double z, double lon, double lat,
                        double alt, const QString &type_str,
-                       const QString &id_str, const QString &name_str);
+                       const QString &id_str, const QString &name_str,
+                       double hdg = 0.0, double s = 0.0, double t = 0.0,
+                       bool has_lane_info = false);
 
   void HandleJumpToCoords();
   void HandleCopyMapBaseName();
@@ -37,7 +39,6 @@ class MainWindow : public QMainWindow {
   void ChangeLanguage(const QString &locale);
   void HandleSettingsChanged();
   void HandleViewModeToggle(bool is_2d);
-
 
  protected:
   void resizeEvent(QResizeEvent *event) override;

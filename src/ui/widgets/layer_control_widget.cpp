@@ -763,7 +763,8 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
     QString element_id = item->data(0, Qt::UserRole + 1).toString();
     emit viewer_->AddFavoriteRequested(road_id, type, element_id,
                                        item->text(0));
-  } else if (selected == setStart || selected == setEnd) {
+  } else if (selected != nullptr &&
+             (selected == setStart || selected == setEnd)) {
     QString road_id = GetRoadId(item);
     QString data_str = item->data(0, Qt::UserRole + 1).toString();
     const QStringList parts = data_str.split(':', Qt::SkipEmptyParts);
