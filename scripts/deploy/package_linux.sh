@@ -62,10 +62,34 @@ collect_deps "${BUNDLE_DIR}/bin/${BINARY_NAME}" >> "$DEPS_FILE"
 echo "Copying Qt plugins..."
 cp -R "${QT6_ROOT}/plugins/"* "${BUNDLE_DIR}/lib/plugins/"
 
-# 3. Collect deps from all Qt plugins (they dlopen additional libs at runtime)
+# 3. Copy Mesa DRI drivers (if musl) so we can scan their deps too
+if [ "$IS_MUSL" = true ]; then
+    MESA_DRI_DIR=""
+    for dir in /usr/lib/xorg/modules/dri /usr/lib/dri; do
+        if [ -d "$dir" ]; then
+            MESA_DRI_DIR="$dir"
+            break
+        fi
+    done
+
+    if [ -n "$MESA_DRI_DIR" ]; then
+        echo "Bundling Mesa DRI drivers from ${MESA_DRI_DIR}..."
+        mkdir -p "${BUNDLE_DIR}/lib/dri"
+        cp -a "${MESA_DRI_DIR}/"*.so "${BUNDLE_DIR}/lib/dri/" 2>/dev/null || true
+    fi
+fi
+
+# 4. Collect deps from all Qt plugins (they dlopen additional libs at runtime)
 find "${BUNDLE_DIR}/lib/plugins" -name "*.so" 2>/dev/null | while read -r plugin; do
     collect_deps "$plugin" >> "$DEPS_FILE"
 done
+
+# 5. Collect deps from all Mesa DRI drivers (if musl)
+if [ "$IS_MUSL" = true ] && [ -d "${BUNDLE_DIR}/lib/dri" ]; then
+    find "${BUNDLE_DIR}/lib/dri" -name "*.so" 2>/dev/null | while read -r driver; do
+        collect_deps "$driver" >> "$DEPS_FILE"
+    done
+fi
 
 # De-duplicate
 UNIQUE_DEPS=$(sort -u "$DEPS_FILE")
@@ -114,7 +138,7 @@ while read -r lib; do
     fi
 done <<< "$UNIQUE_DEPS"
 
-# --- Musl-specific: bundle dynamic linker and Mesa DRI drivers ---
+# --- Musl-specific: bundle dynamic linker ---
 if [ "$IS_MUSL" = true ]; then
     # Bundle the musl dynamic linker
     if [ -n "$INTERP" ] && [ -f "$INTERP" ]; then
@@ -122,29 +146,15 @@ if [ "$IS_MUSL" = true ]; then
         cp "$INTERP" "${BUNDLE_DIR}/lib/"
         # Do NOT strip or patchelf the linker
     fi
-
-    # Bundle Mesa DRI drivers so OpenGL works on non-musl hosts via software
-    # rendering (the host's hardware DRI drivers are glibc-linked and cannot
-    # be loaded into a musl process).
-    MESA_DRI_DIR=""
-    for dir in /usr/lib/xorg/modules/dri /usr/lib/dri; do
-        if [ -d "$dir" ]; then
-            MESA_DRI_DIR="$dir"
-            break
-        fi
-    done
-
-    if [ -n "$MESA_DRI_DIR" ]; then
-        echo "Bundling Mesa DRI drivers from ${MESA_DRI_DIR}..."
-        mkdir -p "${BUNDLE_DIR}/lib/dri"
-        cp -a "${MESA_DRI_DIR}/"*.so "${BUNDLE_DIR}/lib/dri/" 2>/dev/null || true
-        # Strip DRI drivers
-        find "${BUNDLE_DIR}/lib/dri" -type f -name "*.so" -exec strip --strip-unneeded {} + 2>/dev/null || true
-    fi
 fi
 
 # Strip Qt plugins
 find "${BUNDLE_DIR}/lib/plugins" -type f -name "*.so" -exec strip --strip-unneeded {} + 2>/dev/null || true
+
+# Strip Mesa DRI drivers (if musl)
+if [ "$IS_MUSL" = true ] && [ -d "${BUNDLE_DIR}/lib/dri" ]; then
+    find "${BUNDLE_DIR}/lib/dri" -type f -name "*.so" -exec strip --strip-unneeded {} + 2>/dev/null || true
+fi
 
 # --- Copy PROJ Data (selective) ---
 echo "Copying PROJ data..."
@@ -166,6 +176,15 @@ if command -v patchelf >/dev/null 2>&1; then
             patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
         fi
     done
+
+    # Adjust rpaths for Mesa DRI drivers to look in '$ORIGIN/..' (which is the lib folder)
+    if [ "$IS_MUSL" = true ] && [ -d "${BUNDLE_DIR}/lib/dri" ]; then
+        for driver in "${BUNDLE_DIR}/lib/dri/"*.so*; do
+            if [ -f "$driver" ] && [ ! -L "$driver" ]; then
+                patchelf --set-rpath '$ORIGIN/..' "$driver" 2>/dev/null || true
+            fi
+        done
+    fi
 else
     echo "Warning: patchelf not found. Binary might not find bundled libs automatically."
 fi
