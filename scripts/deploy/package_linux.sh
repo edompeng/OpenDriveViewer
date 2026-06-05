@@ -62,7 +62,7 @@ collect_deps "${BUNDLE_DIR}/bin/${BINARY_NAME}" >> "$DEPS_FILE"
 echo "Copying Qt plugins..."
 cp -R "${QT6_ROOT}/plugins/"* "${BUNDLE_DIR}/lib/plugins/"
 
-# 3. Copy Mesa DRI drivers (if musl) so we can scan their deps too
+# 3. Copy Mesa DRI drivers and vendor libraries (if musl) so we can scan their deps too
 if [ "$IS_MUSL" = true ]; then
     MESA_DRI_DIR=""
     for dir in /usr/lib/xorg/modules/dri /usr/lib/dri; do
@@ -76,6 +76,23 @@ if [ "$IS_MUSL" = true ]; then
         echo "Bundling Mesa DRI drivers from ${MESA_DRI_DIR}..."
         mkdir -p "${BUNDLE_DIR}/lib/dri"
         cp -a "${MESA_DRI_DIR}/"*.so "${BUNDLE_DIR}/lib/dri/" 2>/dev/null || true
+    fi
+
+    # Copy Mesa GLX/EGL vendor libraries (libGLX_mesa and libEGL_mesa) if they exist,
+    # as they are loaded via dlopen by libGL/libEGL and not detected by ldd on the binary.
+    for libpath in /usr/lib/libGLX_mesa.so* /usr/lib/libEGL_mesa.so*; do
+        if [ -e "$libpath" ]; then
+            echo "Bundling Mesa vendor library: $libpath"
+            cp -a "$libpath" "${BUNDLE_DIR}/lib/"
+            collect_deps "$libpath" >> "$DEPS_FILE"
+        fi
+    done
+
+    # Copy EGL vendor JSON configuration files
+    if [ -d "/usr/share/glvnd/egl_vendor.d" ]; then
+        echo "Bundling EGL vendor configuration files..."
+        mkdir -p "${BUNDLE_DIR}/share/glvnd/egl_vendor.d"
+        cp -a /usr/share/glvnd/egl_vendor.d/*.json "${BUNDLE_DIR}/share/glvnd/egl_vendor.d/" 2>/dev/null || true
     fi
 fi
 
@@ -202,6 +219,8 @@ export PROJ_LIB="\$DIR/share/proj"
 export XDG_SESSION_TYPE=x11
 # Use bundled Mesa DRI drivers to avoid loading glibc-linked host drivers
 export LIBGL_DRIVERS_PATH="\$DIR/lib/dri"
+# Point EGL loaders to the bundled vendor configuration files
+export __EGL_VENDOR_LIBRARY_DIRS="\$DIR/share/glvnd/egl_vendor.d"
 exec "\$DIR/lib/${INTERP_NAME}" --library-path "\$DIR/lib" "\$DIR/bin/${BINARY_NAME}" "\$@"
 EOF
 else

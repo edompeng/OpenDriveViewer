@@ -172,7 +172,7 @@ jobs:
             -w /workspace alpine:3.20 sh << 'EOF'
           set -e
           apk update
-          apk add --no-cache alpine-sdk build-base cmake ninja ccache qt6-qtbase-dev qt6-qtbase-x11 mesa-dev qt6-qttools-dev proj-dev patchelf libunwind-dev bash xvfb xvfb-run mesa-dri-gallium
+          apk add --no-cache alpine-sdk build-base cmake ninja ccache qt6-qtbase-dev qt6-qtbase-x11 mesa-dev qt6-qttools-dev proj-dev patchelf libunwind-dev bash xvfb xvfb-run mesa-dri-gallium mesa-gl mesa-egl
           apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing gperftools-dev || true
           
           # Configure ccache
