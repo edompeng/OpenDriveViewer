@@ -3,20 +3,12 @@ set -e
 
 # --- Configuration ---
 BINARY_NAME="OpenDriveViewer"
-TARGET="//src/app:OpenDriveViewer"
 DIST_DIR="dist/linux"
 BUNDLE_DIR="${DIST_DIR}/${BINARY_NAME}_linux_x64"
 
 # --- Check Environment ---
-if [ -z "$QT6_ROOT" ]; then
-    echo "Error: QT6_ROOT environment variable is not set."
-    exit 1
-fi
-
-if [ -z "$PROJ_ROOT" ]; then
-    echo "Error: PROJ_ROOT environment variable is not set."
-    exit 1
-fi
+: "${QT6_ROOT:?Error: QT6_ROOT environment variable is not set.}"
+: "${PROJ_ROOT:?Error: PROJ_ROOT environment variable is not set.}"
 
 # --- Setup Bundle ---
 echo "Preparing Linux Bundle..."
@@ -27,7 +19,14 @@ mkdir -p "${BUNDLE_DIR}/lib/plugins"
 mkdir -p "${BUNDLE_DIR}/share/proj"
 
 # Copy binary
-cp "bazel-bin/src/app/${BINARY_NAME}" "${BUNDLE_DIR}/bin/"
+if [ -f "bazel-bin/src/app/${BINARY_NAME}" ]; then
+    cp "bazel-bin/src/app/${BINARY_NAME}" "${BUNDLE_DIR}/bin/"
+elif [ -f "build/bin/${BINARY_NAME}" ]; then
+    cp "build/bin/${BINARY_NAME}" "${BUNDLE_DIR}/bin/"
+else
+    echo "Error: Binary ${BINARY_NAME} not found in bazel-bin/ or build/bin/."
+    exit 1
+fi
 chmod +w "${BUNDLE_DIR}/bin/${BINARY_NAME}"
 
 # Extract symbols
@@ -41,21 +40,24 @@ tar -czvf "${BINARY_NAME}_linux_symbols.tar.gz" -C "${DIST_DIR}" "${BINARY_NAME}
 
 # --- Copy Dependencies ---
 echo "Collecting shared libraries..."
-# Use a temporary file to collect all dependent libraries
-LIBS_FILE=$(mktemp)
-ldd "bazel-bin/src/app/${BINARY_NAME}" | grep "=> /" | awk '{print $3}' > "$LIBS_FILE"
-
-# Copy found libraries
+# Copy found libraries, skipping standard system libraries to avoid startup crashes
 while read -r lib; do
-    cp "$lib" "${BUNDLE_DIR}/lib/"
-    # Strip libraries to save space
     lib_name=$(basename "$lib")
+    case "$lib_name" in
+        ld-linux*|ld-musl*|libc.*|libpthread.*|libdl.*|libm.*|librt.*|libgcc_s.*|libstdc++.*|libresolv.*|libutil.*|\
+        libGL.*|libEGL.*|libGLdispatch.*|libGLX.*|libOpenGL.*|libdrm.*|libglapi.*|libgbm.*|\
+        libxcb*|libX11*|libX11-xcb*|libwayland*|libasound*|libfontconfig*|libfreetype*|libdbus*|libuuid*|libudev*|libz.*|\
+        libglib-*|libgobject-*|libgthread-*|libgmodule-*|libgio-*)
+            continue
+            ;;
+    esac
+
+    cp "$lib" "${BUNDLE_DIR}/lib/"
     if [ ! -L "${BUNDLE_DIR}/lib/$lib_name" ]; then
         chmod +w "${BUNDLE_DIR}/lib/$lib_name"
         strip --strip-unneeded "${BUNDLE_DIR}/lib/$lib_name" 2>/dev/null || true
     fi
-done < "$LIBS_FILE"
-rm "$LIBS_FILE"
+done < <(ldd "${BUNDLE_DIR}/bin/${BINARY_NAME}" | grep "=> /" | awk '{print $3}')
 
 # --- Copy Qt Plugins (Essential for display/platform) ---
 echo "Copying Qt plugins..."
@@ -65,8 +67,6 @@ find "${BUNDLE_DIR}/lib/plugins" -type f -name "*.so" -exec strip --strip-unneed
 
 # --- Copy PROJ Data (selective) ---
 echo "Copying PROJ data..."
-cp "${PROJ_ROOT}/share/proj/proj.db" "${BUNDLE_DIR}/share/proj/"
-cp "${PROJ_ROOT}/share/proj/proj.ini" "${BUNDLE_DIR}/share/proj/"
 find "${PROJ_ROOT}/share/proj/" -maxdepth 1 -type f -not -name "*.tif" -not -name "*.tiff" -not -name "*.gtiff" -exec cp {} "${BUNDLE_DIR}/share/proj/" \;
 
 # --- Relink ---

@@ -31,10 +31,6 @@ jobs:
         include:
           - os: ubuntu-22.04
             job_name: linux
-            qt_host: 'linux'
-            qt_arch: 'linux_gcc_64'
-            vcpkg_triplet: 'x64-linux'
-            qt_version: '6.9.*'
             artifact_name: 'app-linux.tar.gz'
             
           - os: macos-14
@@ -64,18 +60,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install System Dependencies (Linux)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev xvfb patchelf libproj-dev libunwind-dev libgoogle-perftools-dev
-
       - name: Install System Dependencies (macOS)
         if: matrix.os == 'macos-14'
         run: |
           brew install proj
 
       - name: Install Qt
+        if: matrix.os != 'ubuntu-22.04'
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ matrix.qt_version }}
@@ -133,20 +124,18 @@ jobs:
           VCPKG_DOWNLOADS: ${{ env.VCPKG_DOWNLOADS }}
 
       - name: Set Environment Variables
+        if: matrix.os != 'ubuntu-22.04'
         shell: bash
         run: |
           echo "QT6_ROOT=${{ env.QT_ROOT_DIR }}" >> $GITHUB_ENV
-          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            echo "PROJ_ROOT=/usr" >> $GITHUB_ENV
-          elif [ "${{ matrix.os }}" = "macos-14" ]; then
+          if [ "${{ matrix.os }}" = "macos-14" ]; then
             echo "PROJ_ROOT=$(brew --prefix proj)" >> $GITHUB_ENV
           elif [ "${{ matrix.os }}" = "windows-2022" ]; then
-            # Elegant solution: vcpkg in manifest mode puts artifacts in vcpkg_installed/<triplet>.
-            # The packaging script will find all DLLs inside the 'bin' subdirectory.
             echo "PROJ_ROOT=${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}" >> $GITHUB_ENV
           fi
 
       - name: Cache Bazel
+        if: matrix.os != 'ubuntu-22.04'
         uses: actions/cache@v5
         with:
           path: |
@@ -157,18 +146,57 @@ jobs:
           restore-keys: |
             bazel-${{ matrix.os }}-
 
+      - name: Cache CMake FetchContent (Linux Musl)
+        if: matrix.os == 'ubuntu-22.04'
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/cmake_deps
+          key: cmake-deps-alpine-${{ hashFiles('CMakeLists.txt', 'src/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-deps-alpine-
+
+      - name: Build, Test & Package (Linux Musl)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          mkdir -p ${{ github.workspace }}/cmake_deps
+          docker run --rm -v ${{ github.workspace }}:/workspace -v ${{ github.workspace }}/cmake_deps:/cmake_deps -w /workspace alpine:3.20 sh << 'EOF'
+          set -e
+          apk update
+          apk add --no-cache alpine-sdk build-base cmake ninja qt6-qtbase-dev qt6-qtbase-x11 proj-dev patchelf libunwind-dev bash xvfb xvfb-run
+          apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing gperftools-dev || true
+          
+          # Configure and Build
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFETCHCONTENT_BASE_DIR="/cmake_deps"
+          cmake --build build --config RelWithDebInfo
+          
+          # Test
+          cd build
+          xvfb-run --auto-servernum ctest -C RelWithDebInfo --output-on-failure
+          cd ..
+          
+          # Package if it's a release tag
+          if [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ] || [ "${{ github.ref_type }}" = "tag" ]; then
+            export QT6_ROOT=/usr/lib/qt6
+            export PROJ_ROOT=/usr
+            chmod +x scripts/deploy/package_linux.sh
+            ./scripts/deploy/package_linux.sh
+          fi
+          EOF
+          
+          # Create archive for release
+          if [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ] || [ "${{ github.ref_type }}" = "tag" ]; then
+            tar -czvf ${{ github.workspace }}/${{ matrix.artifact_name }} -C dist/linux OpenDriveViewer_linux_x64
+          fi
+
       - name: Build and Test with Bazel
+        if: matrix.os != 'ubuntu-22.04'
         shell: bash
         run: |
           BAZEL_STARTUP_OPTS="--host_jvm_args=-Djava.net.preferIPv4Stack=true"
           BAZEL_OPTS="--repository_cache=$HOME/.cache/bazel-repo --disk_cache=$HOME/.cache/bazel-disk --keep_going --show_result=10 --registry=https://bcr.bazel.build"
           COMMON_FLAGS="-c opt"
           
-          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            xvfb-run --auto-servernum bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=linux \
-              --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
-              --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
-          elif [ "${{ matrix.os }}" = "windows-2022" ]; then
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
             TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
             export PATH="${{ env.PROJ_ROOT }}/bin:$PATH"
             bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
@@ -181,14 +209,6 @@ jobs:
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
-
-      - name: Package (Linux)
-        if: matrix.os == 'ubuntu-22.04' && startsWith(github.ref, 'refs/tags/v')
-        run: |
-          chmod +x scripts/deploy/package_linux.sh
-          ./scripts/deploy/package_linux.sh
-          # Create archive for release
-          tar -czvf ${{ github.workspace }}/${{ matrix.artifact_name }} -C dist/linux OpenDriveViewer_linux_x64
       
       - name: Package (macOS)
         if: matrix.os == 'macos-14' && startsWith(github.ref, 'refs/tags/v')
