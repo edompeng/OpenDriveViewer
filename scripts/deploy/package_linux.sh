@@ -221,6 +221,10 @@ export XDG_SESSION_TYPE=x11
 export LIBGL_DRIVERS_PATH="\$DIR/lib/dri"
 # Point EGL loaders to the bundled vendor configuration files
 export __EGL_VENDOR_LIBRARY_DIRS="\$DIR/share/glvnd/egl_vendor.d"
+# Force software rendering for maximum compatibility on glibc hosts
+export LIBGL_ALWAYS_SOFTWARE=1
+# Force Qt to use EGL instead of GLX to avoid GLX/fbconfig mismatches under software rendering
+export QT_XCB_GL_INTEGRATION=xcb_egl
 exec "\$DIR/lib/${INTERP_NAME}" --library-path "\$DIR/lib" "\$DIR/bin/${BINARY_NAME}" "\$@"
 EOF
 else
