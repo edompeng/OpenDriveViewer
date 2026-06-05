@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
