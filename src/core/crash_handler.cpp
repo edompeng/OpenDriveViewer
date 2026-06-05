@@ -15,13 +15,22 @@
 // clang-format on
 #  pragma comment(lib, "dbghelp.lib")
 #else
-#  include <execinfo.h>
 #  include <fcntl.h>
 #  include <signal.h>
 #  include <string.h>
 #  include <sys/stat.h>
 #  include <sys/types.h>
 #  include <unistd.h>
+
+// Use execinfo.h on glibc; fall back to libunwind on musl/others.
+#  if defined(__GLIBC__)
+#    include <execinfo.h>
+#    define GEOVIEWER_HAS_EXECINFO 1
+#  elif __has_include(<libunwind.h>)
+#    define UNW_LOCAL_ONLY
+#    include <libunwind.h>
+#    define GEOVIEWER_HAS_LIBUNWIND 1
+#  endif
 #endif
 
 namespace geoviewer::core {
@@ -69,7 +78,122 @@ void SafeAppendInt(char* buf, size_t& pos, size_t max_len, long long val) {
     SafeAppendChar(buf, pos, max_len, temp[--temp_pos]);
   }
 }
+
+#if defined(GEOVIEWER_HAS_LIBUNWIND)
+// Async-signal-safe hex conversion for pointer values
+void SafeAppendHex(char* buf, size_t& pos, size_t max_len, uintptr_t val) {
+  SafeAppendString(buf, pos, max_len, "0x");
+  if (val == 0) {
+    SafeAppendChar(buf, pos, max_len, '0');
+    return;
+  }
+  char temp[32];
+  int temp_pos = 0;
+  while (val > 0 && temp_pos < 31) {
+    int digit = val & 0xf;
+    temp[temp_pos++] = digit < 10 ? ('0' + digit) : ('a' + digit - 10);
+    val >>= 4;
+  }
+  while (temp_pos > 0) {
+    SafeAppendChar(buf, pos, max_len, temp[--temp_pos]);
+  }
+}
+
+
+// Async-signal-safe backtrace writing via libunwind (for musl/non-glibc).
+void WriteBacktraceWithLibunwind(int fd) {
+  unw_cursor_t cursor;
+  unw_context_t context;
+  unw_getcontext(&context);
+  unw_init_local(&cursor, &context);
+
+  int frame_idx = 0;
+  char line_buf[256];
+  char sym_buf[128];
+
+  while (unw_step(&cursor) > 0) {
+    unw_word_t ip = 0;
+    unw_get_reg(&cursor, UNW_REG_IP, &ip);
+
+    size_t pos = 0;
+    line_buf[0] = '\0';
+    SafeAppendInt(line_buf, pos, sizeof(line_buf), frame_idx);
+    SafeAppendString(line_buf, pos, sizeof(line_buf), ": ");
+
+    unw_word_t offset = 0;
+    if (unw_get_proc_name(&cursor, sym_buf, sizeof(sym_buf), &offset) == 0) {
+      SafeAppendString(line_buf, pos, sizeof(line_buf), sym_buf);
+      SafeAppendString(line_buf, pos, sizeof(line_buf), "+");
+      SafeAppendHex(line_buf, pos, sizeof(line_buf),
+                    static_cast<uintptr_t>(offset));
+    } else {
+      SafeAppendString(line_buf, pos, sizeof(line_buf), "[");
+      SafeAppendHex(line_buf, pos, sizeof(line_buf),
+                    static_cast<uintptr_t>(ip));
+      SafeAppendString(line_buf, pos, sizeof(line_buf), "]");
+    }
+    SafeAppendChar(line_buf, pos, sizeof(line_buf), '\n');
+    [[maybe_unused]] auto res = write(fd, line_buf, pos);
+    ++frame_idx;
+  }
+}
 #endif
+
+// Write stack trace to file descriptor (async-signal-safe).
+void WriteBacktraceToFd(int fd) {
+#if defined(GEOVIEWER_HAS_EXECINFO)
+  void* array[100];
+  int size = backtrace(array, 100);
+  backtrace_symbols_fd(array, size, fd);
+#elif defined(GEOVIEWER_HAS_LIBUNWIND)
+  WriteBacktraceWithLibunwind(fd);
+#else
+  const char* msg = "(no backtrace support on this platform)\n";
+  [[maybe_unused]] auto res = write(fd, msg, strlen(msg));
+#endif
+}
+
+// Collect stack trace as string (for C++ exception handler, not signal-safe).
+void WriteBacktraceToStream(std::ostream& out) {
+#if defined(GEOVIEWER_HAS_EXECINFO)
+  void* array[100];
+  int size = backtrace(array, 100);
+  char** messages = backtrace_symbols(array, size);
+  if (messages != nullptr) {
+    out << "Stack trace:\n";
+    for (int i = 0; i < size; ++i) {
+      out << i << ": " << messages[i] << "\n";
+    }
+    free(messages);
+  }
+#elif defined(GEOVIEWER_HAS_LIBUNWIND)
+  unw_cursor_t cursor;
+  unw_context_t context;
+  unw_getcontext(&context);
+  unw_init_local(&cursor, &context);
+
+  out << "Stack trace:\n";
+  int frame_idx = 0;
+  char sym_buf[256];
+  while (unw_step(&cursor) > 0) {
+    unw_word_t ip = 0;
+    unw_get_reg(&cursor, UNW_REG_IP, &ip);
+
+    unw_word_t offset = 0;
+    if (unw_get_proc_name(&cursor, sym_buf, sizeof(sym_buf), &offset) == 0) {
+      out << frame_idx << ": " << sym_buf << "+0x" << std::hex << offset
+          << std::dec << "\n";
+    } else {
+      out << frame_idx << ": [0x" << std::hex << ip << std::dec << "]\n";
+    }
+    ++frame_idx;
+  }
+#else
+  out << "(no backtrace support on this platform)\n";
+#endif
+}
+
+#endif  // !_WIN32
 
 std::string GetTimestampString() {
   auto now = std::chrono::system_clock::now();
@@ -139,9 +263,7 @@ void PosixSignalHandler(int sig, siginfo_t* /*info*/, void* /*secret*/) {
   const char* trace_msg = "Stack trace:\n";
   [[maybe_unused]] auto res3 = write(fd, trace_msg, strlen(trace_msg));
 
-  void* array[100];
-  int size = backtrace(array, 100);
-  backtrace_symbols_fd(array, size, fd);
+  WriteBacktraceToFd(fd);
 
   close(fd);
 
@@ -182,17 +304,7 @@ void TerminateHandler() {
       }
 
 #ifndef _WIN32
-      void* array[100];
-      int size = backtrace(array, 100);
-      char** messages = backtrace_symbols(array, size);
-
-      if (messages != nullptr) {
-        out << "Stack trace:\n";
-        for (int i = 0; i < size; ++i) {
-          out << i << ": " << messages[i] << "\n";
-        }
-        free(messages);
-      }
+      WriteBacktraceToStream(out);
 #endif
       out.close();
     }

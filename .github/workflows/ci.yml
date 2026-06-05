@@ -395,6 +395,7 @@ jobs:
       - name: Set Environment Variables
         shell: bash
         run: |
+          echo "QT6_ROOT=${{ env.QT_ROOT_DIR }}" >> $GITHUB_ENV
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             echo "PROJ_ROOT=/usr" >> $GITHUB_ENV
           elif [ "${{ matrix.os }}" = "macos-14" ]; then

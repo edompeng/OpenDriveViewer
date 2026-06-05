@@ -37,3 +37,15 @@ else()
 endif()
 
 target_link_libraries(GeoViewerCore PUBLIC Qt6::Core Qt6::Gui OpenDrive)
+
+# On musl/non-glibc Linux, link libunwind for backtrace support in crash_handler
+if(UNIX AND NOT APPLE)
+  include(CheckSymbolExists)
+  check_symbol_exists(backtrace "execinfo.h" HAS_EXECINFO)
+  if(NOT HAS_EXECINFO)
+    find_library(UNWIND_LIB unwind)
+    if(UNWIND_LIB)
+      target_link_libraries(GeoViewerCore PRIVATE ${UNWIND_LIB})
+    endif()
+  endif()
+endif()
