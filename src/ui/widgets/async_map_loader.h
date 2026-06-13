@@ -21,15 +21,13 @@ class AsyncMapLoader : public QObject {
 
  signals:
   void ProgressTextChanged(const QString& text);
+  void ProgressChanged(float progress, const QString& text);
   void Finalizing();
   void Finished(bool success);
 
  private:
-  void StopProgressUpdates();
-
   std::shared_ptr<IMapSceneLoader> loader_;
   std::atomic<bool> is_running_{false};
-  QTimer progress_timer_;
   QElapsedTimer elapsed_;
   MapSceneData last_result_;
 };

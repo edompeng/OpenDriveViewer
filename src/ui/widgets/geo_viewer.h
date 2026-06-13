@@ -44,6 +44,11 @@ class QPainter;
 
 class RoutingWidget;
 
+namespace geoviewer::logic {
+class SimulationController;
+struct DiffResult;
+}
+
 class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   Q_OBJECT
 
@@ -174,6 +179,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void TotalDistanceChanged(double distance);
   void MeasureModeChanged(bool active);
   void UserPointsChanged();
+  void MapDiffApplied();
   void SceneReset();
   void ViewModeChanged(CameraController::ViewMode mode);
 
@@ -206,6 +212,18 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void RemoveRoutingPath(int id);
   void SetRoutingPathVisible(int id, bool visible);
   void ClearRoutingPaths();
+  std::vector<odr::LaneKey> GetRoutingPath(int id) const;
+
+  // ---------- Simulation Support ----------
+  void StartSimulation(const std::vector<odr::LaneKey>& path,
+                       float speed_mps = 15.0f);
+  void StopSimulation();
+  bool IsSimulationActive() const;
+
+  // ---------- Map Diff Support ----------
+  void CompareWithMap(const QString& path);
+  void ClearMapDiff();
+  void ApplyMapDiff(const geoviewer::logic::DiffResult& diff);
 
  private:
   // ---- OpenGL Renderer (all GL operations delegated here) ----
@@ -214,6 +232,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   // ---- Delegated Components (SRP split) ----
   CameraController camera_;
   std::unique_ptr<MeasureToolController> measure_ctrl_;
+  std::unique_ptr<geoviewer::logic::SimulationController> sim_ctrl_;
 
   void UpdateMeasureBuffers();
   void UpdateUserPointsBuffers();

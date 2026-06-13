@@ -4,6 +4,7 @@ add_library(
   geo_viewer.cpp
   geo_viewer.h
   geo_viewer_context_menu.cpp
+  geo_viewer_diff.cpp
   geo_viewer_interaction.cpp
   geo_viewer_highlight.cpp
   geo_viewer_inspection.cpp

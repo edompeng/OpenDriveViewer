@@ -1,4 +1,5 @@
 #include "src/logic/routing_buffer_manager.h"
+#include "src/core/object_pool.h"
 
 #include <algorithm>
 #include <cmath>
@@ -61,8 +62,12 @@ void RoutingBufferManager::BuildBuffers(
   if (it == routes_.end()) return;
   auto& route = it->second;
 
-  std::vector<float> vertices;
-  std::vector<uint32_t> indices;
+  auto vertices_ptr = geoviewer::core::FloatVectorPool().Acquire();
+  auto indices_ptr = geoviewer::core::UintVectorPool().Acquire();
+  std::vector<float>& vertices = *vertices_ptr;
+  std::vector<uint32_t>& indices = *indices_ptr;
+  vertices.clear();
+  indices.clear();
 
   constexpr float kRouteWidth = 1.0f;
   constexpr float kHalfWidth = kRouteWidth * 0.5f;

@@ -18,6 +18,7 @@ cc_library(
         "coordinate_util.h",
         "crash_handler.h",
         "junction_grouping.h",
+        "object_pool.h",
         "map_loader.h",
         "scene_enums.h",
         "scene_geometry_types.h",

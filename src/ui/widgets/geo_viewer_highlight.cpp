@@ -1,4 +1,5 @@
 #include "src/ui/widgets/geo_viewer.h"
+#include "src/core/object_pool.h"
 
 #include <QDebug>
 
@@ -52,9 +53,9 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
                 }
               }
               auto* highlight_mgr = gl_renderer_->GetHighlightManager();
-              highlight_mgr->cur_start = vert_idx;
-              highlight_mgr->cur_end = vert_idx + 1;
-              highlight_mgr->cur_layer = type;
+              highlight_mgr->SetCurStart(vert_idx);
+              highlight_mgr->SetCurEnd(vert_idx + 1);
+              highlight_mgr->SetCurLayer(type);
               SetHighlightIndices(indices, type, false, vert_idx);
               return;
             }
@@ -80,13 +81,13 @@ void GeoViewerWidget::UpdateHighlight(size_t vert_idx, LayerType type) {
   auto* highlight_mgr = gl_renderer_->GetHighlightManager();
   if (!highlight_mgr) return;
 
-  if (start == highlight_mgr->cur_start && end == highlight_mgr->cur_end &&
-      type == highlight_mgr->cur_layer) {
+  if (start == highlight_mgr->CurStart() && end == highlight_mgr->CurEnd() &&
+      type == highlight_mgr->CurLayer()) {
     return;
   }
-  highlight_mgr->cur_start = start;
-  highlight_mgr->cur_end = end;
-  highlight_mgr->cur_layer = type;
+  highlight_mgr->SetCurStart(start);
+  highlight_mgr->SetCurEnd(end);
+  highlight_mgr->SetCurLayer(type);
 
   std::vector<uint32_t> indices;
   size_t v_offset = gl_renderer_->GetLayerVertexOffset(type);
@@ -337,8 +338,8 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
   auto* highlight_mgr = gl_renderer_->GetHighlightManager();
   if (!highlight_mgr) return;
 
-  highlight_mgr->cur_layer = type;
-  highlight_mgr->bounds_valid = false;
+  highlight_mgr->SetCurLayer(type);
+  highlight_mgr->SetBoundsValid(false);
 
   const odr::Mesh3D* mesh = MeshForLayer(type);
 
@@ -376,9 +377,9 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
       max_b.setZ(std::max(max_b.z(), static_cast<float>(v[2])));
     }
     if (min_b.x() <= max_b.x()) {
-      highlight_mgr->bounds_valid = true;
-      highlight_mgr->min_bound = min_b;
-      highlight_mgr->max_bound = max_b;
+      highlight_mgr->SetBoundsValid(true);
+      highlight_mgr->SetMinBound(min_b);
+      highlight_mgr->SetMaxBound(max_b);
     }
   }
 
@@ -388,8 +389,12 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
 
   // Neighbor highlight
   if (with_neighbors && type == LayerType::kLanes && routing_graph_) {
-    std::vector<uint32_t> succ_indices;
-    std::vector<uint32_t> pred_indices;
+    auto succ_ptr = geoviewer::core::UintVectorPool().Acquire();
+    auto pred_ptr = geoviewer::core::UintVectorPool().Acquire();
+    std::vector<uint32_t>& succ_indices = *succ_ptr;
+    std::vector<uint32_t>& pred_indices = *pred_ptr;
+    succ_indices.clear();
+    pred_indices.clear();
     const std::string road_id =
         network_mesh_->lanes_mesh.get_road_id(reference_vertex);
     const double s0 =
@@ -442,9 +447,9 @@ void GeoViewerWidget::SetHighlightIndices(const std::vector<uint32_t>& indices,
   doneCurrent();
 
   if (!highlight_mgr->HasHighlight()) {
-    highlight_mgr->cur_start = SIZE_MAX;
-    highlight_mgr->cur_end = 0;
-    highlight_mgr->bounds_valid = false;
+    highlight_mgr->SetCurStart(SIZE_MAX);
+    highlight_mgr->SetCurEnd(0);
+    highlight_mgr->SetBoundsValid(false);
   }
   update();
 }
@@ -617,9 +622,9 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
   auto* highlight_mgr = gl_renderer_->GetHighlightManager();
 
   const size_t target_start_vertex =
-      highlight_mgr ? highlight_mgr->cur_start : SIZE_MAX;
+      highlight_mgr ? highlight_mgr->CurStart() : SIZE_MAX;
   const LayerType layer_type =
-      highlight_mgr ? highlight_mgr->cur_layer : LayerType::kCount;
+      highlight_mgr ? highlight_mgr->CurLayer() : LayerType::kCount;
   const odr::Mesh3D* target_mesh = nullptr;
 
   if (layer_type == LayerType::kLanes)
@@ -630,14 +635,14 @@ void GeoViewerWidget::CenterOnElement(const QString& road_id, TreeNodeType type,
            layer_type == LayerType::kSignalSigns)
     target_mesh = &network_mesh_->road_signals_mesh;
 
-  if (highlight_mgr && highlight_mgr->bounds_valid) {
-    camera_.SetTarget((highlight_mgr->min_bound + highlight_mgr->max_bound) *
+  if (highlight_mgr && highlight_mgr->IsBoundsValid()) {
+    camera_.SetTarget((highlight_mgr->MinBound() + highlight_mgr->MaxBound()) *
                       0.5f);
     camera_.SetPitch(-60.0f);
     camera_.SetYaw(45.0f);
     camera_.SetDistance(qMax(
         20.0f,
-        (highlight_mgr->max_bound - highlight_mgr->min_bound).length() * 1.8f));
+        (highlight_mgr->MaxBound() - highlight_mgr->MinBound()).length() * 1.8f));
     update();
     return;
   }

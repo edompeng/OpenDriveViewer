@@ -29,6 +29,7 @@ class GEOVIEWER_EXPORT HighlightManager {
  public:
   /// @param functions  OpenGL function interface (provided by QOpenGLWidget)
   explicit HighlightManager(QOpenGLExtraFunctions* functions);
+  ~HighlightManager();
 
   /// Initialize all highlight EBOs
   void Initialize();
@@ -58,16 +59,20 @@ class GEOVIEWER_EXPORT HighlightManager {
   const HighlightBuffer& Neighbor() const { return neighbor_; }
   const HighlightBuffer& Predecessor() const { return predecessor_; }
 
-  // Current highlight bounds (used for camera centering)
-  bool bounds_valid = false;
-  QVector3D min_bound;
-  QVector3D max_bound;
+  // Getters/Setters for bounds and range
+  bool IsBoundsValid() const { return bounds_valid_; }
+  const QVector3D& MinBound() const { return min_bound_; }
+  const QVector3D& MaxBound() const { return max_bound_; }
+  size_t CurStart() const { return cur_start_; }
+  size_t CurEnd() const { return cur_end_; }
+  LayerType CurLayer() const { return cur_layer_; }
 
-  // Current highlight range (used to quickly determine if reconstruction is
-  // needed)
-  size_t cur_start = SIZE_MAX;
-  size_t cur_end = 0;
-  LayerType cur_layer = LayerType::kCount;
+  void SetBoundsValid(bool valid) { bounds_valid_ = valid; }
+  void SetMinBound(const QVector3D& val) { min_bound_ = val; }
+  void SetMaxBound(const QVector3D& val) { max_bound_ = val; }
+  void SetCurStart(size_t val) { cur_start_ = val; }
+  void SetCurEnd(size_t val) { cur_end_ = val; }
+  void SetCurLayer(LayerType val) { cur_layer_ = val; }
 
  private:
   void Upload(HighlightBuffer& buf, const std::vector<uint32_t>& indices,
@@ -77,4 +82,14 @@ class GEOVIEWER_EXPORT HighlightManager {
   HighlightBuffer primary_;
   HighlightBuffer neighbor_;
   HighlightBuffer predecessor_;
+
+  // Current highlight bounds (used for camera centering)
+  bool bounds_valid_ = false;
+  QVector3D min_bound_;
+  QVector3D max_bound_;
+
+  // Current highlight range
+  size_t cur_start_ = SIZE_MAX;
+  size_t cur_end_ = 0;
+  LayerType cur_layer_ = LayerType::kCount;
 };

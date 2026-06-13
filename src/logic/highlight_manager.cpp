@@ -3,10 +3,18 @@
 HighlightManager::HighlightManager(QOpenGLExtraFunctions* functions)
     : gl_(functions) {}
 
+HighlightManager::~HighlightManager() {
+  if (gl_) {
+    if (primary_.ebo) gl_->glDeleteBuffers(1, &primary_.ebo);
+    if (neighbor_.ebo) gl_->glDeleteBuffers(1, &neighbor_.ebo);
+    if (predecessor_.ebo) gl_->glDeleteBuffers(1, &predecessor_.ebo);
+  }
+}
+
 void HighlightManager::Initialize() {
-  gl_->glGenBuffers(1, &primary_.ebo);
-  gl_->glGenBuffers(1, &neighbor_.ebo);
-  gl_->glGenBuffers(1, &predecessor_.ebo);
+  if (!primary_.ebo) gl_->glGenBuffers(1, &primary_.ebo);
+  if (!neighbor_.ebo) gl_->glGenBuffers(1, &neighbor_.ebo);
+  if (!predecessor_.ebo) gl_->glGenBuffers(1, &predecessor_.ebo);
 }
 
 void HighlightManager::UploadHighlight(const std::vector<uint32_t>& indices) {
@@ -27,10 +35,10 @@ void HighlightManager::Clear() {
   primary_.count = 0;
   neighbor_.count = 0;
   predecessor_.count = 0;
-  bounds_valid = false;
-  cur_start = SIZE_MAX;
-  cur_end = 0;
-  cur_layer = LayerType::kCount;
+  bounds_valid_ = false;
+  cur_start_ = SIZE_MAX;
+  cur_end_ = 0;
+  cur_layer_ = LayerType::kCount;
 }
 
 void HighlightManager::Upload(HighlightBuffer& buf,

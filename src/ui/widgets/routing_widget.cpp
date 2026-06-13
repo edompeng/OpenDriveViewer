@@ -190,11 +190,27 @@ void RoutingWidget::HandleHistoryContextMenu(const QPoint& pos) {
   if (root_item->parent() != nullptr) root_item = root_item->parent();
 
   QMenu menu(this);
+  QAction* sim_act = nullptr;
+  if (viewer_->IsSimulationActive()) {
+    sim_act = menu.addAction(tr("🛑 Stop Simulation"));
+  } else {
+    sim_act = menu.addAction(tr("🚗 Start Simulation"));
+  }
   auto* copy_info = menu.addAction(tr("📋 Copy item info"));
   auto* remove_act = menu.addAction(tr("❌ Delete routing"));
   auto* selected = menu.exec(history_tree_->mapToGlobal(pos));
 
-  if (selected == remove_act) {
+  if (selected == sim_act) {
+    if (viewer_->IsSimulationActive()) {
+      viewer_->StopSimulation();
+    } else {
+      int route_id = root_item->data(0, Qt::UserRole).toInt();
+      auto path = viewer_->GetRoutingPath(route_id);
+      if (!path.empty()) {
+        viewer_->StartSimulation(path);
+      }
+    }
+  } else if (selected == remove_act) {
     int route_id = root_item->data(0, Qt::UserRole).toInt();
     viewer_->RemoveRoutingPath(route_id);
     delete root_item;

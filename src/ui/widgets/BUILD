@@ -24,6 +24,7 @@ cc_library(
         "floating_panel_widget.cpp",
         "geo_viewer.cpp",
         "geo_viewer_context_menu.cpp",
+        "geo_viewer_diff.cpp",
         "geo_viewer_highlight.cpp",
         "geo_viewer_inspection.cpp",
         "geo_viewer_interaction.cpp",

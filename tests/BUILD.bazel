@@ -18,9 +18,12 @@ cc_test(
     srcs = [
         "camera_controller_test.cpp",
         "crash_handler_test.cpp",
+        "event_bus_test.cpp",
         "favorites_store_test.cpp",
         "input_parsing_test.cpp",
         "layer_tree_model_test.cpp",
+        "map_diff_test.cpp",
+        "object_pool_test.cpp",
         "routing_logic_test.cpp",
         "scene_index_builder_test.cpp",
         "settings_persistence_test.cpp",

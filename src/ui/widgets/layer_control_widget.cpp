@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QPointer>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QStyle>
@@ -165,14 +166,17 @@ void LayerControlWidget::RequestSnapshotBuild() {
   auto* loading_item = CreateRootItem(tree_);
   loading_item->setText(0, "Building layer tree...");
   tree_->setUpdatesEnabled(true);
+  QPointer<LayerControlWidget> guard(this);
   geoviewer::utility::ThreadPool::Instance().Enqueue(
-      [this, map, junction_result, generation]() {
+      [guard, map, junction_result, generation]() {
         auto snapshot = BuildLayerTreeSnapshot(map, junction_result);
+        if (!guard) return;
         QMetaObject::invokeMethod(
-            this, [this, snapshot = std::move(snapshot), generation]() mutable {
-              if (generation == snapshot_generation_.load()) {
-                tree_snapshot_ = std::move(snapshot);
-                PopulateTopLevelItems();
+            guard.data(), [guard, snapshot = std::move(snapshot), generation]() mutable {
+              if (!guard) return;
+              if (generation == guard->snapshot_generation_.load()) {
+                guard->tree_snapshot_ = std::move(snapshot);
+                guard->PopulateTopLevelItems();
               }
             });
       });

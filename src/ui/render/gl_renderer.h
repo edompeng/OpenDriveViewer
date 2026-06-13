@@ -195,6 +195,9 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   /// Draw user annotation points (rendered as GL_POINTS).
   void DrawPoints(size_t point_count);
 
+  /// Draw instanced meshes using OpenGL Instanced Rendering (pre-allocated VAO).
+  void DrawInstanced(GLuint vao, size_t index_count, size_t instance_count);
+
   // ============ Projection Utilities ============
 
   /// Get the current projection matrix.
@@ -202,6 +205,10 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
 
   /// Get the current viewport size.
   QSize GetViewportSize() const { return viewport_size_; }
+
+  // ---- Ego Vehicle ----
+  void SetEgoVehiclePose(const QVector3D& position, float heading);
+  void SetEgoVehicleVisible(bool visible);
 
  private:
   // ---- Shader setup ----
@@ -214,6 +221,7 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   void DrawHighlight();
   void DrawRouting(const QVector3D& routing_color, float routing_alpha);
   void DrawMeasurement(size_t point_count);
+  void DrawEgoVehicle();
 
   // ---- Main scene buffers ----
   GLuint vao_ = 0;
@@ -236,6 +244,14 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   GLuint measure_vao_ = 0;
   GLuint measure_vbo_ = 0;
 
+  // ---- Ego vehicle ----
+  bool show_ego_ = false;
+  QVector3D ego_pos_;
+  float ego_heading_ = 0.0f;
+  GLuint ego_vao_ = 0;
+  GLuint ego_vbo_ = 0;
+  GLuint ego_ebo_ = 0;
+
   // ---- Delegated sub-components ----
   std::unique_ptr<HighlightManager> highlight_mgr_;
   std::unique_ptr<RoutingBufferManager> routing_buf_mgr_;
@@ -243,6 +259,12 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   // ---- Projection state ----
   QMatrix4x4 proj_;
   QSize viewport_size_;
+  QVector3D camera_pos_;
+
+  bool IsValidLayer(LayerType type) const {
+    int idx = static_cast<int>(type);
+    return idx >= 0 && idx < kLayerCount;
+  }
 };
 
 }  // namespace geoviewer::render

@@ -1,4 +1,5 @@
 #include "src/ui/widgets/geo_viewer.h"
+#include "src/logic/simulation_controller.h"
 #include <QContextMenuEvent>
 #include <QDebug>
 #include <QFileInfo>

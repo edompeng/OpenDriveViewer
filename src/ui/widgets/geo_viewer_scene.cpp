@@ -1,5 +1,6 @@
 #include <QtGui/qvectornd.h>
 #include "src/ui/widgets/geo_viewer.h"
+#include "src/logic/simulation_controller.h"
 
 #include <Math.hpp>
 #include <future>
@@ -34,6 +35,7 @@ void AddTriangleRange(ItemContainer& items, ItemMap& item_map, Key&& key,
 void GeoViewerWidget::SetMapAndMesh(
     std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh network_mesh,
     const JunctionClusterResult* junction_grouping) {
+  StopSimulation();
   const bool had_user_points = !user_points_.empty();
 
   map_ = std::move(map);

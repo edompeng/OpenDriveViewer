@@ -3,32 +3,42 @@ load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
 
 qt_moc_genrule(
     name = "moc_files",
-    headers = ["measure_tool_controller.h"],
+    headers = [
+        "event_bus.h",
+        "measure_tool_controller.h",
+        "simulation_controller.h",
+    ],
 )
 
 cc_library(
     name = "logic",
     srcs = [
         "camera_controller.cpp",
+        "event_bus.cpp",
         "favorites_store.cpp",
         "highlight_manager.cpp",
         "input_parsing.cpp",
+        "map_diff_analyzer.cpp",
         "measure_tool_controller.cpp",
         "routing_buffer_manager.cpp",
         "routing_logic.cpp",
         "scene_index_builder.cpp",
+        "simulation_controller.cpp",
         "spatial_index.cpp",
         ":moc_files",
     ],
     hdrs = [
         "camera_controller.h",
+        "event_bus.h",
         "favorites_store.h",
         "highlight_manager.h",
         "input_parsing.h",
+        "map_diff_analyzer.h",
         "measure_tool_controller.h",
         "routing_buffer_manager.h",
         "routing_logic.h",
         "scene_index_builder.h",
+        "simulation_controller.h",
         "spatial_index.h",
     ],
     copts = QT_COPTS,

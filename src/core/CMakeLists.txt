@@ -13,6 +13,7 @@ add_library(
   coordinate_mode_policy.h
   scene_enums.h
   scene_geometry_types.h
+  object_pool.h
   crash_handler.h
   settings_persistence.h)
 

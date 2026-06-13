@@ -288,6 +288,10 @@ void MainWindow::SetupToolbar() {
   load_action_ = toolbar->addAction(tr("Load .xodr"));
   connect(load_action_, &QAction::triggered, this, &MainWindow::HandleLoadMap);
 
+  compare_action_ = toolbar->addAction(tr("Compare .xodr"));
+  compare_action_->setEnabled(false);
+  connect(compare_action_, &QAction::triggered, this, &MainWindow::HandleCompareMap);
+
   toolbar->addSeparator();
 
   // Widget visibility menu
@@ -423,6 +427,10 @@ void MainWindow::SetupConnections() {
                 tr("Total Distance: %1 m").arg(dist, 0, 'f', 2));
           });
 
+  connect(view_, &GeoViewerWidget::MapDiffApplied, this, [this]() {
+    status_->showMessage(tr("Map comparison complete. Differences highlighted."));
+  });
+
   connect(
       view_, &GeoViewerWidget::ViewModeChanged, this,
       [this](CameraController::ViewMode mode) {
@@ -460,6 +468,10 @@ void MainWindow::SetupConnections() {
     }
 
     current_map_path_ = pending_map_path_;
+
+    if (compare_action_) {
+      compare_action_->setEnabled(true);
+    }
 
     qDebug() << "Junction grouping:" << data.junction_grouping.groups.size()
              << "physical groups from"
@@ -526,6 +538,10 @@ void MainWindow::SetupConnections() {
 
 void MainWindow::StartMapLoad(const QString& path) {
   if (map_loader_->IsRunning()) return;
+
+  if (compare_action_) {
+    compare_action_->setEnabled(false);
+  }
 
   if (load_progress_) {
     load_progress_->move(view_->width() / 2 - load_progress_->width() / 2,
@@ -625,4 +641,14 @@ void MainWindow::HandleViewModeToggle(bool is_2d) {
     view_->SetViewMode(is_2d ? CameraController::ViewMode::k2D
                              : CameraController::ViewMode::k3D);
   }
+}
+
+void MainWindow::HandleCompareMap() {
+  QString path = QFileDialog::getOpenFileName(
+      this, tr("Compare with OpenDRIVE Map"), QString(),
+      tr("OpenDrive Maps (*.xodr)"));
+  if (path.isEmpty()) return;
+
+  status_->showMessage(tr("Comparing maps..."));
+  view_->CompareWithMap(path);
 }

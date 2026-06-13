@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include "RoadNetworkMesh.h"
@@ -22,10 +23,16 @@ struct MapSceneData {
 class IMapSceneLoader {
  public:
   virtual ~IMapSceneLoader() = default;
-  virtual MapSceneData Load(const std::string& path) const = 0;
+  virtual MapSceneData Load(
+      const std::string& path,
+      std::function<void(float, const std::string&)> progress_callback =
+          nullptr) const = 0;
 };
 
 class OpenDriveMapSceneLoader : public IMapSceneLoader {
  public:
-  MapSceneData Load(const std::string& path) const override;
+  MapSceneData Load(
+      const std::string& path,
+      std::function<void(float, const std::string&)> progress_callback =
+          nullptr) const override;
 };

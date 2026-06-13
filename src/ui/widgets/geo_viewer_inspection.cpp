@@ -237,11 +237,11 @@ void GeoViewerWidget::SearchObject(LayerType type, const QString& id_str) {
 
   if (!gl_renderer_) return;
   auto* highlight_mgr = gl_renderer_->GetHighlightManager();
-  if (highlight_mgr && highlight_mgr->cur_start < highlight_mgr->cur_end) {
+  if (highlight_mgr && highlight_mgr->CurStart() < highlight_mgr->CurEnd()) {
     double cx = 0, cy = 0, cz = 0;
     int count = 0;
-    for (size_t i = highlight_mgr->cur_start;
-         i < highlight_mgr->cur_end && i < target_mesh->vertices.size(); i++) {
+    for (size_t i = highlight_mgr->CurStart();
+         i < highlight_mgr->CurEnd() && i < target_mesh->vertices.size(); i++) {
       cx += target_mesh->vertices[i][0];
       cy += target_mesh->vertices[i][1];
       cz += target_mesh->vertices[i][2];

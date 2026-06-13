@@ -1,4 +1,5 @@
 #include "src/ui/widgets/geo_viewer.h"
+#include "src/logic/simulation_controller.h"
 
 #include <cmath>
 
@@ -44,6 +45,15 @@ void GeoViewerWidget::ClearRoutingPaths() {
   routing_buf_mgr->Clear();
   doneCurrent();
   update();
+}
+
+std::vector<odr::LaneKey> GeoViewerWidget::GetRoutingPath(int id) const {
+  if (!gl_renderer_) return {};
+  auto* routing_buf_mgr = gl_renderer_->GetRoutingBufferManager();
+  if (!routing_buf_mgr) return {};
+  auto it = routing_buf_mgr->Routes().find(id);
+  if (it == routing_buf_mgr->Routes().end()) return {};
+  return it->second.path;
 }
 
 void GeoViewerWidget::RendererToLocalCoord(const QVector3D& renderer_pos,
@@ -118,4 +128,38 @@ void GeoViewerWidget::SetViewMode(CameraController::ViewMode mode) {
   camera_.SetViewMode(mode);
   emit ViewModeChanged(mode);
   update();
+}
+
+void GeoViewerWidget::StartSimulation(const std::vector<odr::LaneKey>& path,
+                                      float speed_mps) {
+  if (!sim_ctrl_) {
+    sim_ctrl_ = std::make_unique<geoviewer::logic::SimulationController>(this);
+    connect(sim_ctrl_.get(),
+            &geoviewer::logic::SimulationController::PoseUpdated, this,
+            [this](const QVector3D& pos, float heading) {
+              if (gl_renderer_) {
+                gl_renderer_->SetEgoVehiclePose(pos, heading);
+                update();
+              }
+            });
+    connect(sim_ctrl_.get(),
+            &geoviewer::logic::SimulationController::StateChanged, this,
+            [this](bool active) {
+              if (gl_renderer_) {
+                gl_renderer_->SetEgoVehicleVisible(active);
+                update();
+              }
+            });
+  }
+  sim_ctrl_->Start(path, map_, right_hand_traffic_, speed_mps);
+}
+
+void GeoViewerWidget::StopSimulation() {
+  if (sim_ctrl_) {
+    sim_ctrl_->Stop();
+  }
+}
+
+bool GeoViewerWidget::IsSimulationActive() const {
+  return sim_ctrl_ && sim_ctrl_->IsActive();
 }

@@ -12,6 +12,8 @@ enum class LayerType {
   kReferenceLines,
   kJunctions,
   kFacilities,
+  kDiffRemoved,
+  kDiffModified,
   kCount
 };
 

@@ -27,6 +27,7 @@ class MainWindow : public QMainWindow {
 
  private slots:
   void HandleLoadMap();
+  void HandleCompareMap();
   void HandleHoverInfo(double x, double y, double z, double lon, double lat,
                        double alt, const QString &type_str,
                        const QString &id_str, const QString &name_str,
@@ -71,6 +72,7 @@ class MainWindow : public QMainWindow {
   QAction *measure_action_;
   QAction *view_mode_action_ = nullptr;
   QAction *copy_map_name_action_ = nullptr;
+  QAction *compare_action_ = nullptr;
 
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
