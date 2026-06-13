@@ -1,6 +1,7 @@
 #include "src/ui/render/gl_renderer.h"
 
 #include <QDebug>
+#include <QtMath>
 #include <algorithm>
 
 namespace geoviewer::render {
@@ -20,16 +21,20 @@ GlRenderer::GlRenderer() {
   layers_[static_cast<int>(LayerType::kRouting)].alpha = 0.8f;
 
   layers_[static_cast<int>(LayerType::kDiffRemoved)].color =
-      QVector3D(1.0f, 0.2f, 0.2f); // Red
+      QVector3D(1.0f, 0.2f, 0.2f);  // Red
   layers_[static_cast<int>(LayerType::kDiffRemoved)].alpha = 0.9f;
-  layers_[static_cast<int>(LayerType::kDiffRemoved)].polygon_offset_factor = -3.0f;
-  layers_[static_cast<int>(LayerType::kDiffRemoved)].polygon_offset_units = -3.0f;
+  layers_[static_cast<int>(LayerType::kDiffRemoved)].polygon_offset_factor =
+      -3.0f;
+  layers_[static_cast<int>(LayerType::kDiffRemoved)].polygon_offset_units =
+      -3.0f;
 
   layers_[static_cast<int>(LayerType::kDiffModified)].color =
-      QVector3D(1.0f, 0.85f, 0.1f); // Yellow
+      QVector3D(1.0f, 0.85f, 0.1f);  // Yellow
   layers_[static_cast<int>(LayerType::kDiffModified)].alpha = 0.9f;
-  layers_[static_cast<int>(LayerType::kDiffModified)].polygon_offset_factor = -3.0f;
-  layers_[static_cast<int>(LayerType::kDiffModified)].polygon_offset_units = -3.0f;
+  layers_[static_cast<int>(LayerType::kDiffModified)].polygon_offset_factor =
+      -3.0f;
+  layers_[static_cast<int>(LayerType::kDiffModified)].polygon_offset_units =
+      -3.0f;
 }
 
 GlRenderer::~GlRenderer() {
@@ -325,88 +330,25 @@ void GlRenderer::RenderScene(const QMatrix4x4& view, float distance,
   glBindVertexArray(0);
 }
 
-void GlRenderer::DrawTriangles() {
+void GlRenderer::DrawLayersByMode(GLenum target_mode) {
   glUniform1i(uniforms_.use_vertex_color, 0);
-  for (int i = 0; i < kLayerCount; ++i) {
-    if (!layers_[i].visible || layers_[i].index_count == 0 || !layers_[i].ebo) {
-      continue;
-    }
-    if (layers_[i].draw_mode != GL_TRIANGLES) continue;
 
-    // Coarse culling: check entire layer if chunks are present
-    if (!layers_[i].chunks.empty() &&
-        !frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
-      continue;
-    }
-
-    if (layers_[i].polygon_offset_factor != 0.0f ||
-        layers_[i].polygon_offset_units != 0.0f) {
-      glEnable(GL_POLYGON_OFFSET_FILL);
-      glEnable(GL_POLYGON_OFFSET_LINE);
-      glPolygonOffset(layers_[i].polygon_offset_factor,
-                      layers_[i].polygon_offset_units);
-    }
-
-    glUniform3f(uniforms_.object_color, layers_[i].color.x(),
-                layers_[i].color.y(), layers_[i].color.z());
-    glUniform1f(uniforms_.alpha, layers_[i].alpha);
-    glUniform1i(uniforms_.is_dashed,
-                (i == static_cast<int>(LayerType::kLaneLinesDashed)) ? 1 : 0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[i].ebo);
-
-    if (layers_[i].chunks.empty()) {
-      glDrawElements(layers_[i].draw_mode,
-                     static_cast<GLsizei>(layers_[i].index_count),
-                     GL_UNSIGNED_INT, nullptr);
-    } else {
-      const bool is_minor_layer =
-          (i == static_cast<int>(LayerType::kLaneLines)) ||
-          (i == static_cast<int>(LayerType::kLaneLinesDashed)) ||
-          (i == static_cast<int>(LayerType::kRoadmarks));
-
-      for (const auto& chunk : layers_[i].chunks) {
-        if (frustum_.IsAabbVisible(chunk.min_bound, chunk.max_bound)) {
-          if (is_minor_layer) {
-            const QVector3D chunk_center =
-                (chunk.min_bound + chunk.max_bound) * 0.5f;
-            const float dist = camera_pos_.distanceToPoint(chunk_center);
-            if (dist > 600.0f) {
-              continue;
-            }
-          }
-          glDrawElements(layers_[i].draw_mode,
-                         static_cast<GLsizei>(chunk.index_count),
-                         GL_UNSIGNED_INT,
-                         reinterpret_cast<void*>(static_cast<intptr_t>(
-                             chunk.index_offset * sizeof(uint32_t))));
-        }
-      }
-    }
-
-    if (layers_[i].polygon_offset_factor != 0.0f ||
-        layers_[i].polygon_offset_units != 0.0f) {
-      glDisable(GL_POLYGON_OFFSET_FILL);
-      glDisable(GL_POLYGON_OFFSET_LINE);
-    }
-  }
-}
-
-void GlRenderer::DrawLines() {
-  glUniform1i(uniforms_.use_vertex_color, 0);
-  for (int i = 0; i < kLayerCount; ++i) {
-    if (!layers_[i].visible || layers_[i].index_count == 0 || !layers_[i].ebo) {
-      continue;
-    }
-    if (layers_[i].draw_mode != GL_LINES) continue;
-
-    // Coarse culling: check entire layer if chunks are present
-    if (!layers_[i].chunks.empty() &&
-        !frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
-      continue;
-    }
-
+  const bool is_line_mode = (target_mode == GL_LINES);
+  if (is_line_mode) {
     glLineWidth(2.0f);
+  }
+
+  for (int i = 0; i < kLayerCount; ++i) {
+    if (!layers_[i].visible || layers_[i].index_count == 0 || !layers_[i].ebo) {
+      continue;
+    }
+    if (layers_[i].draw_mode != target_mode) continue;
+
+    // Coarse culling: check entire layer if chunks are present
+    if (!layers_[i].chunks.empty() &&
+        !frustum_.IsAabbVisible(layers_[i].layer_min, layers_[i].layer_max)) {
+      continue;
+    }
 
     if (layers_[i].polygon_offset_factor != 0.0f ||
         layers_[i].polygon_offset_units != 0.0f) {
@@ -423,6 +365,7 @@ void GlRenderer::DrawLines() {
                 (i == static_cast<int>(LayerType::kLaneLinesDashed)) ? 1 : 0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[i].ebo);
+
     if (layers_[i].chunks.empty()) {
       glDrawElements(layers_[i].draw_mode,
                      static_cast<GLsizei>(layers_[i].index_count),
@@ -458,7 +401,15 @@ void GlRenderer::DrawLines() {
       glDisable(GL_POLYGON_OFFSET_LINE);
     }
   }
+
+  if (is_line_mode) {
+    glLineWidth(1.0f);
+  }
 }
+
+void GlRenderer::DrawTriangles() { DrawLayersByMode(GL_TRIANGLES); }
+
+void GlRenderer::DrawLines() { DrawLayersByMode(GL_LINES); }
 
 void GlRenderer::DrawPoints(size_t point_count) {
   if (point_count == 0 || !user_points_vao_) return;
@@ -476,61 +427,40 @@ void GlRenderer::DrawPoints(size_t point_count) {
   glEnable(GL_DEPTH_TEST);
 }
 
-void GlRenderer::DrawInstanced(GLuint vao, size_t index_count,
-                               size_t instance_count) {
-  if (instance_count == 0 || index_count == 0 || vao == 0) return;
-  glBindVertexArray(vao);
-  glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(index_count),
-                          GL_UNSIGNED_INT, nullptr,
-                          static_cast<GLsizei>(instance_count));
-  glBindVertexArray(0);
-}
-
 void GlRenderer::DrawHighlight() {
+  if (!highlight_mgr_) return;
   glUniform1i(uniforms_.use_vertex_color, 0);
-  // Primary highlight (green)
-  if (highlight_mgr_ && highlight_mgr_->HasHighlight()) {
-    glBindVertexArray(vao_);
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-2.0f, -2.0f);
-    glUniform3f(uniforms_.object_color, 0.2f, 0.85f, 0.4f);
-    glUniform1f(uniforms_.alpha, 1.0f);
-    glUniform1i(uniforms_.is_dashed, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Primary().ebo);
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(highlight_mgr_->Primary().count),
-                   GL_UNSIGNED_INT, nullptr);
-    glDisable(GL_POLYGON_OFFSET_FILL);
-  }
 
-  // Neighbor highlight (orange)
-  if (highlight_mgr_ && highlight_mgr_->HasNeighborHighlight()) {
-    glBindVertexArray(vao_);
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-1.8f, -1.8f);
-    glUniform3f(uniforms_.object_color, 1.0f, 0.5f, 0.0f);
-    glUniform1f(uniforms_.alpha, 0.8f);
-    glUniform1i(uniforms_.is_dashed, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Neighbor().ebo);
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(highlight_mgr_->Neighbor().count),
-                   GL_UNSIGNED_INT, nullptr);
-    glDisable(GL_POLYGON_OFFSET_FILL);
-  }
+  struct HighlightDrawInfo {
+    bool has_highlight;
+    const HighlightBuffer& buffer;
+    float offset;
+    QVector3D color;
+    float alpha;
+  };
 
-  // Predecessor highlight (blue)
-  if (highlight_mgr_ && highlight_mgr_->HasPredecessorHighlight()) {
-    glBindVertexArray(vao_);
-    glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-1.8f, -1.8f);
-    glUniform3f(uniforms_.object_color, 0.0f, 0.5f, 1.0f);
-    glUniform1f(uniforms_.alpha, 0.8f);
-    glUniform1i(uniforms_.is_dashed, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, highlight_mgr_->Predecessor().ebo);
-    glDrawElements(GL_TRIANGLES,
-                   static_cast<GLsizei>(highlight_mgr_->Predecessor().count),
-                   GL_UNSIGNED_INT, nullptr);
-    glDisable(GL_POLYGON_OFFSET_FILL);
+  HighlightDrawInfo items[] = {
+      {highlight_mgr_->HasHighlight(), highlight_mgr_->Primary(), -2.0f,
+       QVector3D(0.2f, 0.85f, 0.4f), 1.0f},
+      {highlight_mgr_->HasNeighborHighlight(), highlight_mgr_->Neighbor(),
+       -1.8f, QVector3D(1.0f, 0.5f, 0.0f), 0.8f},
+      {highlight_mgr_->HasPredecessorHighlight(), highlight_mgr_->Predecessor(),
+       -1.8f, QVector3D(0.0f, 0.5f, 1.0f), 0.8f}};
+
+  for (const auto& item : items) {
+    if (item.has_highlight && item.buffer.ebo && item.buffer.count > 0) {
+      glBindVertexArray(vao_);
+      glEnable(GL_POLYGON_OFFSET_FILL);
+      glPolygonOffset(item.offset, item.offset);
+      glUniform3f(uniforms_.object_color, item.color.x(), item.color.y(),
+                  item.color.z());
+      glUniform1f(uniforms_.alpha, item.alpha);
+      glUniform1i(uniforms_.is_dashed, 0);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, item.buffer.ebo);
+      glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(item.buffer.count),
+                     GL_UNSIGNED_INT, nullptr);
+      glDisable(GL_POLYGON_OFFSET_FILL);
+    }
   }
 }
 
@@ -746,52 +676,25 @@ void GlRenderer::SetEgoVehiclePose(const QVector3D& position, float heading) {
   ego_heading_ = heading;
 }
 
-void GlRenderer::SetEgoVehicleVisible(bool visible) {
-  show_ego_ = visible;
-}
+void GlRenderer::SetEgoVehicleVisible(bool visible) { show_ego_ = visible; }
 
 void GlRenderer::DrawEgoVehicle() {
   if (!show_ego_) return;
 
-  // 1. Generate local vertices and transform them
-  std::vector<float> vertices = {
-    // Box
-    -2.25f, 0.0f, -0.9f,
-     2.25f, 0.0f, -0.9f,
-     2.25f, 0.0f,  0.9f,
-    -2.25f, 0.0f,  0.9f,
-    -2.25f, 1.5f, -0.9f,
-     2.25f, 1.5f, -0.9f,
-     2.25f, 1.5f,  0.9f,
-    -2.25f, 1.5f,  0.9f,
-    // Arrow
-     3.0f,  0.0f,  0.0f,
-     2.25f, 0.0f, -0.5f,
-     2.25f, 0.0f,  0.5f
-  };
+  // 1. Local vertices and indices for the ego vehicle (static shape)
+  static const std::vector<float> kEgoVertices = {
+      // Box
+      -2.25f, 0.0f, -0.9f, 2.25f, 0.0f, -0.9f, 2.25f, 0.0f, 0.9f, -2.25f, 0.0f,
+      0.9f, -2.25f, 1.5f, -0.9f, 2.25f, 1.5f, -0.9f, 2.25f, 1.5f, 0.9f, -2.25f,
+      1.5f, 0.9f,
+      // Arrow
+      3.0f, 0.0f, 0.0f, 2.25f, 0.0f, -0.5f, 2.25f, 0.0f, 0.5f};
 
-  const float cos_h = std::cos(ego_heading_);
-  const float sin_h = std::sin(ego_heading_);
-
-  // Rotate and translate
-  for (size_t i = 0; i < vertices.size(); i += 3) {
-    float lx = vertices[i];
-    float ly = vertices[i + 1];
-    float lz = vertices[i + 2];
-
-    float rx = lx * cos_h - lz * sin_h;
-    float rz = lx * sin_h + lz * cos_h;
-
-    vertices[i] = ego_pos_.x() + rx;
-    vertices[i + 1] = ego_pos_.y() + ly;
-    vertices[i + 2] = ego_pos_.z() + rz;
-  }
-
-  std::vector<uint32_t> indices = {
-    0, 1, 1, 2, 2, 3, 3, 0, // Bottom
-    4, 5, 5, 6, 6, 7, 7, 4, // Top
-    0, 4, 1, 5, 2, 6, 3, 7, // Verticals
-    8, 9, 8, 10, 9, 10       // Arrow
+  static const std::vector<uint32_t> kEgoIndices = {
+      0, 1, 1, 2,  2, 3, 3, 0,  // Bottom
+      4, 5, 5, 6,  6, 7, 7, 4,  // Top
+      0, 4, 1, 5,  2, 6, 3, 7,  // Verticals
+      8, 9, 8, 10, 9, 10        // Arrow
   };
 
   // 2. Setup/update OpenGL buffers lazily
@@ -799,29 +702,50 @@ void GlRenderer::DrawEgoVehicle() {
     glGenVertexArrays(1, &ego_vao_);
     glGenBuffers(1, &ego_vbo_);
     glGenBuffers(1, &ego_ebo_);
+
+    glBindVertexArray(ego_vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, ego_vbo_);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(kEgoVertices.size() * sizeof(float)),
+                 kEgoVertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ego_ebo_);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(kEgoIndices.size() * sizeof(uint32_t)),
+                 kEgoIndices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
   }
 
   glBindVertexArray(ego_vao_);
-  glBindBuffer(GL_ARRAY_BUFFER, ego_vbo_);
-  glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(float)), vertices.data(), GL_DYNAMIC_DRAW);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ego_ebo_);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(uint32_t)), indices.data(), GL_DYNAMIC_DRAW);
+  // 3. Set transformation matrix
+  QMatrix4x4 model_matrix;
+  model_matrix.setToIdentity();
+  model_matrix.translate(ego_pos_);
+  model_matrix.rotate(-qRadiansToDegrees(ego_heading_), 0.0f, 1.0f, 0.0f);
+  glUniformMatrix4fv(uniforms_.model, 1, GL_FALSE, model_matrix.data());
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
-  glEnableVertexAttribArray(0);
-
-  // 3. Render
+  // 4. Render
   glUniform1i(uniforms_.use_vertex_color, 0);
-  glUniform3f(uniforms_.object_color, 0.1f, 0.6f, 1.0f); // Bright blue ego vehicle
+  glUniform3f(uniforms_.object_color, 0.1f, 0.6f,
+              1.0f);  // Bright blue ego vehicle
   glUniform1f(uniforms_.alpha, 1.0f);
   glUniform1i(uniforms_.is_dashed, 0);
   glLineWidth(3.0f);
 
-  glDrawElements(GL_LINES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, nullptr);
-  
+  glDrawElements(GL_LINES, static_cast<GLsizei>(kEgoIndices.size()),
+                 GL_UNSIGNED_INT, nullptr);
+
   glLineWidth(1.0f);
   glBindVertexArray(0);
+
+  // Restore model matrix to identity
+  QMatrix4x4 identity;
+  identity.setToIdentity();
+  glUniformMatrix4fv(uniforms_.model, 1, GL_FALSE, identity.data());
 }
 
 }  // namespace geoviewer::render

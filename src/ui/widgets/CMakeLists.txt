@@ -26,7 +26,11 @@ add_library(
   async_map_loader.cpp
   async_map_loader.h
   layer_tree_model.cpp
-  layer_tree_model.h)
+  layer_tree_model.h
+  map_statistics_dialog.cpp
+  map_statistics_dialog.h
+  topology_validator_widget.cpp
+  topology_validator_widget.h)
 
 target_include_directories(GeoViewerUIWidgets
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../)

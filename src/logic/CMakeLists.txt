@@ -13,7 +13,9 @@ add_library(
   routing_buffer_manager.cpp
   simulation_controller.cpp
   scene_index_builder.cpp
-  spatial_index.cpp)
+  spatial_index.cpp
+  map_topology_validator.cpp
+  map_topology_validator.h)
 
 target_include_directories(GeoViewerLogic
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../)

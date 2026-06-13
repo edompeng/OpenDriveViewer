@@ -195,9 +195,6 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   /// Draw user annotation points (rendered as GL_POINTS).
   void DrawPoints(size_t point_count);
 
-  /// Draw instanced meshes using OpenGL Instanced Rendering (pre-allocated VAO).
-  void DrawInstanced(GLuint vao, size_t index_count, size_t instance_count);
-
   // ============ Projection Utilities ============
 
   /// Get the current projection matrix.
@@ -222,6 +219,7 @@ class GEOVIEWER_EXPORT GlRenderer : protected QOpenGLExtraFunctions {
   void DrawRouting(const QVector3D& routing_color, float routing_alpha);
   void DrawMeasurement(size_t point_count);
   void DrawEgoVehicle();
+  void DrawLayersByMode(GLenum target_mode);
 
   // ---- Main scene buffers ----
   GLuint vao_ = 0;

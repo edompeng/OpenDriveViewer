@@ -187,4 +187,8 @@ add_geoviewer_test(
   tests/event_bus_test.cpp
   tests/object_pool_test.cpp
   tests/map_diff_test.cpp
+  tests/coordinate_util_test.cpp
+  tests/simulation_controller_test.cpp
+  tests/junction_grouping_test.cpp
+  tests/async_map_loader_test.cpp
   ${GEOVIEWER_APP_TEST_SOURCES})

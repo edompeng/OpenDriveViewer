@@ -12,6 +12,8 @@ qt_moc_genrule(
         "layer_control_widget.h",
         "loading_progress_widget.h",
         "routing_widget.h",
+        "map_statistics_dialog.h",
+        "topology_validator_widget.h",
     ],
 )
 
@@ -35,6 +37,8 @@ cc_library(
         "layer_tree_model.cpp",
         "loading_progress_widget.cpp",
         "routing_widget.cpp",
+        "map_statistics_dialog.cpp",
+        "topology_validator_widget.cpp",
         ":moc_files",
     ],
     hdrs = [
@@ -47,6 +51,8 @@ cc_library(
         "layer_tree_model.h",
         "loading_progress_widget.h",
         "routing_widget.h",
+        "map_statistics_dialog.h",
+        "topology_validator_widget.h",
     ],
     copts = QT_COPTS,
     local_defines = select({

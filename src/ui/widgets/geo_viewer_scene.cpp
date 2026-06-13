@@ -1,6 +1,6 @@
 #include <QtGui/qvectornd.h>
-#include "src/ui/widgets/geo_viewer.h"
 #include "src/logic/simulation_controller.h"
+#include "src/ui/widgets/geo_viewer.h"
 
 #include <Math.hpp>
 #include <future>
@@ -34,7 +34,8 @@ void AddTriangleRange(ItemContainer& items, ItemMap& item_map, Key&& key,
 
 void GeoViewerWidget::SetMapAndMesh(
     std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh network_mesh,
-    const JunctionClusterResult* junction_grouping) {
+    const JunctionClusterResult* junction_grouping,
+    std::shared_ptr<odr::RoutingGraph> routing_graph) {
   StopSimulation();
   const bool had_user_points = !user_points_.empty();
 
@@ -62,8 +63,12 @@ void GeoViewerWidget::SetMapAndMesh(
   ResetSceneData();
   PopulateJunctionLookupMaps();
   PopulateLaneKeyIntervals();
-  routing_graph_ =
-      std::make_unique<odr::RoutingGraph>(map_->get_routing_graph());
+  if (routing_graph) {
+    routing_graph_ = std::move(routing_graph);
+  } else {
+    routing_graph_ =
+        std::make_shared<odr::RoutingGraph>(map_->get_routing_graph());
+  }
 
   signal_id_to_road_id_.clear();
   for (const auto& [road_id, road] : map_->id_to_road) {
@@ -169,7 +174,6 @@ void GeoViewerWidget::PopulateLaneKeyIntervals() {
   if (!network_mesh.lanes_mesh.indices.empty()) {
     static_cast<void>(network_mesh.lanes_mesh.get_road_id(
         network_mesh.lanes_mesh.indices[0]));
-    static_cast<void>(network_mesh.lanes_mesh.get_lane_outline_indices());
   }
 
   // Pre-initialize other mesh caches as well

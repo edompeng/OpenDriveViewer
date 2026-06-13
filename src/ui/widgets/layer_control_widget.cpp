@@ -15,10 +15,12 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <sstream>
 #include "src/core/app_settings.h"
 #include "src/core/scene_enums.h"
 #include "src/core/thread_pool.h"
 #include "src/core/viewer_text_util.h"
+#include "src/logic/event_bus.h"
 #include "src/ui/widgets/layer_tree_model.h"
 
 namespace {
@@ -141,6 +143,15 @@ LayerControlWidget::LayerControlWidget(
   connect(viewer_, &GeoViewerWidget::ElementVisibilityChanged, this,
           &LayerControlWidget::HandleElementVisibilityChanged);
 
+  connect(&geoviewer::logic::EventBus::Instance(),
+          &geoviewer::logic::EventBus::MapLoaded, this,
+          [this](const QString& path, bool success) {
+            Q_UNUSED(path);
+            if (success) {
+              UpdateTree();
+            }
+          });
+
   setMinimumSize(350, 400);
   resize(400, 700);
 }
@@ -172,7 +183,8 @@ void LayerControlWidget::RequestSnapshotBuild() {
         auto snapshot = BuildLayerTreeSnapshot(map, junction_result);
         if (!guard) return;
         QMetaObject::invokeMethod(
-            guard.data(), [guard, snapshot = std::move(snapshot), generation]() mutable {
+            guard.data(),
+            [guard, snapshot = std::move(snapshot), generation]() mutable {
               if (!guard) return;
               if (generation == guard->snapshot_generation_.load()) {
                 guard->tree_snapshot_ = std::move(snapshot);
@@ -739,6 +751,11 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   }
 
   QAction* addFav = menu.addAction(tr("⭐ Add to favorites"));
+  QAction* copy_xml = nullptr;
+  if (type == TreeNodeType::kRoad || type == TreeNodeType::kLane ||
+      type == TreeNodeType::kJunction) {
+    copy_xml = menu.addAction(tr("Copy XML text"));
+  }
 
   QAction* setStart = nullptr;
   QAction* setEnd = nullptr;
@@ -758,6 +775,90 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
       info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
     }
     QApplication::clipboard()->setText(info);
+  } else if (selected == copy_xml && copy_xml) {
+    auto map = viewer_->GetMap();
+    if (map) {
+      std::string xml_str;
+      if (type == TreeNodeType::kRoad) {
+        std::string road_id =
+            item->data(0, Qt::UserRole + 1).toString().toStdString();
+        for (pugi::xml_node node :
+             map->xml_doc.child("OpenDRIVE").children("road")) {
+          if (node.attribute("id").value() == road_id) {
+            std::stringstream ss;
+            node.print(ss, "  ");
+            xml_str = ss.str();
+            break;
+          }
+        }
+      } else if (type == TreeNodeType::kJunction) {
+        std::string junc_id =
+            item->data(0, Qt::UserRole + 1).toString().toStdString();
+        for (pugi::xml_node node :
+             map->xml_doc.child("OpenDRIVE").children("junction")) {
+          if (node.attribute("id").value() == junc_id) {
+            std::stringstream ss;
+            node.print(ss, "  ");
+            xml_str = ss.str();
+            break;
+          }
+        }
+      } else if (type == TreeNodeType::kLane) {
+        std::string road_id = GetRoadId(item).toStdString();
+        std::string data_str =
+            item->data(0, Qt::UserRole + 1).toString().toStdString();
+        size_t colon = data_str.find(':');
+        if (colon != std::string::npos) {
+          double s0 = std::stod(data_str.substr(0, colon));
+          int lane_id = std::stoi(data_str.substr(colon + 1));
+
+          pugi::xml_node road_node;
+          for (pugi::xml_node r_node :
+               map->xml_doc.child("OpenDRIVE").children("road")) {
+            if (r_node.attribute("id").value() == road_id) {
+              road_node = r_node;
+              break;
+            }
+          }
+          if (road_node) {
+            pugi::xml_node lanes_node = road_node.child("lanes");
+            pugi::xml_node target_sec_node;
+            for (pugi::xml_node sec_node : lanes_node.children("laneSection")) {
+              double s_val = sec_node.attribute("s").as_double();
+              if (std::abs(s_val - s0) < 1e-3) {
+                target_sec_node = sec_node;
+                break;
+              }
+            }
+            if (target_sec_node) {
+              pugi::xml_node target_lane_node;
+              for (pugi::xml_node side_node :
+                   {target_sec_node.child("left"),
+                    target_sec_node.child("center"),
+                    target_sec_node.child("right")}) {
+                if (!side_node) continue;
+                for (pugi::xml_node lane_node : side_node.children("lane")) {
+                  if (lane_node.attribute("id").as_int() == lane_id) {
+                    target_lane_node = lane_node;
+                    break;
+                  }
+                }
+                if (target_lane_node) break;
+              }
+              if (target_lane_node) {
+                std::stringstream ss;
+                target_lane_node.print(ss, "  ");
+                xml_str = ss.str();
+              }
+            }
+          }
+        }
+      }
+
+      if (!xml_str.empty()) {
+        QApplication::clipboard()->setText(QString::fromStdString(xml_str));
+      }
+    }
   } else if (selected == goTo) {
     QString road_id = GetRoadId(item);
     QString element_id = item->data(0, Qt::UserRole + 1).toString();

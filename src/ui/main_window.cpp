@@ -18,9 +18,12 @@
 #include "src/core/app_settings.h"
 #include "src/core/coordinate_mode_policy.h"
 #include "src/core/settings_persistence.h"
+#include "src/logic/event_bus.h"
 #include "src/logic/input_parsing.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/layer_control_widget.h"
+#include "src/ui/widgets/map_statistics_dialog.h"
+#include "src/ui/widgets/topology_validator_widget.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   translator_ = new QTranslator(this);
@@ -151,6 +154,27 @@ void MainWindow::HandleCopyMapBaseName() {
   status_->showMessage(tr("Copied map name: %1").arg(base_name));
 }
 
+void MainWindow::HandleScreenshot() {
+  QImage img = view_->grabFramebuffer();
+  QString path = QFileDialog::getSaveFileName(
+      this, tr("Save Screenshot"), "",
+      tr("PNG Images (*.png);;JPEG Images (*.jpg)"));
+  if (!path.isEmpty()) {
+    if (img.save(path)) {
+      status_->showMessage(tr("Screenshot saved to: %1").arg(path), 3000);
+    } else {
+      status_->showMessage(tr("Failed to save screenshot"), 3000);
+    }
+  }
+}
+
+void MainWindow::HandleShowStats() {
+  auto map = view_->GetMap();
+  if (!map) return;
+  geoviewer::ui::MapStatisticsDialog dialog(map, current_map_path_, this);
+  dialog.exec();
+}
+
 void MainWindow::ChangeLanguage(const QString& locale) {
   // Explicitly include .qm extension for better robustness in resource loading
   QString path = ":/i18n/geoviewer_" + locale + ".qm";
@@ -268,6 +292,11 @@ void MainWindow::SetupPanels() {
   load_progress_ = new LoadingProgressWidget(view_);
   load_progress_->move(view_->width() / 2 - 150, view_->height() / 2 - 50);
 
+  topology_validator_panel_ =
+      new TopologyValidatorWidget(view_, settings_, view_);
+  topology_validator_panel_->move(20, 20);
+  topology_validator_panel_->setVisible(false);
+
   // Apply visibility from settings
   layer_control_dock_->setVisible(settings_.layer_manager_visible);
   routing_panel_->setVisible(settings_.routing_visible);
@@ -290,7 +319,8 @@ void MainWindow::SetupToolbar() {
 
   compare_action_ = toolbar->addAction(tr("Compare .xodr"));
   compare_action_->setEnabled(false);
-  connect(compare_action_, &QAction::triggered, this, &MainWindow::HandleCompareMap);
+  connect(compare_action_, &QAction::triggered, this,
+          &MainWindow::HandleCompareMap);
 
   toolbar->addSeparator();
 
@@ -317,6 +347,7 @@ void MainWindow::SetupToolbar() {
   addToggle(tr("Routing"), routing_panel_);
   addToggle(tr("Favorites"), favorites_panel_);
   addToggle(tr("Coordinate Inputs"), coordinate_points_panel_);
+  addToggle(tr("Topology Validator"), topology_validator_panel_);
 
   panels_btn_ = new QToolButton(this);
   panels_btn_->setText(tr("Windows"));
@@ -360,6 +391,20 @@ void MainWindow::SetupToolbar() {
       tr("Copy current map file name without extension"));
   connect(copy_map_name_action_, &QAction::triggered, this,
           &MainWindow::HandleCopyMapBaseName);
+
+  toolbar->addSeparator();
+
+  screenshot_action_ = toolbar->addAction(tr("Screenshot"));
+  screenshot_action_->setToolTip(tr("Save 3D view screenshot"));
+  connect(screenshot_action_, &QAction::triggered, this,
+          &MainWindow::HandleScreenshot);
+
+  stats_action_ = toolbar->addAction(tr("Map Stats"));
+  stats_action_->setToolTip(tr("Show Map Statistics"));
+  stats_action_->setEnabled(false);
+  connect(stats_action_, &QAction::triggered, this,
+          &MainWindow::HandleShowStats);
+
   toolbar->addWidget(BuildCoordinateTools());
 }
 
@@ -428,7 +473,8 @@ void MainWindow::SetupConnections() {
           });
 
   connect(view_, &GeoViewerWidget::MapDiffApplied, this, [this]() {
-    status_->showMessage(tr("Map comparison complete. Differences highlighted."));
+    status_->showMessage(
+        tr("Map comparison complete. Differences highlighted."));
   });
 
   connect(
@@ -472,6 +518,9 @@ void MainWindow::SetupConnections() {
     if (compare_action_) {
       compare_action_->setEnabled(true);
     }
+    if (stats_action_) {
+      stats_action_->setEnabled(true);
+    }
 
     qDebug() << "Junction grouping:" << data.junction_grouping.groups.size()
              << "physical groups from"
@@ -479,7 +528,7 @@ void MainWindow::SetupConnections() {
              << "OpenDRIVE junctions.";
 
     view_->SetMapAndMesh(data.map, std::move(data.mesh),
-                         &data.junction_grouping);
+                         &data.junction_grouping, data.routing_graph);
     view_->SetGeoreferenceAvailable(data.IsWgs84ModeAvailable());
     ApplyCoordinateModePolicy(data.IsWgs84ModeAvailable());
 
@@ -494,8 +543,12 @@ void MainWindow::SetupConnections() {
 
     UpdateWindowTitle();
 
+    // Emit map loaded signal to EventBus to notify decoupled listeners (e.g.
+    // LayerControlWidget)
+    emit geoviewer::logic::EventBus::Instance().MapLoaded(current_map_path_,
+                                                          true);
+
     QTimer::singleShot(0, this, [this]() {
-      layer_control_->UpdateTree();
       if (wgs84_mode_allowed_) {
         status_->showMessage(tr("Map loaded successfully."));
       } else {
@@ -512,6 +565,8 @@ void MainWindow::SetupConnections() {
           &CoordinatePointsWidget::Clear);
   connect(view_, &GeoViewerWidget::SceneReset, favorites_panel_,
           &FavoritesWidget::Clear);
+  connect(view_, &GeoViewerWidget::SceneReset, topology_validator_panel_,
+          &TopologyValidatorWidget::Clear);
 
   connect(view_, &GeoViewerWidget::ViewResized, this, [this]() {
     if (favorites_panel_) {
@@ -644,9 +699,9 @@ void MainWindow::HandleViewModeToggle(bool is_2d) {
 }
 
 void MainWindow::HandleCompareMap() {
-  QString path = QFileDialog::getOpenFileName(
-      this, tr("Compare with OpenDRIVE Map"), QString(),
-      tr("OpenDrive Maps (*.xodr)"));
+  QString path =
+      QFileDialog::getOpenFileName(this, tr("Compare with OpenDRIVE Map"),
+                                   QString(), tr("OpenDrive Maps (*.xodr)"));
   if (path.isEmpty()) return;
 
   status_->showMessage(tr("Comparing maps..."));

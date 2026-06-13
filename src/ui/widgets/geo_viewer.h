@@ -47,7 +47,7 @@ class RoutingWidget;
 namespace geoviewer::logic {
 class SimulationController;
 struct DiffResult;
-}
+}  // namespace geoviewer::logic
 
 class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   Q_OBJECT
@@ -57,13 +57,17 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   ~GeoViewerWidget() override;
 
   // ---------- Map Data ----------
-  void SetMapAndMesh(std::shared_ptr<odr::OpenDriveMap> map,
-                     odr::RoadNetworkMesh mesh,
-                     const JunctionClusterResult* junction_grouping = nullptr);
+  void SetMapAndMesh(
+      std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh mesh,
+      const JunctionClusterResult* junction_grouping = nullptr,
+      std::shared_ptr<odr::RoutingGraph> routing_graph = nullptr);
 
   std::shared_ptr<odr::OpenDriveMap> GetMap() const { return map_; }
   const JunctionClusterResult& GetJunctionClusterResult() const {
     return junction_cluster_result_;
+  }
+  const odr::RoutingGraph* GetRoutingGraph() const {
+    return routing_graph_.get();
   }
   QMatrix4x4 GetViewMatrix() const;
   CameraController::ViewMode GetViewMode() const {
@@ -268,7 +272,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   std::vector<uint32_t> lane_outline_indices_;
 
   std::unordered_map<odr::LaneKey, std::size_t> lane_element_index_by_key_;
-  std::unique_ptr<odr::RoutingGraph> routing_graph_;
+  std::shared_ptr<odr::RoutingGraph> routing_graph_;
   std::unordered_map<std::string, std::string> signal_id_to_road_id_;
   std::string GetRoadIdBySignalId(const std::string& signal_id) const noexcept;
   struct VertRange {

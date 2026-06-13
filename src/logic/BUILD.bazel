@@ -25,6 +25,7 @@ cc_library(
         "scene_index_builder.cpp",
         "simulation_controller.cpp",
         "spatial_index.cpp",
+        "map_topology_validator.cpp",
         ":moc_files",
     ],
     hdrs = [
@@ -40,6 +41,7 @@ cc_library(
         "scene_index_builder.h",
         "simulation_controller.h",
         "spatial_index.h",
+        "map_topology_validator.h",
     ],
     copts = QT_COPTS,
     local_defines = select({

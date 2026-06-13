@@ -1,0 +1,5 @@
+Checks: '-*,modernize-*,bugprone-*,performance-*,cppcoreguidelines-*,-cppcoreguidelines-owning-memory'
+WarningsAsErrors: ''
+HeaderFilterRegex: 'src/.*'
+AnalyzeTemporaryDtors: false
+FormatOnReplacements: true

@@ -20,6 +20,8 @@
 #include "src/ui/widgets/loading_progress_widget.h"
 #include "src/ui/widgets/routing_widget.h"
 
+class TopologyValidatorWidget;
+
 class MainWindow : public QMainWindow {
   Q_OBJECT
  public:
@@ -36,6 +38,8 @@ class MainWindow : public QMainWindow {
 
   void HandleJumpToCoords();
   void HandleCopyMapBaseName();
+  void HandleScreenshot();
+  void HandleShowStats();
   void ToggleWidgetVisibility(QWidget *widget, bool visible);
   void ChangeLanguage(const QString &locale);
   void HandleSettingsChanged();
@@ -66,6 +70,7 @@ class MainWindow : public QMainWindow {
   RoutingWidget *routing_panel_ = nullptr;
   FavoritesWidget *favorites_panel_ = nullptr;
   CoordinatePointsWidget *coordinate_points_panel_ = nullptr;
+  TopologyValidatorWidget *topology_validator_panel_ = nullptr;
   LoadingProgressWidget *load_progress_ = nullptr;
   QString current_map_path_;
   QString pending_map_path_;
@@ -73,6 +78,8 @@ class MainWindow : public QMainWindow {
   QAction *view_mode_action_ = nullptr;
   QAction *copy_map_name_action_ = nullptr;
   QAction *compare_action_ = nullptr;
+  QAction *screenshot_action_ = nullptr;
+  QAction *stats_action_ = nullptr;
 
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
