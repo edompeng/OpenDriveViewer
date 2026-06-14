@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <mutex>
 #include <shared_mutex>
 #include <stdexcept>
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <proj.h>
+#include <mutex>
 #include <shared_mutex>
 #include <string>
 #include "src/geo_viewer_export.h"
