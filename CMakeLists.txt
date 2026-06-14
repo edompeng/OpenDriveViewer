@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(OpenDriveViewer LANGUAGES CXX)
 
+# Ensure imported targets (like PROJ from vcpkg) fall back to Release, not Debug, 
+# when building in RelWithDebInfo, avoiding CRT mismatch and missing DLL issues.
+set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO RelWithDebInfo Release "")
 # --- Platform & Toolchain ---
 if(MSVC)
   # Basic MSVC options that are safe for all targets
