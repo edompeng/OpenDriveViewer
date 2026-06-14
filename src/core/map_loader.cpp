@@ -66,6 +66,31 @@ odr::RoadNetworkMesh MergeRoadMeshes(
     const std::map<std::string, odr::RoadNetworkMesh>& road_id_to_mesh) {
   odr::RoadNetworkMesh combined_mesh;
 
+  std::size_t lanes_v_size = 0, lanes_i_size = 0;
+  std::size_t roadmarks_v_size = 0, roadmarks_i_size = 0;
+  std::size_t objects_v_size = 0, objects_i_size = 0;
+  std::size_t signals_v_size = 0, signals_i_size = 0;
+
+  for (const auto& [road_id, road_mesh] : road_id_to_mesh) {
+    lanes_v_size += road_mesh.lanes_mesh.vertices.size();
+    lanes_i_size += road_mesh.lanes_mesh.indices.size();
+    roadmarks_v_size += road_mesh.roadmarks_mesh.vertices.size();
+    roadmarks_i_size += road_mesh.roadmarks_mesh.indices.size();
+    objects_v_size += road_mesh.road_objects_mesh.vertices.size();
+    objects_i_size += road_mesh.road_objects_mesh.indices.size();
+    signals_v_size += road_mesh.road_signals_mesh.vertices.size();
+    signals_i_size += road_mesh.road_signals_mesh.indices.size();
+  }
+
+  combined_mesh.lanes_mesh.vertices.reserve(lanes_v_size);
+  combined_mesh.lanes_mesh.indices.reserve(lanes_i_size);
+  combined_mesh.roadmarks_mesh.vertices.reserve(roadmarks_v_size);
+  combined_mesh.roadmarks_mesh.indices.reserve(roadmarks_i_size);
+  combined_mesh.road_objects_mesh.vertices.reserve(objects_v_size);
+  combined_mesh.road_objects_mesh.indices.reserve(objects_i_size);
+  combined_mesh.road_signals_mesh.vertices.reserve(signals_v_size);
+  combined_mesh.road_signals_mesh.indices.reserve(signals_i_size);
+
   for (const auto& [road_id, road_mesh] : road_id_to_mesh) {
     // Merge lanes_mesh
     {

@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <shared_mutex>
 #include <stdexcept>
 
 namespace {
@@ -68,7 +69,7 @@ CoordinateUtil& CoordinateUtil::Instance() {
 
 void CoordinateUtil::Init(const std::string& georeference,
                           const double& x_offset, const double& y_offset) {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::unique_lock<std::shared_mutex> lock(mutex_);
   georeference_ = georeference;
   x_offset_ = x_offset;
   y_offset_ = y_offset;
@@ -81,7 +82,7 @@ void CoordinateUtil::WGS84ToLocal(double* const x, double* const y,
   double ox, oy;
   uint64_t ver;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     georef = georeference_;
     ox = x_offset_;
     oy = y_offset_;
@@ -115,7 +116,7 @@ void CoordinateUtil::LocalToWGS84(double* const x, double* const y,
   double ox, oy;
   uint64_t ver;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_lock<std::shared_mutex> lock(mutex_);
     georef = georeference_;
     ox = x_offset_;
     oy = y_offset_;

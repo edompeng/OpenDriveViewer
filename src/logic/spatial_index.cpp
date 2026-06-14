@@ -43,7 +43,7 @@ bool RayIntersectsAABB(const QVector3D& origin, const QVector3D& dir,
   // X axis
   float invDx =
       1.0f /
-      (std::abs(dir.x()) < 1e-9f ? (dir.x() < 0 ? -1e-9f : 1e-9f) : dir.x());
+      (std::abs(dir.x()) < 1e-20f ? (dir.x() < 0 ? -1e-20f : 1e-20f) : dir.x());
   float t0x = (min_b.x() - origin.x()) * invDx;
   float t1x = (max_b.x() - origin.x()) * invDx;
   if (invDx < 0.0f) std::swap(t0x, t1x);
@@ -53,7 +53,7 @@ bool RayIntersectsAABB(const QVector3D& origin, const QVector3D& dir,
   // Y axis
   float invDy =
       1.0f /
-      (std::abs(dir.y()) < 1e-9f ? (dir.y() < 0 ? -1e-9f : 1e-9f) : dir.y());
+      (std::abs(dir.y()) < 1e-20f ? (dir.y() < 0 ? -1e-20f : 1e-20f) : dir.y());
   float t0y = (min_b.y() - origin.y()) * invDy;
   float t1y = (max_b.y() - origin.y()) * invDy;
   if (invDy < 0.0f) std::swap(t0y, t1y);
@@ -63,7 +63,7 @@ bool RayIntersectsAABB(const QVector3D& origin, const QVector3D& dir,
   // Z axis
   float invDz =
       1.0f /
-      (std::abs(dir.z()) < 1e-9f ? (dir.z() < 0 ? -1e-9f : 1e-9f) : dir.z());
+      (std::abs(dir.z()) < 1e-20f ? (dir.z() < 0 ? -1e-20f : 1e-20f) : dir.z());
   float t0z = (min_b.z() - origin.z()) * invDz;
   float t1z = (max_b.z() - origin.z()) * invDz;
   if (invDz < 0.0f) std::swap(t0z, t1z);
@@ -113,6 +113,9 @@ SpatialIndexData BuildSpatialIndex(
   }
 
   if (all_tris.empty()) return index_data;
+
+  index_data.nodes.reserve(all_tris.size() * 2);
+  index_data.flat_indices.reserve(all_tris.size());
 
   // Top-down BVH build using a stack to avoid deep recursion
   struct BuildTask {
@@ -292,8 +295,6 @@ std::vector<RaycastHitPoint> RaycastAllHits(
   std::stack<uint32_t> stack;
   stack.push(0);
 
-  std::unordered_set<uint64_t> visited_tris;
-
   while (!stack.empty()) {
     uint32_t node_idx = stack.top();
     stack.pop();
@@ -308,7 +309,6 @@ std::vector<RaycastHitPoint> RaycastAllHits(
     if (node.tri_count > 0) {
       for (uint32_t i = 0; i < node.tri_count; ++i) {
         uint64_t encoded = index_data.flat_indices[node.tri_start + i];
-        if (!visited_tris.insert(encoded).second) continue;
 
         uint32_t layer_tag = static_cast<uint32_t>(encoded >> 32);
         if (!is_layer_visible(layer_tag)) continue;

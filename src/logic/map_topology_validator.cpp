@@ -203,7 +203,7 @@ std::vector<TopologyIssue> MapTopologyValidator::Validate(
           // successor)
           if (successors.empty() && !no_succ) {
             TopologyIssue issue;
-            issue.severity = TopologySeverity::kError;
+            issue.severity = TopologySeverity::kWarning;
             issue.type = "Lane Successor Gap";
             issue.road_id = road_id;
             char buf[64];
@@ -224,7 +224,7 @@ std::vector<TopologyIssue> MapTopologyValidator::Validate(
           // predecessor)
           if (predecessors.empty() && !no_pred) {
             TopologyIssue issue;
-            issue.severity = TopologySeverity::kError;
+            issue.severity = TopologySeverity::kWarning;
             issue.type = "Lane Predecessor Gap";
             issue.road_id = road_id;
             char buf[64];

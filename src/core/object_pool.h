@@ -19,11 +19,43 @@ struct has_clear<T, std::void_t<decltype(std::declval<T&>().clear())>> : std::tr
 /// @tparam T Type of object managed by the pool.
 template <typename T>
 class ObjectPool {
+ private:
+  struct PoolState {
+    std::mutex mutex;
+    std::vector<std::unique_ptr<T>> pool;
+    size_t max_size = 0;
+  };
+
  public:
+  struct Deleter {
+    std::weak_ptr<PoolState> state;
+
+    void operator()(T* ptr) const {
+      if (ptr) {
+        if (auto locked_state = state.lock()) {
+          std::lock_guard<std::mutex> lock(locked_state->mutex);
+          if (locked_state->max_size > 0 && locked_state->pool.size() >= locked_state->max_size) {
+            delete ptr;
+            return;
+          }
+          if constexpr (has_clear<T>::value) {
+            ptr->clear();
+          }
+          locked_state->pool.push_back(std::unique_ptr<T>(ptr));
+        } else {
+          delete ptr;
+        }
+      }
+    }
+  };
+
+  using PtrType = std::unique_ptr<T, Deleter>;
+
   explicit ObjectPool(size_t initial_size = 0, size_t max_size = 0)
-      : lifetime_token_(std::make_shared<int>(0)), max_size_(max_size) {
+      : state_(std::make_shared<PoolState>()) {
+    state_->max_size = max_size;
     for (size_t i = 0; i < initial_size; ++i) {
-      pool_.push_back(std::make_unique<T>());
+      state_->pool.push_back(std::make_unique<T>());
     }
   }
 
@@ -35,64 +67,31 @@ class ObjectPool {
   ObjectPool(ObjectPool&&) = delete;
   ObjectPool& operator=(ObjectPool&&) = delete;
 
-  struct Deleter {
-    std::weak_ptr<void> lifetime_token;
-    ObjectPool* pool = nullptr;
-
-    void operator()(T* ptr) const {
-      if (ptr) {
-        if (auto token = lifetime_token.lock()) {
-          pool->ReturnObject(std::unique_ptr<T>(ptr));
-        } else {
-          delete ptr;
-        }
-      }
-    }
-  };
-
-  using PtrType = std::unique_ptr<T, Deleter>;
-
   /// @brief Acquire an object from the pool. Creates a new one if the pool is empty.
   PtrType Acquire() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (pool_.empty()) {
-      return PtrType(new T(), Deleter{lifetime_token_, this});
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    if (state_->pool.empty()) {
+      return PtrType(new T(), Deleter{state_});
     }
-    std::unique_ptr<T> obj = std::move(pool_.back());
-    pool_.pop_back();
-    return PtrType(obj.release(), Deleter{lifetime_token_, this});
-  }
-
-  /// @brief Return an object back to the pool.
-  void ReturnObject(std::unique_ptr<T> obj) {
-    if (!obj) return;
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (max_size_ > 0 && pool_.size() >= max_size_) {
-      return;
-    }
-    if constexpr (has_clear<T>::value) {
-      obj->clear();
-    }
-    pool_.push_back(std::move(obj));
+    std::unique_ptr<T> obj = std::move(state_->pool.back());
+    state_->pool.pop_back();
+    return PtrType(obj.release(), Deleter{state_});
   }
 
   /// @brief Query the number of idle objects in the pool.
   size_t Size() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return pool_.size();
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    return state_->pool.size();
   }
 
   /// @brief Clear all idle objects in the pool.
   void Clear() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    pool_.clear();
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    state_->pool.clear();
   }
 
  private:
-  std::shared_ptr<void> lifetime_token_;
-  mutable std::mutex mutex_;
-  std::vector<std::unique_ptr<T>> pool_;
-  size_t max_size_ = 0;
+  std::shared_ptr<PoolState> state_;
 };
 
 inline ObjectPool<std::vector<float>>& FloatVectorPool() {

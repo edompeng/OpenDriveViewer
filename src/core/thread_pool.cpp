@@ -40,9 +40,10 @@ ThreadPool::ThreadPool(size_t threads) : stop_(false) {
   }
 }
 
-ThreadPool::~ThreadPool() {
+void ThreadPool::Shutdown() {
   {
     std::unique_lock<std::mutex> lock(queue_mutex_);
+    if (stop_) return;
     stop_ = true;
   }
   condition_.notify_all();
@@ -51,6 +52,11 @@ ThreadPool::~ThreadPool() {
       worker.join();
     }
   }
+  workers_.clear();
+}
+
+ThreadPool::~ThreadPool() {
+  Shutdown();
 }
 
 }  // namespace geoviewer::utility

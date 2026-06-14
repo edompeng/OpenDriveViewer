@@ -90,7 +90,7 @@ void SimulationController::Start(const std::vector<odr::LaneKey>& path,
   distance_travelled_ = 0.0;
   current_pos_ = trajectory_[0].first;
   current_heading_ = trajectory_[0].second;
-  last_tick_time_ = QDateTime::currentMSecsSinceEpoch();
+  elapsed_timer_.start();
 
   emit StateChanged(is_active_);
   emit PoseUpdated(current_pos_, current_heading_);
@@ -112,9 +112,7 @@ void SimulationController::SetSpeed(float speed_mps) {
 void SimulationController::OnTick() {
   if (!is_active_ || trajectory_.size() < 2) return;
 
-  qint64 now = QDateTime::currentMSecsSinceEpoch();
-  double dt = (now - last_tick_time_) / 1000.0;
-  last_tick_time_ = now;
+  double dt = elapsed_timer_.restart() / 1000.0;
 
   distance_travelled_ += speed_mps_ * dt;
   double total_dist = traj_distances_.back();

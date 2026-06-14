@@ -1,7 +1,7 @@
 #pragma once
 
 #include <proj.h>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include "src/geo_viewer_export.h"
 
@@ -26,5 +26,5 @@ class GEOVIEWER_EXPORT CoordinateUtil {
   double x_offset_ = 0.0;
   double y_offset_ = 0.0;
   uint64_t version_ = 0;
-  mutable std::mutex mutex_;
+  mutable std::shared_mutex mutex_;
 };

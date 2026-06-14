@@ -14,6 +14,7 @@ namespace geoviewer::utility {
 class ThreadPool {
  public:
   static ThreadPool& Instance();
+  void Shutdown();
 
   // Disable copy and move
   ThreadPool(const ThreadPool&) = delete;

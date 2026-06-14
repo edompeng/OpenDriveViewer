@@ -373,14 +373,13 @@ void GeoViewerWidget::StartSpatialIndexBuild() {
   auto network_mesh = network_mesh_;
   auto junction_mesh = junction_mesh_;
   auto signal_id_to_road_id = signal_id_to_road_id_; // copy for thread safety
-  auto facility_mesh = facility_mesh_.get();
+  auto facility_mesh = facility_mesh_;
 
   QPointer<GeoViewerWidget> weak_self(this);
 
   geoviewer::utility::ThreadPool::Instance().Enqueue(
       [map, network_mesh, junction_mesh, signal_id_to_road_id, facility_mesh, generation, weak_self]() {
-        auto result = BuildSpatialIndexData(map, *network_mesh, *junction_mesh, signal_id_to_road_id, facility_mesh);
-        if (!weak_self) return;
+        auto result = BuildSpatialIndexData(map, *network_mesh, *junction_mesh, signal_id_to_road_id, facility_mesh.get());
         QMetaObject::invokeMethod(
             weak_self, [weak_self, res = std::move(result), generation]() mutable {
               if (!weak_self) return;

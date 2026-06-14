@@ -385,8 +385,8 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
   }
 
   result.junctions.reserve(member_by_id.size());
-  for (const auto& id_and_member : member_by_id) {
-    result.junctions.push_back(id_and_member.second);
+  for (auto& id_and_member : member_by_id) {
+    result.junctions.push_back(std::move(id_and_member.second));
   }
   std::sort(
       result.junctions.begin(), result.junctions.end(),
@@ -434,8 +434,6 @@ JunctionClusterResult JunctionClusterUtil::Analyze(
     auto& group = root_and_group.second;
     std::sort(group.junction_ids.begin(), group.junction_ids.end());
 
-    std::unordered_set<std::string> group_junction_ids(
-        group.junction_ids.begin(), group.junction_ids.end());
     std::unordered_map<std::string, JunctionArmInfo> boundary_arms_by_road;
     boundary_arms_by_road.reserve(group.boundary_arms.size());
     for (const auto& arm : group.boundary_arms) {

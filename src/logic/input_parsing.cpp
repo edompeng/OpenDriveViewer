@@ -1,5 +1,5 @@
 #include "src/logic/input_parsing.h"
-
+#include <charconv>
 #include <cctype>
 #include <cstdlib>
 
@@ -56,25 +56,23 @@ std::vector<std::string> SplitBySpace(const std::string& input) {
 }
 
 bool ParseDouble(const std::string& text, double* out) {
-  if (out == nullptr) {
+  if (out == nullptr || text.empty()) {
     return false;
   }
-  char* end = nullptr;
-  *out = std::strtod(text.c_str(), &end);
-  return end != nullptr && *end == '\0';
+  const char* first = text.data();
+  const char* last = text.data() + text.size();
+  auto [ptr, ec] = std::from_chars(first, last, *out);
+  return ec == std::errc() && ptr == last;
 }
 
 bool ParseInt(const std::string& text, int* out) {
-  if (out == nullptr) {
+  if (out == nullptr || text.empty()) {
     return false;
   }
-  char* end = nullptr;
-  const long value = std::strtol(text.c_str(), &end, 10);
-  if (end == nullptr || *end != '\0') {
-    return false;
-  }
-  *out = static_cast<int>(value);
-  return true;
+  const char* first = text.data();
+  const char* last = text.data() + text.size();
+  auto [ptr, ec] = std::from_chars(first, last, *out);
+  return ec == std::errc() && ptr == last;
 }
 
 }  // namespace

@@ -4,6 +4,7 @@
 #include <QLocale>
 #include <QTranslator>
 #include "src/core/crash_handler.h"
+#include "src/core/thread_pool.h"
 #include "src/ui/main_window.h"
 
 int main(int argc, char **argv) {
@@ -25,5 +26,7 @@ int main(int argc, char **argv) {
   MainWindow w;
   w.resize(1465, 880);
   w.show();
-  return app.exec();
+  int exit_code = app.exec();
+  geoviewer::utility::ThreadPool::Instance().Shutdown();
+  return exit_code;
 }

@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QVector3D>
 #include <memory>
 #include <vector>
@@ -49,7 +50,7 @@ class GEOVIEWER_EXPORT SimulationController : public QObject {
   float speed_mps_ = 15.0f;
   QVector3D current_pos_{0, 0, 0};
   float current_heading_ = 0.0f;
-  qint64 last_tick_time_ = 0;
+  QElapsedTimer elapsed_timer_;
   double distance_travelled_ = 0.0;
   std::vector<double> traj_distances_;
 };
