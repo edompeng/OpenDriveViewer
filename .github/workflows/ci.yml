@@ -439,6 +439,13 @@ jobs:
         if: matrix.build_system == 'cmake'
         shell: bash
         run: |
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
+            QT_BIN_DIR=$(echo "$QT_ROOT_DIR/bin" | tr '\\' '/')
+            VCPKG_BIN_DIR=$(echo "${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}/bin" | tr '\\' '/')
+            echo "Copying DLLs to build/bin..."
+            cp "$QT_BIN_DIR"/*.dll build/bin/
+            cp "$VCPKG_BIN_DIR"/*.dll build/bin/
+          fi
           cd build
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             xvfb-run --auto-servernum ctest -C RelWithDebInfo --output-on-failure
