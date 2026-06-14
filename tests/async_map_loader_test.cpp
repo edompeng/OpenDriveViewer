@@ -3,10 +3,7 @@
 #include <QCoreApplication>
 #include <QDeadlineTimer>
 #include <QThread>
-
-#ifndef GEOVIEWER_SOURCE_DIR
-#  define GEOVIEWER_SOURCE_DIR "."
-#endif
+#include "tests/test_helpers.h"
 
 TEST(AsyncMapLoaderTest, LoadMapAsync) {
   int argc = 0;
@@ -33,7 +30,7 @@ TEST(AsyncMapLoaderTest, LoadMapAsync) {
                      }
                    });
 
-  std::string map_path = std::string(GEOVIEWER_SOURCE_DIR) + "/data/test2.xodr";
+  std::string map_path = geoviewer::test::FindTestData("data/test2.xodr");
   map_loader.Start(QString::fromStdString(map_path));
 
   EXPECT_TRUE(map_loader.IsRunning());

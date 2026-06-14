@@ -16,6 +16,7 @@ COMMON_DATA = ["//:test_data"]
 cc_test(
     name = "ViewerCoreTests",
     srcs = [
+        "test_helpers.h",
         "camera_controller_test.cpp",
         "crash_handler_test.cpp",
         "event_bus_test.cpp",
@@ -42,7 +43,10 @@ cc_test(
 
 cc_test(
     name = "CoordinateModePolicyTests",
-    srcs = ["coordinate_mode_policy_test.cpp"],
+    srcs = [
+        "test_helpers.h",
+        "coordinate_mode_policy_test.cpp",
+    ],
     copts = QT_COPTS,
     data = COMMON_DATA,
     defines = COMMON_DEFINES,
@@ -51,7 +55,10 @@ cc_test(
 
 cc_test(
     name = "MeasureToolTests",
-    srcs = ["measure_tool_controller_test.cpp"],
+    srcs = [
+        "test_helpers.h",
+        "measure_tool_controller_test.cpp",
+    ],
     copts = QT_COPTS,
     data = COMMON_DATA,
     defines = COMMON_DEFINES,

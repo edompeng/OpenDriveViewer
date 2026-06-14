@@ -2,10 +2,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include "OpenDriveMap.h"
-
-#ifndef GEOVIEWER_SOURCE_DIR
-#  define GEOVIEWER_SOURCE_DIR "."
-#endif
+#include "tests/test_helpers.h"
 
 // Compatibility helper since M_PI is standard but we want to avoid warnings
 #ifndef M_PI
@@ -45,7 +42,7 @@ TEST(JunctionGroupingTest, BoxDistanceAndOverlap) {
 }
 
 TEST(JunctionGroupingTest, AnalyzeTestMap) {
-  std::string map_path = std::string(GEOVIEWER_SOURCE_DIR) + "/data/test2.xodr";
+  std::string map_path = geoviewer::test::FindTestData("data/test2.xodr");
   auto map = std::make_shared<odr::OpenDriveMap>(map_path);
 
   auto result = JunctionClusterUtil::Analyze(*map);

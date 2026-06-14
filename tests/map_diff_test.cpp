@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 #include "OpenDriveMap.h"
 #include "src/logic/map_diff_analyzer.h"
+#include "tests/test_helpers.h"
 
 TEST(MapDiffTest, EmptyAnalyze) {
   using namespace geoviewer::logic;
-  std::string map_path = std::string(GEOVIEWER_SOURCE_DIR) + "/data/test2.xodr";
+  std::string map_path = geoviewer::test::FindTestData("data/test2.xodr");
   auto base = std::make_shared<odr::OpenDriveMap>(map_path);
   auto target = std::make_shared<odr::OpenDriveMap>(map_path);
 
@@ -16,7 +17,7 @@ TEST(MapDiffTest, EmptyAnalyze) {
 
 TEST(MapDiffTest, NullInputs) {
   using namespace geoviewer::logic;
-  std::string map_path = std::string(GEOVIEWER_SOURCE_DIR) + "/data/test2.xodr";
+  std::string map_path = geoviewer::test::FindTestData("data/test2.xodr");
   auto base = std::make_shared<odr::OpenDriveMap>(map_path);
   
   auto diff1 = MapDiffAnalyzer::Analyze(nullptr, base);

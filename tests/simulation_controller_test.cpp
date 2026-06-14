@@ -4,17 +4,14 @@
 #include <QDeadlineTimer>
 #include <QThread>
 #include "OpenDriveMap.h"
-
-#ifndef GEOVIEWER_SOURCE_DIR
-#  define GEOVIEWER_SOURCE_DIR "."
-#endif
+#include "tests/test_helpers.h"
 
 TEST(SimulationControllerTest, BasicSimulationFlow) {
   int argc = 0;
   char* argv[] = {nullptr};
   QCoreApplication app(argc, argv);
 
-  std::string map_path = std::string(GEOVIEWER_SOURCE_DIR) + "/data/test2.xodr";
+  std::string map_path = geoviewer::test::FindTestData("data/test2.xodr");
   auto map = std::make_shared<odr::OpenDriveMap>(map_path);
 
   // Find a valid driving lane to simulate
