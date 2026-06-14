@@ -10,99 +10,71 @@
 #include "src/core/coordinate_util.h"
 #include "src/core/thread_pool.h"
 
-namespace {
+namespace geoviewer::core {
 
-odr::RoadNetworkMesh GenerateRoadNetworkMeshParallel(
-    const std::shared_ptr<odr::OpenDriveMap>& map, double eps) {
-  if (!map || map->id_to_road.empty()) {
-    return odr::RoadNetworkMesh();
+odr::RoadNetworkMesh GenerateSingleRoadMesh(const odr::Road& road, double eps) {
+  odr::RoadNetworkMesh out_mesh;
+  odr::LanesMesh& lanes_mesh = out_mesh.lanes_mesh;
+  odr::RoadmarksMesh& roadmarks_mesh = out_mesh.roadmarks_mesh;
+  odr::RoadObjectsMesh& road_objects_mesh = out_mesh.road_objects_mesh;
+  odr::RoadSignalsMesh& road_signals_mesh = out_mesh.road_signals_mesh;
+
+  lanes_mesh.road_start_indices[lanes_mesh.vertices.size()] = road.id;
+  roadmarks_mesh.road_start_indices[roadmarks_mesh.vertices.size()] = road.id;
+  road_objects_mesh.road_start_indices[road_objects_mesh.vertices.size()] = road.id;
+
+  for (const auto& s_lanesec : road.s_to_lanesection) {
+    const odr::LaneSection& lanesec = s_lanesec.second;
+    lanes_mesh.lanesec_start_indices[lanes_mesh.vertices.size()] = lanesec.s0;
+    roadmarks_mesh.lanesec_start_indices[roadmarks_mesh.vertices.size()] = lanesec.s0;
+    for (const auto& id_lane : lanesec.id_to_lane) {
+      const odr::Lane& lane = id_lane.second;
+      const std::size_t lanes_idx_offset = lanes_mesh.vertices.size();
+      lanes_mesh.lane_start_indices[lanes_idx_offset] = lane.id;
+      lanes_mesh.add_mesh(road.get_lane_mesh(lane, eps));
+
+      std::size_t roadmarks_idx_offset = roadmarks_mesh.vertices.size();
+      roadmarks_mesh.lane_start_indices[roadmarks_idx_offset] = lane.id;
+      const std::vector<odr::RoadMark> roadmarks = lane.get_roadmarks(
+          lanesec.s0, road.get_lanesection_end(lanesec));
+      for (const odr::RoadMark& roadmark : roadmarks) {
+        roadmarks_idx_offset = roadmarks_mesh.vertices.size();
+        roadmarks_mesh.roadmark_type_start_indices[roadmarks_idx_offset] = roadmark.type;
+        roadmarks_mesh.add_mesh(road.get_roadmark_mesh(lane, roadmark, eps));
+      }
+    }
   }
 
-  std::vector<std::future<odr::RoadNetworkMesh>> futures;
-  futures.reserve(map->id_to_road.size());
-
-  for (const auto& [road_id, road] : map->id_to_road) {
-    futures.push_back(geoviewer::utility::ThreadPool::Instance().Enqueue(
-        [road_ptr = &road, eps]() {
-          odr::RoadNetworkMesh out_mesh;
-          odr::LanesMesh& lanes_mesh = out_mesh.lanes_mesh;
-          odr::RoadmarksMesh& roadmarks_mesh = out_mesh.roadmarks_mesh;
-          odr::RoadObjectsMesh& road_objects_mesh = out_mesh.road_objects_mesh;
-          odr::RoadSignalsMesh& road_signals_mesh = out_mesh.road_signals_mesh;
-
-          lanes_mesh.road_start_indices[lanes_mesh.vertices.size()] =
-              road_ptr->id;
-          roadmarks_mesh.road_start_indices[roadmarks_mesh.vertices.size()] =
-              road_ptr->id;
-          road_objects_mesh
-              .road_start_indices[road_objects_mesh.vertices.size()] =
-              road_ptr->id;
-
-          for (const auto& s_lanesec : road_ptr->s_to_lanesection) {
-            const odr::LaneSection& lanesec = s_lanesec.second;
-            lanes_mesh.lanesec_start_indices[lanes_mesh.vertices.size()] =
-                lanesec.s0;
-            roadmarks_mesh
-                .lanesec_start_indices[roadmarks_mesh.vertices.size()] =
-                lanesec.s0;
-            for (const auto& id_lane : lanesec.id_to_lane) {
-              const odr::Lane& lane = id_lane.second;
-              const std::size_t lanes_idx_offset = lanes_mesh.vertices.size();
-              lanes_mesh.lane_start_indices[lanes_idx_offset] = lane.id;
-              lanes_mesh.add_mesh(road_ptr->get_lane_mesh(lane, eps));
-
-              std::size_t roadmarks_idx_offset = roadmarks_mesh.vertices.size();
-              roadmarks_mesh.lane_start_indices[roadmarks_idx_offset] = lane.id;
-              const std::vector<odr::RoadMark> roadmarks = lane.get_roadmarks(
-                  lanesec.s0, road_ptr->get_lanesection_end(lanesec));
-              for (const odr::RoadMark& roadmark : roadmarks) {
-                roadmarks_idx_offset = roadmarks_mesh.vertices.size();
-                roadmarks_mesh
-                    .roadmark_type_start_indices[roadmarks_idx_offset] =
-                    roadmark.type;
-                roadmarks_mesh.add_mesh(
-                    road_ptr->get_roadmark_mesh(lane, roadmark, eps));
-              }
-            }
-          }
-
-          for (const auto& id_road_object : road_ptr->id_to_object) {
-            const odr::RoadObject& road_object = id_road_object.second;
-            const std::size_t road_objs_idx_offset =
-                road_objects_mesh.vertices.size();
-            road_objects_mesh.road_object_start_indices[road_objs_idx_offset] =
-                road_object.id;
-            road_objects_mesh.add_mesh(
-                road_ptr->get_road_object_mesh(road_object, eps));
-          }
-
-          for (const auto& id_signal : road_ptr->id_to_signal) {
-            const odr::RoadSignal& road_signal = id_signal.second;
-            const std::size_t signals_idx_offset =
-                road_signals_mesh.vertices.size();
-            road_signals_mesh.road_signal_start_indices[signals_idx_offset] =
-                road_signal.id;
-            road_signals_mesh.add_mesh(
-                road_ptr->get_road_signal_mesh(road_signal));
-          }
-
-          return out_mesh;
-        }));
+  for (const auto& id_road_object : road.id_to_object) {
+    const odr::RoadObject& road_object = id_road_object.second;
+    const std::size_t road_objs_idx_offset = road_objects_mesh.vertices.size();
+    road_objects_mesh.road_object_start_indices[road_objs_idx_offset] = road_object.id;
+    road_objects_mesh.add_mesh(road.get_road_object_mesh(road_object, eps));
   }
 
+  for (const auto& id_signal : road.id_to_signal) {
+    const odr::RoadSignal& road_signal = id_signal.second;
+    const std::size_t signals_idx_offset = road_signals_mesh.vertices.size();
+    road_signals_mesh.road_signal_start_indices[signals_idx_offset] = road_signal.id;
+    road_signals_mesh.add_mesh(road.get_road_signal_mesh(road_signal));
+  }
+
+  return out_mesh;
+}
+
+odr::RoadNetworkMesh MergeRoadMeshes(
+    const std::map<std::string, odr::RoadNetworkMesh>& road_id_to_mesh) {
   odr::RoadNetworkMesh combined_mesh;
 
-  for (auto& fut : futures) {
-    odr::RoadNetworkMesh road_mesh = fut.get();
-
+  for (const auto& [road_id, road_mesh] : road_id_to_mesh) {
     // Merge lanes_mesh
     {
       const std::size_t offset = combined_mesh.lanes_mesh.vertices.size();
       combined_mesh.lanes_mesh.add_mesh(road_mesh.lanes_mesh);
-      for (const auto& [local_idx, road_id] :
+      for (const auto& [local_idx, r_id] :
            road_mesh.lanes_mesh.road_start_indices) {
         combined_mesh.lanes_mesh.road_start_indices[local_idx + offset] =
-            road_id;
+            r_id;
       }
       for (const auto& [local_idx, lanesec_s0] :
            road_mesh.lanes_mesh.lanesec_start_indices) {
@@ -120,10 +92,10 @@ odr::RoadNetworkMesh GenerateRoadNetworkMeshParallel(
     {
       const std::size_t offset = combined_mesh.roadmarks_mesh.vertices.size();
       combined_mesh.roadmarks_mesh.add_mesh(road_mesh.roadmarks_mesh);
-      for (const auto& [local_idx, road_id] :
+      for (const auto& [local_idx, r_id] :
            road_mesh.roadmarks_mesh.road_start_indices) {
         combined_mesh.roadmarks_mesh.road_start_indices[local_idx + offset] =
-            road_id;
+            r_id;
       }
       for (const auto& [local_idx, lanesec_s0] :
            road_mesh.roadmarks_mesh.lanesec_start_indices) {
@@ -147,10 +119,10 @@ odr::RoadNetworkMesh GenerateRoadNetworkMeshParallel(
       const std::size_t offset =
           combined_mesh.road_objects_mesh.vertices.size();
       combined_mesh.road_objects_mesh.add_mesh(road_mesh.road_objects_mesh);
-      for (const auto& [local_idx, road_id] :
+      for (const auto& [local_idx, r_id] :
            road_mesh.road_objects_mesh.road_start_indices) {
         combined_mesh.road_objects_mesh.road_start_indices[local_idx + offset] =
-            road_id;
+            r_id;
       }
       for (const auto& [local_idx, obj_id] :
            road_mesh.road_objects_mesh.road_object_start_indices) {
@@ -164,10 +136,10 @@ odr::RoadNetworkMesh GenerateRoadNetworkMeshParallel(
       const std::size_t offset =
           combined_mesh.road_signals_mesh.vertices.size();
       combined_mesh.road_signals_mesh.add_mesh(road_mesh.road_signals_mesh);
-      for (const auto& [local_idx, road_id] :
+      for (const auto& [local_idx, r_id] :
            road_mesh.road_signals_mesh.road_start_indices) {
         combined_mesh.road_signals_mesh.road_start_indices[local_idx + offset] =
-            road_id;
+            r_id;
       }
       for (const auto& [local_idx, sig_id] :
            road_mesh.road_signals_mesh.road_signal_start_indices) {
@@ -180,7 +152,32 @@ odr::RoadNetworkMesh GenerateRoadNetworkMeshParallel(
   return combined_mesh;
 }
 
-}  // namespace
+std::map<std::string, odr::RoadNetworkMesh> GenerateRoadNetworkMeshParallel(
+    const std::shared_ptr<odr::OpenDriveMap>& map, double eps) {
+  if (!map || map->id_to_road.empty()) {
+    return {};
+  }
+
+  std::vector<std::pair<std::string, std::future<odr::RoadNetworkMesh>>> futures;
+  futures.reserve(map->id_to_road.size());
+
+  for (const auto& [road_id, road] : map->id_to_road) {
+    const odr::Road* road_ptr = &road;
+    futures.push_back({road_id, geoviewer::utility::ThreadPool::Instance().Enqueue(
+        [road_ptr, eps]() {
+          return geoviewer::core::GenerateSingleRoadMesh(*road_ptr, eps);
+        })});
+  }
+
+  std::map<std::string, odr::RoadNetworkMesh> road_id_to_mesh;
+  for (auto& [road_id, fut] : futures) {
+    road_id_to_mesh[road_id] = fut.get();
+  }
+
+  return road_id_to_mesh;
+}
+
+}  // namespace geoviewer::core
 
 MapSceneData OpenDriveMapSceneLoader::Load(
     const std::string& path,
@@ -215,7 +212,8 @@ MapSceneData OpenDriveMapSceneLoader::Load(
           0.60f,
           "Generating road network mesh (this may take a few seconds)...");
     }
-    data.mesh = GenerateRoadNetworkMeshParallel(data.map, 0.75);
+    data.road_id_to_mesh = geoviewer::core::GenerateRoadNetworkMeshParallel(data.map, 0.75);
+    data.mesh = geoviewer::core::MergeRoadMeshes(data.road_id_to_mesh);
 
     if (progress_callback) {
       progress_callback(0.85f, "Building routing graph topology...");

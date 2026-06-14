@@ -1,5 +1,4 @@
 #include "src/ui/widgets/geo_viewer.h"
-#include "src/logic/simulation_controller.h"
 #include <QContextMenuEvent>
 #include <QDebug>
 #include <QFileInfo>
@@ -13,10 +12,18 @@
 #include "src/core/coordinate_util.h"
 #include "src/core/thread_pool.h"
 #include "src/logic/scene_index_builder.h"
+#include "src/logic/simulation_controller.h"
 #include "src/logic/spatial_index.h"
 
 GeoViewerWidget::GeoViewerWidget(QWidget* parent)
-    : QOpenGLWidget(parent), right_hand_traffic_(true) {
+    : QOpenGLWidget(parent),
+      right_hand_traffic_(true),
+      scene_min_bound_(std::numeric_limits<float>::max(),
+                       std::numeric_limits<float>::max(),
+                       std::numeric_limits<float>::max()),
+      scene_max_bound_(std::numeric_limits<float>::lowest(),
+                       std::numeric_limits<float>::lowest(),
+                       std::numeric_limits<float>::lowest()) {
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
 
@@ -366,6 +373,7 @@ void GeoViewerWidget::UpdateMeasureBuffers() {
 void GeoViewerWidget::SetRightHandTraffic(bool rht) {
   if (right_hand_traffic_ == rht) return;
   right_hand_traffic_ = rht;
+  ClearRefLineCache();
   if (map_) {
     // NOTE: For a full toggle, the mesh would need re-initialization from the
     // original data. Since we are removing the UI toggle, we assume this stays
@@ -389,14 +397,21 @@ void GeoViewerWidget::UpdateMeshIndices() {
   };
   std::array<LayerTasks, kLayerCount> layerData;
 
-  auto collectLayerData = [&](LayerType type,
+  std::array<size_t, kLayerCount> vertex_offsets;
+  for (int i = 0; i < kLayerCount; ++i) {
+    vertex_offsets[i] =
+        gl_renderer_->GetLayerVertexOffset(static_cast<LayerType>(i));
+  }
+
+  auto collectLayerData = [this](
+                              LayerType /*type*/, size_t vertex_offset,
                               const std::vector<SceneCachedElement>& elements,
                               const std::vector<uint32_t>& original_indices,
-                              const odr::Mesh3D* base_mesh) {
-    if (!base_mesh) return;
+                              const odr::Mesh3D* base_mesh) -> LayerTasks {
+    if (!base_mesh) return {};
     const SceneLayerIndexResult result = BuildSceneLayerIndex(
-        elements, original_indices, gl_renderer_->GetLayerVertexOffset(type),
-        *base_mesh, [this](const SceneCachedElement& element) {
+        elements, original_indices, vertex_offset, *base_mesh,
+        [this](const SceneCachedElement& element) {
           if (hidden_elements_.count(element.road_key)) return false;
           if (!element.group_key.empty() &&
               hidden_elements_.count(element.group_key)) {
@@ -408,45 +423,58 @@ void GeoViewerWidget::UpdateMeshIndices() {
           }
           return true;
         });
-    layerData[static_cast<int>(type)] = {result.indices, result.chunks};
+    return {result.indices, result.chunks};
   };
 
   auto& pool = geoviewer::utility::ThreadPool::Instance();
-  std::vector<std::future<void>> futures;
-  futures.reserve(6);
-  futures.push_back(pool.Enqueue([&]() {
-    collectLayerData(LayerType::kLanes, lane_element_items_,
-                     network_mesh.lanes_mesh.indices, &network_mesh.lanes_mesh);
-  }));
-  futures.push_back(pool.Enqueue([&]() {
-    collectLayerData(LayerType::kRoadmarks, roadmark_element_items_,
-                     network_mesh.roadmarks_mesh.indices,
-                     &network_mesh.roadmarks_mesh);
-  }));
-  futures.push_back(pool.Enqueue([&]() {
-    collectLayerData(LayerType::kObjects, object_element_items_,
-                     network_mesh.road_objects_mesh.indices,
-                     &network_mesh.road_objects_mesh);
-  }));
-  futures.push_back(pool.Enqueue([&]() {
-    collectLayerData(
-        LayerType::kFacilities, facility_element_items_,
-        facility_mesh_ ? facility_mesh_->indices : std::vector<uint32_t>{},
-        facility_mesh_.get());
-  }));
-  futures.push_back(pool.Enqueue([&]() {
-    // Junction groups need a specialized predicate: individual junctions use
-    // "J:group_id:junction_id" keys which the generic predicate doesn't check.
-    // We only hide a group's mesh if the group itself is hidden OR ALL its
-    // individual junctions are hidden.
-    const SceneLayerIndexResult result = BuildSceneLayerIndex(
-        junction_element_items_, junction_mesh.indices,
-        gl_renderer_->GetLayerVertexOffset(LayerType::kJunctions),
-        junction_mesh, [this](const SceneCachedElement& element) {
-          // Check group-level visibility (JG:group_id)
-          if (hidden_elements_.count(element.road_key)) return false;
+  std::vector<std::future<std::pair<LayerType, LayerTasks>>> futures;
+  futures.reserve(7);
 
-          // Extract group_id from road_key "JG:xxx"
+  size_t lanes_offset = vertex_offsets[static_cast<int>(LayerType::kLanes)];
+  futures.push_back(pool.Enqueue([=, &network_mesh]() {
+    auto tasks = collectLayerData(
+        LayerType::kLanes, lanes_offset, lane_element_items_,
+        network_mesh.lanes_mesh.indices, &network_mesh.lanes_mesh);
+    return std::make_pair(LayerType::kLanes, std::move(tasks));
+  }));
+
+  size_t roadmarks_offset =
+      vertex_offsets[static_cast<int>(LayerType::kRoadmarks)];
+  futures.push_back(pool.Enqueue([=, &network_mesh]() {
+    auto tasks = collectLayerData(
+        LayerType::kRoadmarks, roadmarks_offset, roadmark_element_items_,
+        network_mesh.roadmarks_mesh.indices, &network_mesh.roadmarks_mesh);
+    return std::make_pair(LayerType::kRoadmarks, std::move(tasks));
+  }));
+
+  size_t objects_offset = vertex_offsets[static_cast<int>(LayerType::kObjects)];
+  futures.push_back(pool.Enqueue([=, &network_mesh]() {
+    auto tasks = collectLayerData(LayerType::kObjects, objects_offset,
+                                  object_element_items_,
+                                  network_mesh.road_objects_mesh.indices,
+                                  &network_mesh.road_objects_mesh);
+    return std::make_pair(LayerType::kObjects, std::move(tasks));
+  }));
+
+  size_t facilities_offset =
+      vertex_offsets[static_cast<int>(LayerType::kFacilities)];
+  auto facility_mesh_ptr = facility_mesh_.get();
+  futures.push_back(pool.Enqueue([=]() {
+    auto tasks = collectLayerData(LayerType::kFacilities, facilities_offset,
+                                  facility_element_items_,
+                                  facility_mesh_ptr ? facility_mesh_ptr->indices
+                                                    : std::vector<uint32_t>{},
+                                  facility_mesh_ptr);
+    return std::make_pair(LayerType::kFacilities, std::move(tasks));
+  }));
+
+  size_t junctions_offset =
+      vertex_offsets[static_cast<int>(LayerType::kJunctions)];
+  futures.push_back(pool.Enqueue([=, &junction_mesh]() {
+    const SceneLayerIndexResult result = BuildSceneLayerIndex(
+        junction_element_items_, junction_mesh.indices, junctions_offset,
+        junction_mesh, [this](const SceneCachedElement& element) {
+          if (hidden_elements_.count(element.road_key)) return false;
           if (element.road_key.size() <= 3) return true;
           std::string group_id = element.road_key.substr(3);
 
@@ -470,10 +498,13 @@ void GeoViewerWidget::UpdateMeshIndices() {
           }
           return true;
         });
-    layerData[static_cast<int>(LayerType::kJunctions)] = {result.indices,
-                                                          result.chunks};
+    return std::make_pair(LayerType::kJunctions,
+                          LayerTasks{result.indices, result.chunks});
   }));
-  futures.push_back(pool.Enqueue([&]() {
+
+  size_t signal_lights_offset =
+      vertex_offsets[static_cast<int>(LayerType::kSignalLights)];
+  futures.push_back(pool.Enqueue([=, &network_mesh]() {
     std::vector<uint32_t> indices;
     std::size_t estimated = 0;
     std::vector<SceneCachedElement> visible_elements;
@@ -490,22 +521,24 @@ void GeoViewerWidget::UpdateMeshIndices() {
       }
     }
     indices.reserve(estimated);
-    size_t v_offset =
-        gl_renderer_->GetLayerVertexOffset(LayerType::kSignalLights);
     for (const auto& el : visible_elements) {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
               network_mesh.road_signals_mesh.indices[range.start * 3 + k] +
-              static_cast<uint32_t>(v_offset));
+              static_cast<uint32_t>(signal_lights_offset));
         }
       }
     }
-    layerData[static_cast<int>(LayerType::kSignalLights)].indices = indices;
-    layerData[static_cast<int>(LayerType::kSignalLights)].chunks =
-        BuildSceneMeshChunks(indices, v_offset, network_mesh.road_signals_mesh);
+    auto chunks = BuildSceneMeshChunks(indices, signal_lights_offset,
+                                       network_mesh.road_signals_mesh);
+    return std::make_pair(LayerType::kSignalLights,
+                          LayerTasks{std::move(indices), std::move(chunks)});
   }));
-  futures.push_back(pool.Enqueue([&]() {
+
+  size_t signal_signs_offset =
+      vertex_offsets[static_cast<int>(LayerType::kSignalSigns)];
+  futures.push_back(pool.Enqueue([=, &network_mesh]() {
     std::vector<uint32_t> indices;
     std::size_t estimated = 0;
     std::vector<SceneCachedElement> visible_elements;
@@ -522,23 +555,25 @@ void GeoViewerWidget::UpdateMeshIndices() {
       }
     }
     indices.reserve(estimated);
-    size_t v_offset =
-        gl_renderer_->GetLayerVertexOffset(LayerType::kSignalSigns);
     for (const auto& el : visible_elements) {
       for (const auto& range : el.ranges) {
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
               network_mesh.road_signals_mesh.indices[range.start * 3 + k] +
-              static_cast<uint32_t>(v_offset));
+              static_cast<uint32_t>(signal_signs_offset));
         }
       }
     }
-    layerData[static_cast<int>(LayerType::kSignalSigns)].indices = indices;
-    layerData[static_cast<int>(LayerType::kSignalSigns)].chunks =
-        BuildSceneMeshChunks(indices, v_offset, network_mesh.road_signals_mesh);
+    auto chunks = BuildSceneMeshChunks(indices, signal_signs_offset,
+                                       network_mesh.road_signals_mesh);
+    return std::make_pair(LayerType::kSignalSigns,
+                          LayerTasks{std::move(indices), std::move(chunks)});
   }));
 
-  for (auto& f : futures) f.get();
+  for (auto& f : futures) {
+    auto res = f.get();
+    layerData[static_cast<int>(res.first)] = std::move(res.second);
+  }
 
   bool was_current = (QOpenGLContext::currentContext() == context());
   if (!was_current) makeCurrent();

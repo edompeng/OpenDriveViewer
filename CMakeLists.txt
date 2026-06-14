@@ -170,6 +170,17 @@ macro(add_geoviewer_test name)
   endif()
 
   add_test(NAME ${name} COMMAND ${name})
+  if(WIN32)
+    set(TEST_PATH "$<TARGET_FILE_DIR:Qt6::Core>")
+    if(PROJ_ROOT)
+      set(TEST_PATH "${TEST_PATH}\\;${PROJ_ROOT}/bin")
+    elseif(DEFINED ENV{PROJ_ROOT})
+      set(TEST_PATH "${TEST_PATH}\\;$ENV{PROJ_ROOT}/bin")
+    endif()
+    set(ENV_PATH "$ENV{PATH}")
+    string(REPLACE ";" "\\;" ENV_PATH_ESC "${ENV_PATH}")
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT "PATH=${TEST_PATH}\\;${ENV_PATH_ESC}")
+  endif()
 endmacro()
 
 add_geoviewer_test(
@@ -191,4 +202,5 @@ add_geoviewer_test(
   tests/simulation_controller_test.cpp
   tests/junction_grouping_test.cpp
   tests/async_map_loader_test.cpp
+  tests/map_loader_test.cpp
   ${GEOVIEWER_APP_TEST_SOURCES})

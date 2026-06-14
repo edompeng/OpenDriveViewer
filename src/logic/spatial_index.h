@@ -38,7 +38,7 @@ struct BVHNode {
 
 struct SpatialIndexData {
   std::vector<BVHNode> nodes;
-  std::vector<uint32_t> flat_indices;
+  std::vector<uint64_t> flat_indices;
   bool is_ready = false;
 };
 

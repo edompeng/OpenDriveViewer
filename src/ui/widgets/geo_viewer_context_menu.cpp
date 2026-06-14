@@ -152,27 +152,27 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
     set_end_routing = menu.addAction(tr("🏁 Set as routing end"));
   }
 
-  QAction* copy_lane_xml = nullptr;
-  QAction* copy_road_xml = nullptr;
-  QAction* copy_object_xml = nullptr;
-  QAction* copy_signal_xml = nullptr;
+  QAction* show_lane_xml = nullptr;
+  QAction* show_road_xml = nullptr;
+  QAction* show_object_xml = nullptr;
+  QAction* show_signal_xml = nullptr;
 
   if (picked_idx && map_) {
     menu.addSeparator();
     if (picked_idx->layer == LayerType::kLanes) {
-      copy_lane_xml = menu.addAction(tr("Copy Lane XML"));
-      copy_road_xml = menu.addAction(tr("Copy Road XML"));
+      show_lane_xml = menu.addAction(tr("Show Lane XML"));
+      show_road_xml = menu.addAction(tr("Show Road XML"));
     } else if (picked_idx->layer == LayerType::kObjects ||
                picked_idx->layer == LayerType::kRoadmarks ||
                picked_idx->layer == LayerType::kFacilities) {
-      copy_object_xml = menu.addAction(tr("Copy Object XML"));
-      copy_road_xml = menu.addAction(tr("Copy Road XML"));
+      show_object_xml = menu.addAction(tr("Show Object XML"));
+      show_road_xml = menu.addAction(tr("Show Road XML"));
     } else if (picked_idx->layer == LayerType::kSignalLights ||
                picked_idx->layer == LayerType::kSignalSigns) {
-      copy_signal_xml = menu.addAction(tr("Copy Signal XML"));
-      copy_road_xml = menu.addAction(tr("Copy Road XML"));
+      show_signal_xml = menu.addAction(tr("Show Signal XML"));
+      show_road_xml = menu.addAction(tr("Show Road XML"));
     } else if (picked_idx->layer == LayerType::kRoadmarks) {
-      copy_road_xml = menu.addAction(tr("Copy Road XML"));
+      show_road_xml = menu.addAction(tr("Show Road XML"));
     }
   }
 
@@ -281,12 +281,13 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
       emit RoutingEndRequested(lane_pos.trimmed());
     }
   } else if (selected != nullptr &&
-             (selected == copy_lane_xml || selected == copy_road_xml ||
-              selected == copy_object_xml || selected == copy_signal_xml)) {
+             (selected == show_lane_xml || selected == show_road_xml ||
+              selected == show_object_xml || selected == show_signal_xml)) {
     size_t vi = picked_idx->vertex_index;
     std::string xml_str;
+    geoviewer::ui::XmlTarget xml_target;
 
-    if (selected == copy_road_xml) {
+    if (selected == show_road_xml) {
       std::string road_id;
       if (picked_idx->layer == LayerType::kLanes) {
         road_id = network_mesh_->lanes_mesh.get_road_id(vi);
@@ -304,6 +305,8 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
       }
 
       if (!road_id.empty()) {
+        xml_target.type = geoviewer::ui::XmlTargetType::kRoad;
+        xml_target.road_id = road_id;
         for (pugi::xml_node node :
              map_->xml_doc.child("OpenDRIVE").children("road")) {
           if (node.attribute("id").value() == road_id) {
@@ -314,10 +317,15 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
           }
         }
       }
-    } else if (selected == copy_lane_xml) {
+    } else if (selected == show_lane_xml) {
       std::string road_id = network_mesh_->lanes_mesh.get_road_id(vi);
       double s0 = network_mesh_->lanes_mesh.get_lanesec_s0(vi);
       int lane_id = network_mesh_->lanes_mesh.get_lane_id(vi);
+
+      xml_target.type = geoviewer::ui::XmlTargetType::kLane;
+      xml_target.road_id = road_id;
+      xml_target.lane_s0 = s0;
+      xml_target.lane_id = lane_id;
 
       pugi::xml_node road_node;
       for (pugi::xml_node r_node :
@@ -358,10 +366,14 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
           }
         }
       }
-    } else if (selected == copy_object_xml) {
+    } else if (selected == show_object_xml) {
       std::string road_id = network_mesh_->road_objects_mesh.get_road_id(vi);
       std::string object_id =
           network_mesh_->road_objects_mesh.get_road_object_id(vi);
+
+      xml_target.type = geoviewer::ui::XmlTargetType::kObject;
+      xml_target.road_id = road_id;
+      xml_target.element_id = object_id;
 
       pugi::xml_node road_node;
       for (pugi::xml_node r_node :
@@ -386,10 +398,14 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
           xml_str = ss.str();
         }
       }
-    } else if (selected == copy_signal_xml) {
+    } else if (selected == show_signal_xml) {
       std::string signal_id =
           network_mesh_->road_signals_mesh.get_road_signal_id(vi);
       std::string road_id = GetRoadIdBySignalId(signal_id);
+
+      xml_target.type = geoviewer::ui::XmlTargetType::kSignal;
+      xml_target.road_id = road_id;
+      xml_target.element_id = signal_id;
 
       pugi::xml_node road_node;
       for (pugi::xml_node r_node :
@@ -417,7 +433,7 @@ void GeoViewerWidget::contextMenuEvent(QContextMenuEvent* ev) {
     }
 
     if (!xml_str.empty()) {
-      QApplication::clipboard()->setText(QString::fromStdString(xml_str));
+      emit ShowXmlRequested(xml_target, QString::fromStdString(xml_str));
     }
   }
 }

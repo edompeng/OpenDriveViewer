@@ -90,7 +90,12 @@ void GlRenderer::Clear() {
     layers_[i].chunks.clear();
     layers_[i].layer_min = QVector3D(1e9f, 1e9f, 1e9f);
     layers_[i].layer_max = QVector3D(-1e9f, -1e9f, -1e9f);
+    if (layers_[i].ebo != 0) {
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, layers_[i].ebo);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, nullptr, GL_STATIC_DRAW);
+    }
   }
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 // ============ Scene Vertex Data ============

@@ -8,7 +8,7 @@ namespace geoviewer::logic {
 
 namespace {
 
-constexpr double kWidthTolerance = 0.05; // 5 cm
+constexpr double kWidthTolerance = 0.05;  // 5 cm
 
 struct LaneKeyHash {
   size_t operator()(const odr::LaneKey& k) const {
@@ -25,8 +25,10 @@ struct LaneKeyHash {
 
 struct LaneKeyEqual {
   bool operator()(const odr::LaneKey& a, const odr::LaneKey& b) const {
+    // Note: Double values of lanesection_s0 are parsed from the same XML files,
+    // so exact equality comparison is expected and correct.
     return a.road_id == b.road_id &&
-           a.lanesection_s0 == b.lanesection_s0 &&
+           std::fabs(a.lanesection_s0 - b.lanesection_s0) < 1e-6 &&
            a.lane_id == b.lane_id;
   }
 };
@@ -84,7 +86,8 @@ DiffResult MapDiffAnalyzer::Analyze(
       if (base_road_it == base_map->id_to_road.end()) continue;
       const auto& base_road = base_road_it->second;
 
-      auto base_sec_it = base_road.s_to_lanesection.find(base_it->lanesection_s0);
+      auto base_sec_it =
+          base_road.s_to_lanesection.find(base_it->lanesection_s0);
       if (base_sec_it == base_road.s_to_lanesection.end()) continue;
       const auto& base_sec = base_sec_it->second;
 
@@ -96,7 +99,8 @@ DiffResult MapDiffAnalyzer::Analyze(
       if (target_road_it == target_map->id_to_road.end()) continue;
       const auto& target_road = target_road_it->second;
 
-      auto target_sec_it = target_road.s_to_lanesection.find(key.lanesection_s0);
+      auto target_sec_it =
+          target_road.s_to_lanesection.find(key.lanesection_s0);
       if (target_sec_it == target_road.s_to_lanesection.end()) continue;
       const auto& target_sec = target_sec_it->second;
 

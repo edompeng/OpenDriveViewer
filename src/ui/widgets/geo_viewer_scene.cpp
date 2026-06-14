@@ -4,6 +4,7 @@
 
 #include <Math.hpp>
 #include <future>
+#include <limits>
 #include <tuple>
 #include <vector>
 #include "src/core/thread_pool.h"
@@ -11,16 +12,63 @@
 
 namespace {
 
-template <typename ItemContainer, typename ItemMap, typename Key,
-          typename Factory>
-void AddTriangleRange(ItemContainer& items, ItemMap& item_map, Key&& key,
-                      uint32_t triangle_index, Factory&& factory) {
-  if (item_map.find(key) == item_map.end()) {
-    item_map[key] = items.size();
-    items.push_back(factory());
+template <typename T>
+struct FastMapLookup {
+  const std::map<size_t, T>* map_ptr = nullptr;
+  size_t last_start = 0;
+  size_t last_end = 0;
+  T last_val{};
+  bool has_last = false;
+
+  void Init(const std::map<size_t, T>& m) {
+    map_ptr = &m;
+    last_start = 0;
+    last_end = 0;
+    has_last = false;
   }
 
-  auto& element = items[item_map[key]];
+  T Lookup(size_t idx) {
+    if (has_last && idx >= last_start && idx < last_end) {
+      return last_val;
+    }
+    if (!map_ptr || map_ptr->empty()) return T{};
+
+    auto it = map_ptr->upper_bound(idx);
+    if (it != map_ptr->begin()) {
+      auto prev_it = std::prev(it);
+      last_start = prev_it->first;
+      last_val = prev_it->second;
+      if (it != map_ptr->end()) {
+        last_end = it->first;
+      } else {
+        last_end = std::numeric_limits<size_t>::max();
+      }
+      has_last = true;
+      return last_val;
+    }
+    return T{};
+  }
+};
+
+template <typename ItemContainer, typename ItemMap, typename Key,
+          typename Factory>
+void AddTriangleRange(ItemContainer& items, ItemMap& item_map, const Key& key,
+                      uint32_t triangle_index, Factory&& factory,
+                      const Key*& last_key, size_t& last_index) {
+  size_t idx;
+  if (last_key && std::equal_to<Key>{}(*last_key, key)) {
+    idx = last_index;
+  } else {
+    auto [it, inserted] = item_map.try_emplace(key, items.size());
+    if (inserted) {
+      items.push_back(factory());
+    }
+    idx = it->second;
+    last_key = &it->first;
+    last_index = idx;
+  }
+
+  auto& element = items[idx];
   if (!element.ranges.empty() &&
       element.ranges.back().start + element.ranges.back().count ==
           triangle_index) {
@@ -68,13 +116,6 @@ void GeoViewerWidget::SetMapAndMesh(
   } else {
     routing_graph_ =
         std::make_shared<odr::RoutingGraph>(map_->get_routing_graph());
-  }
-
-  signal_id_to_road_id_.clear();
-  for (const auto& [road_id, road] : map_->id_to_road) {
-    for (const auto& [signal_id, signal] : road.id_to_signal) {
-      signal_id_to_road_id_[signal_id] = road_id;
-    }
   }
 
   RebuildSceneCaches();
@@ -194,18 +235,41 @@ void GeoViewerWidget::RebuildSceneCaches() {
   auto map = map_;
   auto network_mesh = network_mesh_;
 
-  auto f_lane =
-      pool.Enqueue([this]() { return BuildLaneElementCache(network_mesh_); });
-  auto f_roadmark = pool.Enqueue(
-      [this]() { return BuildRoadmarkElementCache(network_mesh_); });
-  auto f_object =
-      pool.Enqueue([this]() { return BuildObjectElementCache(network_mesh_); });
-  auto f_signal = pool.Enqueue(
-      [this, map]() { return BuildSignalElementCache(map, network_mesh_); });
-  auto f_outline = pool.Enqueue(
-      [this]() { return BuildOutlineElementCache(network_mesh_); });
-  auto f_facility =
-      pool.Enqueue([this]() { return BuildFacilityElementCache(); });
+  // Precompute facility keys on the main thread
+  std::unordered_set<std::string> facility_keys;
+  if (map) {
+    for (const auto& [road_id, road] : map->id_to_road) {
+      for (const auto& [obj_id, obj] : road.id_to_object) {
+        auto to_lower = [](std::string s) {
+          std::transform(s.begin(), s.end(), s.begin(),
+                         [](unsigned char c) { return std::tolower(c); });
+          return s;
+        };
+        if (to_lower(obj.type) == "facility" ||
+            to_lower(obj.name) == "facility") {
+          facility_keys.insert(road_id + "/" + obj_id);
+        }
+      }
+    }
+  }
+
+  auto f_lane = pool.Enqueue(
+      [this, network_mesh]() { return BuildLaneElementCache(network_mesh); });
+  auto f_roadmark = pool.Enqueue([this, network_mesh]() {
+    return BuildRoadmarkElementCache(network_mesh);
+  });
+  auto f_object = pool.Enqueue([this, network_mesh, facility_keys]() {
+    return BuildObjectElementCache(network_mesh, facility_keys);
+  });
+  auto f_signal = pool.Enqueue([this, map, network_mesh]() {
+    return BuildSignalElementCache(map, network_mesh);
+  });
+  auto f_outline = pool.Enqueue([this, network_mesh]() {
+    return BuildOutlineElementCache(network_mesh);
+  });
+  auto f_facility = pool.Enqueue([this, map, facility_keys]() {
+    return BuildFacilityElementCache(map, facility_keys);
+  });
 
   // Collect results and update member variables sequentially
   auto lane_res = f_lane.get();
@@ -214,7 +278,10 @@ void GeoViewerWidget::RebuildSceneCaches() {
 
   roadmark_element_items_ = f_roadmark.get();
   object_element_items_ = f_object.get();
-  signal_element_items_ = f_signal.get();
+
+  auto signal_res = f_signal.get();
+  signal_element_items_ = std::move(signal_res.items);
+  signal_id_to_road_id_ = std::move(signal_res.signal_id_to_road_id);
 
   auto outline_res = f_outline.get();
   outline_element_items_ = std::move(outline_res.items);
@@ -231,23 +298,35 @@ GeoViewerWidget::LaneCacheResult GeoViewerWidget::BuildLaneElementCache(
   LaneCacheResult result;
   std::map<odr::LaneKey, size_t> item_map;
 
+  FastMapLookup<std::string> road_lookup;
+  road_lookup.Init(mesh.road_start_indices);
+  FastMapLookup<double> lanesec_lookup;
+  lanesec_lookup.Init(mesh.lanesec_start_indices);
+  FastMapLookup<int> lane_lookup;
+  lane_lookup.Init(mesh.lane_start_indices);
+
+  const odr::LaneKey* last_key = nullptr;
+  size_t last_index = 0;
+
   for (size_t i = 0; i < mesh.indices.size(); i += 3) {
     const uint32_t vertex_index = mesh.indices[i];
-    const std::string road_id = mesh.get_road_id(vertex_index);
-    const double s0 = mesh.get_lanesec_s0(vertex_index);
-    const int lane_id = mesh.get_lane_id(vertex_index);
+    const std::string road_id = road_lookup.Lookup(vertex_index);
+    const double s0 = lanesec_lookup.Lookup(vertex_index);
+    const int lane_id = lane_lookup.Lookup(vertex_index);
     auto key = odr::LaneKey(road_id, s0, lane_id);
 
-    AddTriangleRange(result.items, item_map, key, static_cast<uint32_t>(i / 3),
-                     [&]() {
-                       SceneCachedElement element;
-                       element.road_key = "R:" + road_id;
-                       element.group_key = "G:" + road_id + ":section";
-                       element.element_key = "E:" + road_id +
-                                             ":lane:" + FormatSectionValue(s0) +
-                                             ":" + std::to_string(lane_id);
-                       return element;
-                     });
+    AddTriangleRange(
+        result.items, item_map, key, static_cast<uint32_t>(i / 3),
+        [&]() {
+          SceneCachedElement element;
+          element.road_key = "R:" + road_id;
+          element.group_key = "G:" + road_id + ":section";
+          element.element_key = "E:" + road_id +
+                                ":lane:" + FormatSectionValue(s0) + ":" +
+                                std::to_string(lane_id);
+          return element;
+        },
+        last_key, last_index);
   }
 
   for (auto const& [key, val] : item_map) {
@@ -262,44 +341,82 @@ std::vector<SceneCachedElement> GeoViewerWidget::BuildRoadmarkElementCache(
   std::vector<SceneCachedElement> items;
   std::map<std::pair<std::string, std::string>, size_t> item_map;
 
+  FastMapLookup<std::string> road_lookup;
+  road_lookup.Init(mesh.road_start_indices);
+  FastMapLookup<std::string> roadmark_type_lookup;
+  roadmark_type_lookup.Init(mesh.roadmark_type_start_indices);
+
+  const std::pair<std::string, std::string>* last_key = nullptr;
+  size_t last_index = 0;
+
   for (size_t i = 0; i < mesh.indices.size(); i += 3) {
     const uint32_t vertex_index = mesh.indices[i];
-    const std::string road_id = mesh.get_road_id(vertex_index);
-    const std::string type = mesh.get_roadmark_type(vertex_index);
+    const std::string road_id = road_lookup.Lookup(vertex_index);
+    const std::string type = roadmark_type_lookup.Lookup(vertex_index);
     auto key = std::make_pair(road_id, type);
 
-    AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
-      SceneCachedElement element;
-      element.road_key = "R:" + road_id;
-      element.group_key = "G:" + road_id + ":section";
-      element.element_key = "E:" + road_id + ":roadmark:" + type;
-      return element;
-    });
+    AddTriangleRange(
+        items, item_map, key, static_cast<uint32_t>(i / 3),
+        [&]() {
+          SceneCachedElement element;
+          element.road_key = "R:" + road_id;
+          element.group_key = "G:" + road_id + ":section";
+          element.element_key = "E:" + road_id + ":roadmark:" + type;
+          return element;
+        },
+        last_key, last_index);
   }
 
   return items;
 }
 
 std::vector<SceneCachedElement> GeoViewerWidget::BuildObjectElementCache(
-    const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const {
+    const std::shared_ptr<odr::RoadNetworkMesh> network_mesh,
+    const std::unordered_set<std::string>& facility_keys) const {
   const auto& mesh = network_mesh->road_objects_mesh;
   std::vector<SceneCachedElement> items;
   std::map<std::pair<std::string, std::string>, size_t> item_map;
 
+  FastMapLookup<std::string> road_lookup;
+  road_lookup.Init(mesh.road_start_indices);
+  FastMapLookup<std::string> object_lookup;
+  object_lookup.Init(mesh.road_object_start_indices);
+
+  const std::pair<std::string, std::string>* last_key = nullptr;
+  size_t last_index = 0;
+
+  std::string last_checked_road;
+  std::string last_checked_obj;
+  bool last_is_facility = false;
+
   for (size_t i = 0; i < mesh.indices.size(); i += 3) {
     const uint32_t vertex_index = mesh.indices[i];
-    const std::string road_id = mesh.get_road_id(vertex_index);
-    const std::string object_id = mesh.get_road_object_id(vertex_index);
-    if (IsFacility(road_id, object_id)) continue;
+    const std::string road_id = road_lookup.Lookup(vertex_index);
+    const std::string object_id = object_lookup.Lookup(vertex_index);
+
+    bool is_facility = false;
+    if (road_id == last_checked_road && object_id == last_checked_obj) {
+      is_facility = last_is_facility;
+    } else {
+      is_facility = facility_keys.count(road_id + "/" + object_id) > 0;
+      last_checked_road = road_id;
+      last_checked_obj = object_id;
+      last_is_facility = is_facility;
+    }
+
+    if (is_facility) continue;
     auto key = std::make_pair(road_id, object_id);
 
-    AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
-      SceneCachedElement element;
-      element.road_key = "R:" + road_id;
-      element.group_key = "G:" + road_id + ":objects";
-      element.element_key = "E:" + road_id + ":objects:" + object_id;
-      return element;
-    });
+    AddTriangleRange(
+        items, item_map, key, static_cast<uint32_t>(i / 3),
+        [&]() {
+          SceneCachedElement element;
+          element.road_key = "R:" + road_id;
+          element.group_key = "G:" + road_id + ":objects";
+          element.element_key = "E:" + road_id + ":objects:" + object_id;
+          return element;
+        },
+        last_key, last_index);
   }
 
   return items;
@@ -355,15 +472,16 @@ static void AddRibbonMesh(odr::Mesh3D& mesh, const QVector3D& p1,
   mesh.indices.push_back(start_idx + 3);
 }
 
-GeoViewerWidget::FacilityCacheResult
-GeoViewerWidget::BuildFacilityElementCache() const {
+GeoViewerWidget::FacilityCacheResult GeoViewerWidget::BuildFacilityElementCache(
+    const std::shared_ptr<odr::OpenDriveMap> map,
+    const std::unordered_set<std::string>& facility_keys) const {
   FacilityCacheResult result;
   result.mesh = std::make_shared<odr::Mesh3D>();
-  if (!map_) return result;
+  if (!map) return result;
 
-  for (const auto& [road_id, road] : map_->id_to_road) {
+  for (const auto& [road_id, road] : map->id_to_road) {
     for (const auto& [obj_id, obj] : road.id_to_object) {
-      if (!IsFacility(road_id, obj_id)) continue;
+      if (!facility_keys.count(road_id + "/" + obj_id)) continue;
 
       SceneCachedElement element;
       element.road_key = "R:" + road_id;
@@ -389,7 +507,7 @@ GeoViewerWidget::BuildFacilityElementCache() const {
           } else {
             odr::Vec3D pt_local = {corner.pt[0], corner.pt[1], corner.pt[2]};
             if (corner.type == odr::RoadObjectCorner::Type_Local_AbsZ) {
-              pt_local[2] -= p0[2];  // 转换为相对坐标
+              pt_local[2] -= p0[2];  // Convert to relative coordinates
             }
             pt_local = odr::add(pt_local, odr::Vec3D{0.0, 0.0, corner.height});
             pt_world = odr::add(
@@ -421,42 +539,60 @@ GeoViewerWidget::BuildFacilityElementCache() const {
   return result;
 }
 
-std::vector<SceneCachedElement> GeoViewerWidget::BuildSignalElementCache(
+GeoViewerWidget::SignalCacheResult GeoViewerWidget::BuildSignalElementCache(
     const std::shared_ptr<odr::OpenDriveMap> map,
     const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const {
+  SignalCacheResult result;
+  if (!map || !network_mesh) return result;
+
+  // Build signal_id_to_road_id map
+  for (const auto& [road_id, road] : map->id_to_road) {
+    for (const auto& [signal_id, signal] : road.id_to_signal) {
+      result.signal_id_to_road_id[signal_id] = road_id;
+    }
+  }
+
   const auto& mesh = network_mesh->road_signals_mesh;
-  std::vector<SceneCachedElement> items;
   std::map<std::pair<std::string, std::string>, size_t> item_map;
+
+  FastMapLookup<std::string> signal_lookup;
+  signal_lookup.Init(mesh.road_signal_start_indices);
+
+  const std::pair<std::string, std::string>* last_key = nullptr;
+  size_t last_index = 0;
 
   for (size_t i = 0; i < mesh.indices.size(); i += 3) {
     const uint32_t vertex_index = mesh.indices[i];
-    // const std::string road_id = mesh.get_road_id(vertex_index);
-    const std::string signal_id = mesh.get_road_signal_id(vertex_index);
+    const std::string signal_id = signal_lookup.Lookup(vertex_index);
     std::string road_id = "";
-    auto itr = signal_id_to_road_id_.find(signal_id);
-    if (itr != signal_id_to_road_id_.end()) {
+    auto itr = result.signal_id_to_road_id.find(signal_id);
+    if (itr != result.signal_id_to_road_id.end()) {
       road_id = itr->second;
     }
     auto key = std::make_pair(road_id, signal_id);
 
-    AddTriangleRange(items, item_map, key, static_cast<uint32_t>(i / 3), [&]() {
-      SceneCachedElement element;
-      bool is_light = false;
-      if (map->id_to_road.count(road_id)) {
-        const auto& road = map->id_to_road.at(road_id);
-        if (road.id_to_signal.count(signal_id)) {
-          is_light = (road.id_to_signal.at(signal_id).name == "TrafficLight");
-        }
-      }
-      const std::string group = is_light ? "light" : "sign";
-      element.road_key = "R:" + road_id;
-      element.group_key = "G:" + road_id + ":" + group;
-      element.element_key = "E:" + road_id + ":" + group + ":" + signal_id;
-      return element;
-    });
+    AddTriangleRange(
+        result.items, item_map, key, static_cast<uint32_t>(i / 3),
+        [&]() {
+          SceneCachedElement element;
+          bool is_light = false;
+          if (map->id_to_road.count(road_id)) {
+            const auto& road = map->id_to_road.at(road_id);
+            if (road.id_to_signal.count(signal_id)) {
+              is_light =
+                  (road.id_to_signal.at(signal_id).name == "TrafficLight");
+            }
+          }
+          const std::string group = is_light ? "light" : "sign";
+          element.road_key = "R:" + road_id;
+          element.group_key = "G:" + road_id + ":" + group;
+          element.element_key = "E:" + road_id + ":" + group + ":" + signal_id;
+          return element;
+        },
+        last_key, last_index);
   }
 
-  return items;
+  return result;
 }
 
 GeoViewerWidget::OutlineCacheResult GeoViewerWidget::BuildOutlineElementCache(
@@ -471,43 +607,61 @@ GeoViewerWidget::OutlineCacheResult GeoViewerWidget::BuildOutlineElementCache(
 
   std::map<std::tuple<std::string, double, int>, size_t> item_map;
 
+  FastMapLookup<std::string> road_lookup;
+  road_lookup.Init(mesh.road_start_indices);
+  FastMapLookup<double> lanesec_lookup;
+  lanesec_lookup.Init(mesh.lanesec_start_indices);
+  FastMapLookup<int> lane_lookup;
+  lane_lookup.Init(mesh.lane_start_indices);
+
+  const std::tuple<std::string, double, int>* last_key = nullptr;
+  size_t last_index = 0;
+
   for (size_t i = 0; i < result.indices.size(); i += 2) {
     const size_t vertex_index = result.indices[i];
-    const std::string road_id = mesh.get_road_id(vertex_index);
-    const double s0 = mesh.get_lanesec_s0(vertex_index);
-    const int lane_id = mesh.get_lane_id(vertex_index);
+    const std::string road_id = road_lookup.Lookup(vertex_index);
+    const double s0 = lanesec_lookup.Lookup(vertex_index);
+    const int lane_id = lane_lookup.Lookup(vertex_index);
     auto key = std::make_tuple(road_id, s0, lane_id);
 
-    if (item_map.find(key) == item_map.end()) {
-      item_map[key] = result.items.size();
-      SceneOutlineElement element;
-      const std::string s0_string = FormatSectionValue(s0);
-      element.road_key = "R:" + road_id;
-      element.group_key = "G:" + road_id + ":section";
-      element.element_key =
-          "E:" + road_id + ":lane:" + s0_string + ":" + std::to_string(lane_id);
-      element.is_dashed = false;
+    size_t idx;
+    if (last_key && *last_key == key) {
+      idx = last_index;
+    } else {
+      auto [it, inserted] = item_map.try_emplace(key, result.items.size());
+      if (inserted) {
+        SceneOutlineElement element;
+        const std::string s0_string = FormatSectionValue(s0);
+        element.road_key = "R:" + road_id;
+        element.group_key = "G:" + road_id + ":section";
+        element.element_key = "E:" + road_id + ":lane:" + s0_string + ":" +
+                              std::to_string(lane_id);
+        element.is_dashed = false;
 
-      if (map_->id_to_road.count(road_id)) {
-        auto& road = map_->id_to_road.at(road_id);
-        if (road.s_to_lanesection.count(s0)) {
-          auto& section = road.s_to_lanesection.at(s0);
-          if (section.id_to_lane.count(lane_id)) {
-            auto& lane = section.id_to_lane.at(lane_id);
-            for (const auto& group : lane.roadmark_groups) {
-              if (group.type == "broken") {
-                element.is_dashed = true;
-                break;
+        if (map_->id_to_road.count(road_id)) {
+          auto& road = map_->id_to_road.at(road_id);
+          if (road.s_to_lanesection.count(s0)) {
+            auto& section = road.s_to_lanesection.at(s0);
+            if (section.id_to_lane.count(lane_id)) {
+              auto& lane = section.id_to_lane.at(lane_id);
+              for (const auto& group : lane.roadmark_groups) {
+                if (group.type == "broken") {
+                  element.is_dashed = true;
+                  break;
+                }
               }
             }
           }
         }
-      }
 
-      result.items.push_back(element);
+        result.items.push_back(element);
+      }
+      idx = it->second;
+      last_key = &it->first;
+      last_index = idx;
     }
 
-    auto& element = result.items[item_map[key]];
+    auto& element = result.items[idx];
     const uint32_t line_index = static_cast<uint32_t>(i / 2);
     if (!element.ranges.empty() &&
         element.ranges.back().start + element.ranges.back().count ==
@@ -524,36 +678,69 @@ GeoViewerWidget::OutlineCacheResult GeoViewerWidget::BuildOutlineElementCache(
 void GeoViewerWidget::TransformSceneMeshes() {
   if (!network_mesh_) return;
   auto& network_mesh = *network_mesh_;
-  auto transform = [this](odr::Vec3D& v) {
-    auto p = LocalToRendererPoint(v);
-    v[0] = p.x();
-    v[1] = p.y();
-    v[2] = p.z();
+
+  const bool right_hand_traffic = right_hand_traffic_;
+  auto transform = [right_hand_traffic](odr::Vec3D& v) {
+    const float rx = static_cast<float>(v[0]);
+    const float ry = static_cast<float>(v[2]);
+    float rz = static_cast<float>(v[1]);
+    if (right_hand_traffic) {
+      rz = -rz;
+    }
+    v[0] = rx;
+    v[1] = ry;
+    v[2] = rz;
   };
+
+  struct Bounds {
+    float min_x = std::numeric_limits<float>::max();
+    float min_y = std::numeric_limits<float>::max();
+    float min_z = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float max_y = std::numeric_limits<float>::lowest();
+    float max_z = std::numeric_limits<float>::lowest();
+  };
+  auto lanes_bounds = std::make_shared<Bounds>();
 
   std::vector<std::future<void>> tasks;
   auto& pool = geoviewer::utility::ThreadPool::Instance();
-  tasks.push_back(pool.Enqueue([&]() {
-    for (auto& v : network_mesh.lanes_mesh.vertices) transform(v);
+  tasks.push_back(pool.Enqueue([&network_mesh, transform, lanes_bounds]() {
+    for (auto& v : network_mesh.lanes_mesh.vertices) {
+      transform(v);
+      float x = static_cast<float>(v[0]);
+      float y = static_cast<float>(v[1]);
+      float z = static_cast<float>(v[2]);
+      if (x < lanes_bounds->min_x) lanes_bounds->min_x = x;
+      if (y < lanes_bounds->min_y) lanes_bounds->min_y = y;
+      if (z < lanes_bounds->min_z) lanes_bounds->min_z = z;
+      if (x > lanes_bounds->max_x) lanes_bounds->max_x = x;
+      if (y > lanes_bounds->max_y) lanes_bounds->max_y = y;
+      if (z > lanes_bounds->max_z) lanes_bounds->max_z = z;
+    }
   }));
-  tasks.push_back(pool.Enqueue([&]() {
+  tasks.push_back(pool.Enqueue([&network_mesh, transform]() {
     for (auto& v : network_mesh.roadmarks_mesh.vertices) transform(v);
   }));
-  tasks.push_back(pool.Enqueue([&]() {
+  tasks.push_back(pool.Enqueue([&network_mesh, transform]() {
     for (auto& v : network_mesh.road_objects_mesh.vertices) transform(v);
   }));
-  tasks.push_back(pool.Enqueue([&]() {
+  tasks.push_back(pool.Enqueue([this, transform]() {
     if (facility_mesh_) {
       for (auto& v : facility_mesh_->vertices) transform(v);
     }
   }));
-  tasks.push_back(pool.Enqueue([&]() {
+  tasks.push_back(pool.Enqueue([&network_mesh, transform]() {
     for (auto& v : network_mesh.road_signals_mesh.vertices) transform(v);
   }));
 
   for (auto& task : tasks) {
     task.get();
   }
+
+  scene_min_bound_ =
+      QVector3D(lanes_bounds->min_x, lanes_bounds->min_y, lanes_bounds->min_z);
+  scene_max_bound_ =
+      QVector3D(lanes_bounds->max_x, lanes_bounds->max_y, lanes_bounds->max_z);
 }
 
 std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
@@ -561,51 +748,82 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
   auto& network_mesh = *network_mesh_;
   auto& junction_mesh = *junction_mesh_;
 
-  // Pre-calculate total size to avoid reallocations
-  size_t total_vertices =
-      network_mesh.lanes_mesh.vertices.size() +
-      network_mesh.roadmarks_mesh.vertices.size() +
-      network_mesh.road_objects_mesh.vertices.size() +
-      (facility_mesh_ ? facility_mesh_->vertices.size() : 0) +
-      junction_mesh.vertices.size() +
-      network_mesh.road_signals_mesh.vertices.size();
+  size_t lanes_size = network_mesh.lanes_mesh.vertices.size();
+  size_t roadmarks_size = network_mesh.roadmarks_mesh.vertices.size();
+  size_t objects_size = network_mesh.road_objects_mesh.vertices.size();
+  size_t facilities_size = facility_mesh_ ? facility_mesh_->vertices.size() : 0;
+  size_t junctions_size = junction_mesh.vertices.size();
+  size_t signals_size = network_mesh.road_signals_mesh.vertices.size();
 
-  std::vector<float> vertices;
-  vertices.reserve(total_vertices * 3);
+  size_t static_vertices = lanes_size + roadmarks_size + objects_size +
+                           facilities_size + junctions_size;
+  std::vector<float> vertices(static_vertices * 3);
 
-  auto append_mesh = [&](const odr::Mesh3D& mesh, LayerType type) {
-    gl_renderer_->SetLayerVertexOffset(type, vertices.size() / 3);
+  auto convert_mesh = [&vertices](const odr::Mesh3D& mesh,
+                                  size_t start_vertex_idx) {
+    float* dest = vertices.data() + start_vertex_idx * 3;
     for (const auto& vertex : mesh.vertices) {
-      vertices.push_back(static_cast<float>(vertex[0]));
-      vertices.push_back(static_cast<float>(vertex[1]));
-      vertices.push_back(static_cast<float>(vertex[2]));
+      *dest++ = static_cast<float>(vertex[0]);
+      *dest++ = static_cast<float>(vertex[1]);
+      *dest++ = static_cast<float>(vertex[2]);
     }
   };
 
-  // Lanes
-  append_mesh(network_mesh.lanes_mesh, LayerType::kLanes);
-  gl_renderer_->SetLayerVertexOffset(
-      LayerType::kLaneLines,
-      gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
-  gl_renderer_->SetLayerVertexOffset(
-      LayerType::kLaneLinesDashed,
-      gl_renderer_->GetLayerVertexOffset(LayerType::kLanes));
+  auto& pool = geoviewer::utility::ThreadPool::Instance();
+  std::vector<std::future<void>> tasks;
+  tasks.reserve(5);
 
-  // Roadmarks
-  append_mesh(network_mesh.roadmarks_mesh, LayerType::kRoadmarks);
+  size_t current_offset = 0;
 
-  // Objects
-  append_mesh(network_mesh.road_objects_mesh, LayerType::kObjects);
+  // 1. Lanes
+  gl_renderer_->SetLayerVertexOffset(LayerType::kLanes, current_offset);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLines, current_offset);
+  gl_renderer_->SetLayerVertexOffset(LayerType::kLaneLinesDashed,
+                                     current_offset);
+  tasks.push_back(pool.Enqueue([&network_mesh, convert_mesh, current_offset]() {
+    convert_mesh(network_mesh.lanes_mesh, current_offset);
+  }));
+  current_offset += lanes_size;
 
-  // Facilities
+  // 2. Roadmarks
+  gl_renderer_->SetLayerVertexOffset(LayerType::kRoadmarks, current_offset);
+  tasks.push_back(pool.Enqueue([&network_mesh, convert_mesh, current_offset]() {
+    convert_mesh(network_mesh.roadmarks_mesh, current_offset);
+  }));
+  current_offset += roadmarks_size;
+
+  // 3. Objects
+  gl_renderer_->SetLayerVertexOffset(LayerType::kObjects, current_offset);
+  tasks.push_back(pool.Enqueue([&network_mesh, convert_mesh, current_offset]() {
+    convert_mesh(network_mesh.road_objects_mesh, current_offset);
+  }));
+  current_offset += objects_size;
+
+  // 4. Facilities
   if (facility_mesh_) {
-    append_mesh(*facility_mesh_, LayerType::kFacilities);
+    gl_renderer_->SetLayerVertexOffset(LayerType::kFacilities, current_offset);
+    auto* fac_mesh_ptr = facility_mesh_.get();
+    tasks.push_back(
+        pool.Enqueue([fac_mesh_ptr, convert_mesh, current_offset]() {
+          convert_mesh(*fac_mesh_ptr, current_offset);
+        }));
+    current_offset += facilities_size;
   } else {
     gl_renderer_->SetLayerVertexOffset(LayerType::kFacilities, 0);
   }
 
-  // Junctions
-  append_mesh(junction_mesh, LayerType::kJunctions);
+  // 5. Junctions
+  gl_renderer_->SetLayerVertexOffset(LayerType::kJunctions, current_offset);
+  tasks.push_back(
+      pool.Enqueue([&junction_mesh, convert_mesh, current_offset]() {
+        convert_mesh(junction_mesh, current_offset);
+      }));
+  current_offset += junctions_size;
+
+  // Wait for all static mesh conversions to complete
+  for (auto& task : tasks) {
+    task.get();
+  }
 
   // Reference Lines (Special case: generated on the fly)
   gl_renderer_->SetLayerVertexOffset(LayerType::kReferenceLines,
@@ -617,10 +835,14 @@ std::vector<float> GeoViewerWidget::BuildSceneVertexBufferData() {
                                      vertices.size() / 3);
   gl_renderer_->SetLayerVertexOffset(LayerType::kSignalSigns,
                                      vertices.size() / 3);
+
+  size_t signals_start_idx = vertices.size();
+  vertices.resize(signals_start_idx + signals_size * 3);
+  float* dest = vertices.data() + signals_start_idx;
   for (const auto& vertex : network_mesh.road_signals_mesh.vertices) {
-    vertices.push_back(static_cast<float>(vertex[0]));
-    vertices.push_back(static_cast<float>(vertex[1]));
-    vertices.push_back(static_cast<float>(vertex[2]));
+    *dest++ = static_cast<float>(vertex[0]);
+    *dest++ = static_cast<float>(vertex[1]);
+    *dest++ = static_cast<float>(vertex[2]);
   }
 
   return vertices;

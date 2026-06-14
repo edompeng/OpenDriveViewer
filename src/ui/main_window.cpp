@@ -2,12 +2,15 @@
 #include <QtCore/qdebug.h>
 #include <QApplication>
 #include <QCheckBox>
+#include <QDir>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QPushButton>
 #include <QSignalBlocker>
@@ -15,15 +18,22 @@
 #include <QToolBar>
 #include <QTranslator>
 #include <QWidget>
+#include "OpenDriveMap.h"
+#include "Road.h"
 #include "src/core/app_settings.h"
 #include "src/core/coordinate_mode_policy.h"
+#include "src/core/coordinate_util.h"
+#include "src/core/map_loader.h"
 #include "src/core/settings_persistence.h"
+#include "src/core/thread_pool.h"
 #include "src/logic/event_bus.h"
 #include "src/logic/input_parsing.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/layer_control_widget.h"
 #include "src/ui/widgets/map_statistics_dialog.h"
 #include "src/ui/widgets/topology_validator_widget.h"
+#include "src/ui/widgets/xml_editor_dialog.h"
+#include "src/ui/widgets/xml_editor_types.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   translator_ = new QTranslator(this);
@@ -322,6 +332,11 @@ void MainWindow::SetupToolbar() {
   connect(compare_action_, &QAction::triggered, this,
           &MainWindow::HandleCompareMap);
 
+  save_as_action_ = toolbar->addAction(tr("Save As .xodr"));
+  save_as_action_->setEnabled(false);
+  connect(save_as_action_, &QAction::triggered, this,
+          &MainWindow::HandleSaveMapAs);
+
   toolbar->addSeparator();
 
   // Widget visibility menu
@@ -450,6 +465,8 @@ QWidget* MainWindow::BuildCoordinateTools() {
 }
 
 void MainWindow::SetupConnections() {
+  connect(view_, &GeoViewerWidget::ShowXmlRequested, this,
+          &MainWindow::HandleShowXml);
   connect(view_, &GeoViewerWidget::ElementSelected, layer_control_,
           &LayerControlWidget::SelectElement);
   connect(layer_control_, &LayerControlWidget::ItemHovered, view_,
@@ -527,6 +544,8 @@ void MainWindow::SetupConnections() {
              << data.junction_grouping.junctions.size()
              << "OpenDRIVE junctions.";
 
+    road_id_to_mesh_cache_ = std::move(data.road_id_to_mesh);
+    view_->ClearRefLineCache();
     view_->SetMapAndMesh(data.map, std::move(data.mesh),
                          &data.junction_grouping, data.routing_graph);
     view_->SetGeoreferenceAvailable(data.IsWgs84ModeAvailable());
@@ -593,6 +612,11 @@ void MainWindow::SetupConnections() {
 
 void MainWindow::StartMapLoad(const QString& path) {
   if (map_loader_->IsRunning()) return;
+
+  is_modified_ = false;
+  if (save_as_action_) {
+    save_as_action_->setEnabled(false);
+  }
 
   if (compare_action_) {
     compare_action_->setEnabled(false);
@@ -706,4 +730,259 @@ void MainWindow::HandleCompareMap() {
 
   status_->showMessage(tr("Comparing maps..."));
   view_->CompareWithMap(path);
+}
+
+void MainWindow::HandleShowXml(const geoviewer::ui::XmlTarget& target,
+                               const QString& xml_text) {
+  if (!xml_editor_) {
+    xml_editor_ = new geoviewer::ui::XmlEditorDialog(this);
+    connect(xml_editor_, &geoviewer::ui::XmlEditorDialog::XmlSaved, this,
+            &MainWindow::HandleXmlSaved);
+  }
+  xml_editor_->SetXml(xml_text, target);
+  xml_editor_->show();
+  xml_editor_->raise();
+  xml_editor_->activateWindow();
+}
+
+void MainWindow::HandleXmlSaved(const geoviewer::ui::XmlTarget& target,
+                                const QString& xml_text) {
+  auto map = view_->GetMap();
+  if (!map) return;
+
+  pugi::xml_document parsed_doc;
+  pugi::xml_parse_result result =
+      parsed_doc.load_string(xml_text.toStdString().c_str());
+  if (!result) return;  // already validated by dialog
+
+  pugi::xml_node new_node = parsed_doc.first_child();
+  pugi::xml_node old_node;
+
+  if (target.type == geoviewer::ui::XmlTargetType::kRoad) {
+    for (pugi::xml_node node :
+         map->xml_doc.child("OpenDRIVE").children("road")) {
+      if (node.attribute("id").value() == target.road_id) {
+        old_node = node;
+        break;
+      }
+    }
+  } else if (target.type == geoviewer::ui::XmlTargetType::kJunction) {
+    for (pugi::xml_node node :
+         map->xml_doc.child("OpenDRIVE").children("junction")) {
+      if (node.attribute("id").value() == target.element_id) {
+        old_node = node;
+        break;
+      }
+    }
+  } else if (target.type == geoviewer::ui::XmlTargetType::kLane) {
+    pugi::xml_node road_node;
+    for (pugi::xml_node node :
+         map->xml_doc.child("OpenDRIVE").children("road")) {
+      if (node.attribute("id").value() == target.road_id) {
+        road_node = node;
+        break;
+      }
+    }
+    if (road_node) {
+      pugi::xml_node lanes_node = road_node.child("lanes");
+      pugi::xml_node sec_node;
+      for (pugi::xml_node s_node : lanes_node.children("laneSection")) {
+        if (std::abs(s_node.attribute("s").as_double() - target.lane_s0) <
+            1e-3) {
+          sec_node = s_node;
+          break;
+        }
+      }
+      if (sec_node) {
+        for (pugi::xml_node side_node :
+             {sec_node.child("left"), sec_node.child("center"),
+              sec_node.child("right")}) {
+          if (!side_node) continue;
+          for (pugi::xml_node lane_node : side_node.children("lane")) {
+            if (lane_node.attribute("id").as_int() == target.lane_id) {
+              old_node = lane_node;
+              break;
+            }
+          }
+          if (old_node) break;
+        }
+      }
+    }
+  } else if (target.type == geoviewer::ui::XmlTargetType::kObject) {
+    pugi::xml_node road_node;
+    for (pugi::xml_node node :
+         map->xml_doc.child("OpenDRIVE").children("road")) {
+      if (node.attribute("id").value() == target.road_id) {
+        road_node = node;
+        break;
+      }
+    }
+    if (road_node) {
+      pugi::xml_node objs_node = road_node.child("objects");
+      for (pugi::xml_node obj_node : objs_node.children("object")) {
+        if (obj_node.attribute("id").value() == target.element_id) {
+          old_node = obj_node;
+          break;
+        }
+      }
+    }
+  } else if (target.type == geoviewer::ui::XmlTargetType::kSignal) {
+    pugi::xml_node road_node;
+    for (pugi::xml_node node :
+         map->xml_doc.child("OpenDRIVE").children("road")) {
+      if (node.attribute("id").value() == target.road_id) {
+        road_node = node;
+        break;
+      }
+    }
+    if (road_node) {
+      pugi::xml_node sigs_node = road_node.child("signals");
+      for (pugi::xml_node sig_node : sigs_node.children("signal")) {
+        if (sig_node.attribute("id").value() == target.element_id) {
+          old_node = sig_node;
+          break;
+        }
+      }
+    }
+  }
+
+  if (old_node) {
+    pugi::xml_node parent = old_node.parent();
+    parent.insert_copy_before(new_node, old_node);
+    parent.remove_child(old_node);
+
+    is_modified_ = true;
+    if (save_as_action_) {
+      save_as_action_->setEnabled(true);
+    }
+
+    TriggerMeshUpdate(target.road_id);
+  }
+}
+
+void MainWindow::TriggerMeshUpdate(const std::string& target_road_id) {
+  auto map = view_->GetMap();
+  if (!map) return;
+
+  status_->showMessage(tr("Rebuilding road mesh in background..."));
+
+  QString temp_path = QDir::tempPath() + "/geoviewer_temp_update.xodr";
+  if (!map->xml_doc.save_file(temp_path.toStdString().c_str())) {
+    status_->showMessage(
+        tr("Failed to save temporary map file for recomputation."));
+    return;
+  }
+
+  if (xml_editor_) {
+    xml_editor_->setEnabled(false);
+  }
+
+  std::string std_temp_path = temp_path.toStdString();
+
+  // Move the mesh cache into the background thread to avoid an expensive copy.
+  // The merge of all per-road meshes is O(total_vertices) and must not run on
+  // the GUI thread.
+  auto mesh_cache = std::move(road_id_to_mesh_cache_);
+
+  geoviewer::utility::ThreadPool::Instance().Enqueue(
+      [this, std_temp_path, target_road_id,
+       mesh_cache = std::move(mesh_cache)]() mutable {
+        MapSceneData data;
+
+        try {
+          data.map = std::make_shared<odr::OpenDriveMap>(std_temp_path);
+          data.georeference_valid = true;
+        } catch (...) {
+          data.georeference_valid = false;
+        }
+
+        if (data.map) {
+          data.junction_grouping = JunctionClusterUtil::Analyze(*data.map);
+          data.routing_graph = std::make_shared<odr::RoutingGraph>(
+              data.map->get_routing_graph());
+
+          if (!target_road_id.empty() &&
+              data.map->id_to_road.find(target_road_id) !=
+                  data.map->id_to_road.end()) {
+            // Single-road update: rebuild only the target road mesh, then merge
+            // all roads in the background.
+            mesh_cache[target_road_id] =
+                geoviewer::core::GenerateSingleRoadMesh(
+                    data.map->id_to_road.at(target_road_id), 0.75);
+            data.mesh = geoviewer::core::MergeRoadMeshes(mesh_cache);
+          } else if (!target_road_id.empty()) {
+            // Fallback: target road was not found, rebuild all roads
+            // sequentially to avoid ThreadPool starvation.
+            for (const auto& [r_id, road] : data.map->id_to_road) {
+              mesh_cache[r_id] =
+                  geoviewer::core::GenerateSingleRoadMesh(road, 0.75);
+            }
+            data.mesh = geoviewer::core::MergeRoadMeshes(mesh_cache);
+          } else {
+            // Junction edit: no road meshes changed. Merge existing cache.
+            data.mesh = geoviewer::core::MergeRoadMeshes(mesh_cache);
+          }
+        }
+
+        QMetaObject::invokeMethod(
+            this,
+            [this, data = std::move(data), mesh_cache = std::move(mesh_cache),
+             target_road_id, std_temp_path]() mutable {
+              QFile::remove(QString::fromStdString(std_temp_path));
+
+              if (xml_editor_) {
+                xml_editor_->setEnabled(true);
+              }
+
+              if (!data.IsValid()) {
+                status_->showMessage(tr("Rebuild failed: Invalid map data."));
+                // Restore the cache even on failure so it is not lost.
+                road_id_to_mesh_cache_ = std::move(mesh_cache);
+                return;
+              }
+
+              // Restore the (possibly updated) cache back to the member.
+              road_id_to_mesh_cache_ = std::move(mesh_cache);
+
+              if (!target_road_id.empty()) {
+                view_->ClearRefLineCacheForRoad(target_road_id);
+              }
+
+              view_->SetMapAndMesh(data.map, std::move(data.mesh),
+                                   &data.junction_grouping, data.routing_graph);
+              view_->SetGeoreferenceAvailable(data.IsWgs84ModeAvailable());
+              ApplyCoordinateModePolicy(data.IsWgs84ModeAvailable());
+
+              emit geoviewer::logic::EventBus::Instance().MapLoaded(
+                  current_map_path_, true);
+
+              status_->showMessage(
+                  tr("Map updated and mesh rebuilt successfully."));
+            },
+            Qt::QueuedConnection);
+      });
+}
+
+void MainWindow::HandleSaveMapAs() {
+  auto map = view_->GetMap();
+  if (!map) return;
+
+  QString file_path =
+      QFileDialog::getSaveFileName(this, tr("Save Map As"), current_map_path_,
+                                   tr("OpenDRIVE Files (*.xodr *.xml)"));
+
+  if (file_path.isEmpty()) return;
+
+  if (map->xml_doc.save_file(file_path.toStdString().c_str())) {
+    is_modified_ = false;
+    if (save_as_action_) {
+      save_as_action_->setEnabled(false);
+    }
+    current_map_path_ = file_path;
+    UpdateWindowTitle();
+    status_->showMessage(tr("Map saved successfully to %1").arg(file_path));
+  } else {
+    QMessageBox::critical(this, tr("Save Error"),
+                          tr("Failed to save map file."));
+  }
 }

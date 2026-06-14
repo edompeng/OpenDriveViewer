@@ -30,7 +30,12 @@ add_library(
   map_statistics_dialog.cpp
   map_statistics_dialog.h
   topology_validator_widget.cpp
-  topology_validator_widget.h)
+  topology_validator_widget.h
+  xml_editor_dialog.cpp
+  xml_editor_dialog.h
+  xml_syntax_highlighter.cpp
+  xml_syntax_highlighter.h
+  xml_editor_types.h)
 
 target_include_directories(GeoViewerUIWidgets
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../)

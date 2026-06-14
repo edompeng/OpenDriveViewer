@@ -22,6 +22,7 @@
 #include "src/core/viewer_text_util.h"
 #include "src/logic/event_bus.h"
 #include "src/ui/widgets/layer_tree_model.h"
+#include "src/ui/widgets/xml_editor_types.h"
 
 namespace {
 QTreeWidgetItem* CreateRootItem(QTreeWidget* parent) {
@@ -751,10 +752,10 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
   }
 
   QAction* addFav = menu.addAction(tr("⭐ Add to favorites"));
-  QAction* copy_xml = nullptr;
+  QAction* show_xml = nullptr;
   if (type == TreeNodeType::kRoad || type == TreeNodeType::kLane ||
       type == TreeNodeType::kJunction) {
-    copy_xml = menu.addAction(tr("Copy XML text"));
+    show_xml = menu.addAction(tr("Show XML"));
   }
 
   QAction* setStart = nullptr;
@@ -775,13 +776,16 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
       info += " - ID: " + item->data(0, Qt::UserRole + 1).toString();
     }
     QApplication::clipboard()->setText(info);
-  } else if (selected == copy_xml && copy_xml) {
+  } else if (selected == show_xml && show_xml) {
     auto map = viewer_->GetMap();
     if (map) {
       std::string xml_str;
+      geoviewer::ui::XmlTarget xml_target;
       if (type == TreeNodeType::kRoad) {
         std::string road_id =
             item->data(0, Qt::UserRole + 1).toString().toStdString();
+        xml_target.type = geoviewer::ui::XmlTargetType::kRoad;
+        xml_target.road_id = road_id;
         for (pugi::xml_node node :
              map->xml_doc.child("OpenDRIVE").children("road")) {
           if (node.attribute("id").value() == road_id) {
@@ -794,6 +798,8 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
       } else if (type == TreeNodeType::kJunction) {
         std::string junc_id =
             item->data(0, Qt::UserRole + 1).toString().toStdString();
+        xml_target.type = geoviewer::ui::XmlTargetType::kJunction;
+        xml_target.element_id = junc_id;
         for (pugi::xml_node node :
              map->xml_doc.child("OpenDRIVE").children("junction")) {
           if (node.attribute("id").value() == junc_id) {
@@ -811,6 +817,10 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
         if (colon != std::string::npos) {
           double s0 = std::stod(data_str.substr(0, colon));
           int lane_id = std::stoi(data_str.substr(colon + 1));
+          xml_target.type = geoviewer::ui::XmlTargetType::kLane;
+          xml_target.road_id = road_id;
+          xml_target.lane_s0 = s0;
+          xml_target.lane_id = lane_id;
 
           pugi::xml_node road_node;
           for (pugi::xml_node r_node :
@@ -856,7 +866,7 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
       }
 
       if (!xml_str.empty()) {
-        QApplication::clipboard()->setText(QString::fromStdString(xml_str));
+        emit viewer_->ShowXmlRequested(xml_target, QString::fromStdString(xml_str));
       }
     }
   } else if (selected == goTo) {

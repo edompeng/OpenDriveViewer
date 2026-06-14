@@ -14,6 +14,8 @@ qt_moc_genrule(
         "routing_widget.h",
         "map_statistics_dialog.h",
         "topology_validator_widget.h",
+        "xml_editor_dialog.h",
+        "xml_syntax_highlighter.h",
     ],
 )
 
@@ -39,6 +41,8 @@ cc_library(
         "routing_widget.cpp",
         "map_statistics_dialog.cpp",
         "topology_validator_widget.cpp",
+        "xml_editor_dialog.cpp",
+        "xml_syntax_highlighter.cpp",
         ":moc_files",
     ],
     hdrs = [
@@ -53,6 +57,9 @@ cc_library(
         "routing_widget.h",
         "map_statistics_dialog.h",
         "topology_validator_widget.h",
+        "xml_editor_dialog.h",
+        "xml_syntax_highlighter.h",
+        "xml_editor_types.h",
     ],
     copts = QT_COPTS,
     local_defines = select({

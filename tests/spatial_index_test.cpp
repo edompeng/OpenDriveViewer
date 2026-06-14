@@ -31,8 +31,8 @@ TEST(SpatialIndexTest, SpatialIndexBuilderCreatesValidBVH) {
   EXPECT_GE(root.max_bound.z(), 0.99f);
 
   EXPECT_GT(index_data.flat_indices.size(), std::size_t(0));
-  uint32_t encoded = index_data.flat_indices[0];
-  EXPECT_EQ((encoded >> 28), uint32_t(1));
+  uint64_t encoded = index_data.flat_indices[0];
+  EXPECT_EQ((encoded >> 32), uint64_t(1));
 }
 
 TEST(SpatialIndexTest, SpatialPickReturnsNearestVisibleTriangle) {

@@ -198,8 +198,14 @@ void WriteBacktraceToStream(std::ostream& out) {
 std::string GetTimestampString() {
   auto now = std::chrono::system_clock::now();
   auto in_time_t = std::chrono::system_clock::to_time_t(now);
+  struct tm buf;
+#ifdef _WIN32
+  localtime_s(&buf, &in_time_t);
+#else
+  localtime_r(&in_time_t, &buf);
+#endif
   std::stringstream ss;
-  ss << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S");
+  ss << std::put_time(&buf, "%Y%m%d_%H%M%S");
   return ss.str();
 }
 

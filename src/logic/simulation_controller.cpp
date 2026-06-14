@@ -153,10 +153,13 @@ void SimulationController::OnTick() {
   float h0 = trajectory_[p0].second;
   float h1 = trajectory_[p1].second;
   float dh = h1 - h0;
-  constexpr double kPi = 3.14159265358979323846;
+  constexpr float kPi = 3.1415926535f;
   if (std::isfinite(dh)) {
-    while (dh < -kPi) dh += 2.0 * kPi;
-    while (dh > kPi) dh -= 2.0 * kPi;
+    dh = std::fmod(dh + kPi, 2.0f * kPi);
+    if (dh < 0.0f) {
+      dh += 2.0f * kPi;
+    }
+    dh -= kPi;
   } else {
     dh = 0.0f;
   }

@@ -12,20 +12,34 @@ void GeoViewerWidget::GenerateRefLinePoints(
   if (!map) return;
   std::size_t estimated_floats = 0;
   for (const auto& [road_id, road] : map->id_to_road) {
-    (void)road_id;
-    const double road_len = road.length;
-    const std::size_t segment_count =
-        static_cast<std::size_t>(std::max(1.0, std::ceil(road_len / 2.0)));
-    const std::size_t arrow_count =
-        road_len > 10.0
-            ? static_cast<std::size_t>(std::ceil((road_len - 10.0) / 20.0))
-            : 0;
-    estimated_floats += segment_count * 6 + arrow_count * 18;
+    auto it = road_id_to_ref_line_vertices_.find(road_id);
+    if (it != road_id_to_ref_line_vertices_.end()) {
+      estimated_floats += it->second.size();
+    } else {
+      const double road_len = road.length;
+      const std::size_t segment_count =
+          static_cast<std::size_t>(std::max(1.0, std::ceil(road_len / 2.0)));
+      const std::size_t arrow_count =
+          road_len > 10.0
+              ? static_cast<std::size_t>(std::ceil((road_len - 10.0) / 20.0))
+              : 0;
+      estimated_floats += segment_count * 6 + arrow_count * 18;
+    }
   }
   all_vertices.reserve(all_vertices.size() + estimated_floats);
 
   for (const auto& [road_id, road] : map->id_to_road) {
     const size_t start_idx = all_vertices.size() / 3;
+
+    auto it = road_id_to_ref_line_vertices_.find(road_id);
+    if (it != road_id_to_ref_line_vertices_.end()) {
+      all_vertices.insert(all_vertices.end(), it->second.begin(),
+                          it->second.end());
+      ranges[road_id] = {start_idx, it->second.size() / 3};
+      continue;
+    }
+
+    std::vector<float> road_vertices;
     const double road_len = road.length;
 
     std::vector<odr::Vec3D> points;
@@ -48,12 +62,12 @@ void GeoViewerWidget::GenerateRefLinePoints(
     for (size_t i = 0; i + 1 < points.size(); ++i) {
       const QVector3D p1 = transform_point(points[i]);
       const QVector3D p2 = transform_point(points[i + 1]);
-      all_vertices.push_back(p1.x());
-      all_vertices.push_back(p1.y());
-      all_vertices.push_back(p1.z());
-      all_vertices.push_back(p2.x());
-      all_vertices.push_back(p2.y());
-      all_vertices.push_back(p2.z());
+      road_vertices.push_back(p1.x());
+      road_vertices.push_back(p1.y());
+      road_vertices.push_back(p1.z());
+      road_vertices.push_back(p2.x());
+      road_vertices.push_back(p2.y());
+      road_vertices.push_back(p2.z());
     }
 
     for (double s = std::min(10.0, road_len); s < road_len; s += 20.0) {
@@ -74,29 +88,32 @@ void GeoViewerWidget::GenerateRefLinePoints(
       const std::vector<QVector3D> tri = {
           transform_point(p1_l), transform_point(p2_l), transform_point(p3_l)};
 
-      all_vertices.push_back(tri[0][0]);
-      all_vertices.push_back(tri[0][1]);
-      all_vertices.push_back(tri[0][2]);
-      all_vertices.push_back(tri[1][0]);
-      all_vertices.push_back(tri[1][1]);
-      all_vertices.push_back(tri[1][2]);
+      road_vertices.push_back(tri[0][0]);
+      road_vertices.push_back(tri[0][1]);
+      road_vertices.push_back(tri[0][2]);
+      road_vertices.push_back(tri[1][0]);
+      road_vertices.push_back(tri[1][1]);
+      road_vertices.push_back(tri[1][2]);
 
-      all_vertices.push_back(tri[1][0]);
-      all_vertices.push_back(tri[1][1]);
-      all_vertices.push_back(tri[1][2]);
-      all_vertices.push_back(tri[2][0]);
-      all_vertices.push_back(tri[2][1]);
-      all_vertices.push_back(tri[2][2]);
+      road_vertices.push_back(tri[1][0]);
+      road_vertices.push_back(tri[1][1]);
+      road_vertices.push_back(tri[1][2]);
+      road_vertices.push_back(tri[2][0]);
+      road_vertices.push_back(tri[2][1]);
+      road_vertices.push_back(tri[2][2]);
 
-      all_vertices.push_back(tri[2][0]);
-      all_vertices.push_back(tri[2][1]);
-      all_vertices.push_back(tri[2][2]);
-      all_vertices.push_back(tri[0][0]);
-      all_vertices.push_back(tri[0][1]);
-      all_vertices.push_back(tri[0][2]);
+      road_vertices.push_back(tri[2][0]);
+      road_vertices.push_back(tri[2][1]);
+      road_vertices.push_back(tri[2][2]);
+      road_vertices.push_back(tri[0][0]);
+      road_vertices.push_back(tri[0][1]);
+      road_vertices.push_back(tri[0][2]);
     }
 
-    ranges[road_id] = {start_idx, (all_vertices.size() / 3) - start_idx};
+    road_id_to_ref_line_vertices_[road_id] = road_vertices;
+    all_vertices.insert(all_vertices.end(), road_vertices.begin(),
+                        road_vertices.end());
+    ranges[road_id] = {start_idx, road_vertices.size() / 3};
   }
 }
 
@@ -210,7 +227,8 @@ void GeoViewerWidget::RenderJunctionOverlay(QPainter& painter,
             (member.incoming_box.min[1] + member.incoming_box.max[1]) * 0.5,
             (member.incoming_box.min[2] + member.incoming_box.max[2]) * 0.5};
         const QVector3D member_center = LocalToRendererPoint(local_center);
-        const QVector4D member_clip = view_proj * QVector4D(member_center, 1.0f);
+        const QVector4D member_clip =
+            view_proj * QVector4D(member_center, 1.0f);
         if (member_clip.w() <= 0.0f) continue;
         const int msx = static_cast<int>(
             ((member_clip.x() / member_clip.w()) + 1.0f) * width() * 0.5f);

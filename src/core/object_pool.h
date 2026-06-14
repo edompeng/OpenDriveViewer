@@ -66,12 +66,12 @@ class ObjectPool {
   /// @brief Return an object back to the pool.
   void ReturnObject(std::unique_ptr<T> obj) {
     if (!obj) return;
-    if constexpr (has_clear<T>::value) {
-      obj->clear();
-    }
     std::lock_guard<std::mutex> lock(mutex_);
     if (max_size_ > 0 && pool_.size() >= max_size_) {
       return;
+    }
+    if constexpr (has_clear<T>::value) {
+      obj->clear();
     }
     pool_.push_back(std::move(obj));
   }

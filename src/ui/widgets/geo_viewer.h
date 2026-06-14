@@ -36,6 +36,7 @@
 #include "src/logic/measure_tool_controller.h"
 #include "src/logic/spatial_index.h"
 #include "src/ui/render/gl_renderer.h"
+#include "src/ui/widgets/xml_editor_types.h"
 
 #include "src/geo_viewer_export.h"
 
@@ -61,6 +62,11 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
       std::shared_ptr<odr::OpenDriveMap> map, odr::RoadNetworkMesh mesh,
       const JunctionClusterResult* junction_grouping = nullptr,
       std::shared_ptr<odr::RoutingGraph> routing_graph = nullptr);
+
+  void ClearRefLineCache() { road_id_to_ref_line_vertices_.clear(); }
+  void ClearRefLineCacheForRoad(const std::string& road_id) {
+    road_id_to_ref_line_vertices_.erase(road_id);
+  }
 
   std::shared_ptr<odr::OpenDriveMap> GetMap() const { return map_; }
   const JunctionClusterResult& GetJunctionClusterResult() const {
@@ -186,6 +192,8 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void MapDiffApplied();
   void SceneReset();
   void ViewModeChanged(CameraController::ViewMode mode);
+  void ShowXmlRequested(const geoviewer::ui::XmlTarget& target,
+                        const QString& xml_text);
 
  protected:
   void initializeGL() override;
@@ -280,6 +288,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
     size_t count;
   };
   std::map<std::string, VertRange> road_ref_line_vert_ranges_;
+  std::map<std::string, std::vector<float>> road_id_to_ref_line_vertices_;
 
   // ---- Scene Construction Private Methods ----
   void GenerateRefLinePoints(std::shared_ptr<odr::OpenDriveMap> map,
@@ -299,18 +308,25 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
     std::vector<SceneOutlineElement> items;
     std::vector<uint32_t> indices;
   };
+  struct SignalCacheResult {
+    std::vector<SceneCachedElement> items;
+    std::unordered_map<std::string, std::string> signal_id_to_road_id;
+  };
   LaneCacheResult BuildLaneElementCache(
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
   std::vector<SceneCachedElement> BuildRoadmarkElementCache(
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
   std::vector<SceneCachedElement> BuildObjectElementCache(
-      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
+      const std::shared_ptr<odr::RoadNetworkMesh> network_mesh,
+      const std::unordered_set<std::string>& facility_keys) const;
   struct FacilityCacheResult {
     std::shared_ptr<odr::Mesh3D> mesh;
     std::vector<SceneCachedElement> items;
   };
-  FacilityCacheResult BuildFacilityElementCache() const;
-  std::vector<SceneCachedElement> BuildSignalElementCache(
+  FacilityCacheResult BuildFacilityElementCache(
+      const std::shared_ptr<odr::OpenDriveMap> map,
+      const std::unordered_set<std::string>& facility_keys) const;
+  SignalCacheResult BuildSignalElementCache(
       const std::shared_ptr<odr::OpenDriveMap> map,
       const std::shared_ptr<odr::RoadNetworkMesh> network_mesh) const;
   OutlineCacheResult BuildOutlineElementCache(
@@ -345,12 +361,16 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   SpatialIndexData spatial_index_data_;
   void ForceRebuildSpatialIndex();
   void StartSpatialIndexBuild();
-  SpatialIndexData BuildSpatialIndexData(
+  static SpatialIndexData BuildSpatialIndexData(
       std::shared_ptr<odr::OpenDriveMap> map,
       const odr::RoadNetworkMesh& network_mesh,
-      const odr::Mesh3D& junction_mesh) const;
+      const odr::Mesh3D& junction_mesh,
+      const std::unordered_map<std::string, std::string>& signal_id_to_road_id,
+      const odr::Mesh3D* facility_mesh);
   std::atomic<uint64_t> spatial_index_generation_{0};
   bool spatial_index_ready_ = false;
+  QVector3D scene_min_bound_;
+  QVector3D scene_max_bound_;
 
   // ---- Ray Detection ----
   struct PickResult {

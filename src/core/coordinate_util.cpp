@@ -2,7 +2,6 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
-#include <iostream>
 #include <stdexcept>
 
 namespace {
@@ -10,15 +9,17 @@ struct ProjThreadCache {
   PJ_CONTEXT* ctx = nullptr;
   PJ* pj = nullptr;
   std::string georeference;
+  uint64_t version = 0;
 
   ~ProjThreadCache() {
     if (pj) proj_destroy(pj);
     if (ctx) proj_context_destroy(ctx);
   }
 
-  bool Update(const std::string& new_georef) {
+  bool Update(const std::string& new_georef, uint64_t new_version) {
     if (new_georef.empty()) return false;
-    if (georeference == new_georef && pj != nullptr) return true;
+    if (georeference == new_georef && version == new_version && pj != nullptr)
+      return true;
 
     if (pj) {
       proj_destroy(pj);
@@ -30,6 +31,7 @@ struct ProjThreadCache {
     }
 
     georeference = new_georef;
+    version = new_version;
     ctx = proj_context_create();
     if (!ctx) return false;
 
@@ -70,20 +72,23 @@ void CoordinateUtil::Init(const std::string& georeference,
   georeference_ = georeference;
   x_offset_ = x_offset;
   y_offset_ = y_offset;
+  version_++;
 }
 
 void CoordinateUtil::WGS84ToLocal(double* const x, double* const y,
                                   double* const z) {
   std::string georef;
   double ox, oy;
+  uint64_t ver;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     georef = georeference_;
     ox = x_offset_;
     oy = y_offset_;
+    ver = version_;
   }
 
-  if (!g_proj_cache.Update(georef)) {
+  if (!g_proj_cache.Update(georef, ver)) {
     throw std::runtime_error("PROJ transformation not initialized or invalid");
   }
 
@@ -108,14 +113,16 @@ void CoordinateUtil::LocalToWGS84(double* const x, double* const y,
                                   double* const z) {
   std::string georef;
   double ox, oy;
+  uint64_t ver;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     georef = georeference_;
     ox = x_offset_;
     oy = y_offset_;
+    ver = version_;
   }
 
-  if (!g_proj_cache.Update(georef)) {
+  if (!g_proj_cache.Update(georef, ver)) {
     throw std::runtime_error("PROJ transformation not initialized or invalid");
   }
 

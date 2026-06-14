@@ -19,8 +19,15 @@
 #include "src/ui/widgets/layer_control_widget.h"
 #include "src/ui/widgets/loading_progress_widget.h"
 #include "src/ui/widgets/routing_widget.h"
+#include <map>
+#include "RoadNetworkMesh.h"
 
 class TopologyValidatorWidget;
+
+namespace geoviewer::ui {
+class XmlEditorDialog;
+struct XmlTarget;
+}
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -44,6 +51,10 @@ class MainWindow : public QMainWindow {
   void ChangeLanguage(const QString &locale);
   void HandleSettingsChanged();
   void HandleViewModeToggle(bool is_2d);
+  void HandleShowXml(const geoviewer::ui::XmlTarget& target, const QString& xml_text);
+  void HandleXmlSaved(const geoviewer::ui::XmlTarget& target, const QString& xml_text);
+  void HandleSaveMapAs();
+  void TriggerMeshUpdate(const std::string& target_road_id = "");
 
  protected:
   void resizeEvent(QResizeEvent *event) override;
@@ -80,6 +91,9 @@ class MainWindow : public QMainWindow {
   QAction *compare_action_ = nullptr;
   QAction *screenshot_action_ = nullptr;
   QAction *stats_action_ = nullptr;
+  QAction *save_as_action_ = nullptr;
+  geoviewer::ui::XmlEditorDialog *xml_editor_ = nullptr;
+  bool is_modified_ = false;
 
   AsyncMapLoader *map_loader_;
   QTranslator *translator_;
@@ -95,4 +109,5 @@ class MainWindow : public QMainWindow {
   QComboBox *coord_mode_combo_ = nullptr;
   bool wgs84_mode_allowed_ = true;
   geoviewer::core::AppSettings settings_;
+  std::map<std::string, odr::RoadNetworkMesh> road_id_to_mesh_cache_;
 };

@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 struct TriTemp {
-  uint32_t encoded;
+  uint64_t encoded;
   QVector3D min_b;
   QVector3D max_b;
   QVector3D centroid;
@@ -94,7 +94,8 @@ SpatialIndexData BuildSpatialIndex(
       uint32_t layer_tag = view.resolve_layer_tag ? view.resolve_layer_tag(i0)
                                                   : view.default_layer_tag;
       t.encoded =
-          (layer_tag << 28) | (static_cast<uint32_t>(i / 3) & 0x0FFFFFFF);
+          (static_cast<uint64_t>(layer_tag) << 32) |
+          (static_cast<uint64_t>(i / 3) & 0xFFFFFFFFULL);
 
       QVector3D v0(verts[i0][0], verts[i0][1], verts[i0][2]);
       QVector3D v1(verts[i1][0], verts[i1][1], verts[i1][2]);
@@ -219,11 +220,11 @@ std::optional<SpatialPickResult> PickFromSpatialIndex(
     if (node.tri_count > 0) {
       // Leaf: test triangles
       for (uint32_t i = 0; i < node.tri_count; ++i) {
-        uint32_t encoded = index_data.flat_indices[node.tri_start + i];
-        uint32_t layer_tag = encoded >> 28;
+        uint64_t encoded = index_data.flat_indices[node.tri_start + i];
+        uint32_t layer_tag = static_cast<uint32_t>(encoded >> 32);
         if (!is_layer_visible(layer_tag)) continue;
 
-        uint32_t tri_idx = encoded & 0x0FFFFFFF;
+        uint32_t tri_idx = static_cast<uint32_t>(encoded & 0xFFFFFFFFULL);
         const odr::Mesh3D* mesh = mesh_for_layer(layer_tag);
         if (!mesh) continue;
 
@@ -291,7 +292,7 @@ std::vector<RaycastHitPoint> RaycastAllHits(
   std::stack<uint32_t> stack;
   stack.push(0);
 
-  std::unordered_set<uint32_t> visited_tris;
+  std::unordered_set<uint64_t> visited_tris;
 
   while (!stack.empty()) {
     uint32_t node_idx = stack.top();
@@ -306,13 +307,13 @@ std::vector<RaycastHitPoint> RaycastAllHits(
     const auto& node = index_data.nodes[node_idx];
     if (node.tri_count > 0) {
       for (uint32_t i = 0; i < node.tri_count; ++i) {
-        uint32_t encoded = index_data.flat_indices[node.tri_start + i];
+        uint64_t encoded = index_data.flat_indices[node.tri_start + i];
         if (!visited_tris.insert(encoded).second) continue;
 
-        uint32_t layer_tag = encoded >> 28;
+        uint32_t layer_tag = static_cast<uint32_t>(encoded >> 32);
         if (!is_layer_visible(layer_tag)) continue;
 
-        uint32_t tri_idx = encoded & 0x0FFFFFFF;
+        uint32_t tri_idx = static_cast<uint32_t>(encoded & 0xFFFFFFFFULL);
         const odr::Mesh3D* mesh = mesh_for_layer(layer_tag);
         if (!mesh) continue;
 

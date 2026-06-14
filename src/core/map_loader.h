@@ -6,14 +6,18 @@
 #include "RoadNetworkMesh.h"
 #include "src/core/junction_grouping.h"
 
+#include <map>
+
 namespace odr {
 class OpenDriveMap;
 class RoutingGraph;
+class Road;
 }  // namespace odr
 
 struct MapSceneData {
   std::shared_ptr<odr::OpenDriveMap> map;
   odr::RoadNetworkMesh mesh;
+  std::map<std::string, odr::RoadNetworkMesh> road_id_to_mesh;
   JunctionClusterResult junction_grouping;
   std::shared_ptr<odr::RoutingGraph> routing_graph;
   bool georeference_valid = false;
@@ -36,3 +40,15 @@ class OpenDriveMapSceneLoader : public IMapSceneLoader {
                     std::function<void(float, const std::string&)>
                         progress_callback = nullptr) const override;
 };
+
+namespace geoviewer::core {
+
+odr::RoadNetworkMesh GenerateSingleRoadMesh(const odr::Road& road, double eps);
+
+odr::RoadNetworkMesh MergeRoadMeshes(
+    const std::map<std::string, odr::RoadNetworkMesh>& road_id_to_mesh);
+
+std::map<std::string, odr::RoadNetworkMesh> GenerateRoadNetworkMeshParallel(
+    const std::shared_ptr<odr::OpenDriveMap>& map, double eps);
+
+}  // namespace geoviewer::core

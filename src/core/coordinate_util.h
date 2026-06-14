@@ -25,5 +25,6 @@ class GEOVIEWER_EXPORT CoordinateUtil {
   std::string georeference_;
   double x_offset_ = 0.0;
   double y_offset_ = 0.0;
+  uint64_t version_ = 0;
   mutable std::mutex mutex_;
 };
