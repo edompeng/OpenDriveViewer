@@ -507,7 +507,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
   futures.push_back(pool.Enqueue([=, &network_mesh]() {
     std::vector<uint32_t> indices;
     std::size_t estimated = 0;
-    std::vector<SceneCachedElement> visible_elements;
+    std::vector<const SceneCachedElement*> visible_elements;
     for (const auto& el : signal_element_items_) {
       if (el.group_key.find(":light") == std::string::npos) continue;
       if (hidden_elements_.count(el.road_key) ||
@@ -515,17 +515,19 @@ void GeoViewerWidget::UpdateMeshIndices() {
           hidden_elements_.count(el.element_key)) {
         continue;
       }
-      visible_elements.push_back(el);
+      visible_elements.push_back(&el);
       for (const auto& range : el.ranges) {
         estimated += static_cast<std::size_t>(range.count) * 3;
       }
     }
     indices.reserve(estimated);
-    for (const auto& el : visible_elements) {
-      for (const auto& range : el.ranges) {
+    const auto& src_indices = network_mesh.road_signals_mesh.indices;
+    for (const auto* el : visible_elements) {
+      for (const auto& range : el->ranges) {
+        const std::size_t base = static_cast<std::size_t>(range.start) * 3;
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
-              network_mesh.road_signals_mesh.indices[range.start * 3 + k] +
+              src_indices[base + k] +
               static_cast<uint32_t>(signal_lights_offset));
         }
       }
@@ -541,7 +543,7 @@ void GeoViewerWidget::UpdateMeshIndices() {
   futures.push_back(pool.Enqueue([=, &network_mesh]() {
     std::vector<uint32_t> indices;
     std::size_t estimated = 0;
-    std::vector<SceneCachedElement> visible_elements;
+    std::vector<const SceneCachedElement*> visible_elements;
     for (const auto& el : signal_element_items_) {
       if (el.group_key.find(":sign") == std::string::npos) continue;
       if (hidden_elements_.count(el.road_key) ||
@@ -549,17 +551,19 @@ void GeoViewerWidget::UpdateMeshIndices() {
           hidden_elements_.count(el.element_key)) {
         continue;
       }
-      visible_elements.push_back(el);
+      visible_elements.push_back(&el);
       for (const auto& range : el.ranges) {
         estimated += static_cast<std::size_t>(range.count) * 3;
       }
     }
     indices.reserve(estimated);
-    for (const auto& el : visible_elements) {
-      for (const auto& range : el.ranges) {
+    const auto& src_indices = network_mesh.road_signals_mesh.indices;
+    for (const auto* el : visible_elements) {
+      for (const auto& range : el->ranges) {
+        const std::size_t base = static_cast<std::size_t>(range.start) * 3;
         for (uint32_t k = 0; k < range.count * 3; ++k) {
           indices.push_back(
-              network_mesh.road_signals_mesh.indices[range.start * 3 + k] +
+              src_indices[base + k] +
               static_cast<uint32_t>(signal_signs_offset));
         }
       }
@@ -602,34 +606,30 @@ void GeoViewerWidget::UpdateMeshIndices() {
   // kLaneLines
   {
     std::vector<uint32_t> solid_indices;
+    std::vector<const SceneOutlineElement*> visible_outlines;
+    visible_outlines.reserve(outline_element_items_.size());
     std::size_t estimated_solid = 0;
     for (const auto& el : outline_element_items_) {
+      if (el.is_dashed) continue;
       if (hidden_elements_.count(el.road_key) ||
           hidden_elements_.count(el.group_key) ||
           hidden_elements_.count(el.element_key)) {
         continue;
       }
-      if (el.is_dashed) continue;
-      std::size_t count = 0;
+      visible_outlines.push_back(&el);
       for (const auto& range : el.ranges) {
-        count += static_cast<std::size_t>(range.count) * 2;
+        estimated_solid += static_cast<std::size_t>(range.count) * 2;
       }
-      estimated_solid += count;
     }
     solid_indices.reserve(estimated_solid);
     size_t v_offset = gl_renderer_->GetLayerVertexOffset(LayerType::kLanes);
 
-    for (const auto& el : outline_element_items_) {
-      if (hidden_elements_.count(el.road_key)) continue;
-      if (hidden_elements_.count(el.group_key)) continue;
-      if (hidden_elements_.count(el.element_key)) continue;
-      if (el.is_dashed) continue;
-
-      for (const auto& range : el.ranges) {
+    for (const auto* el : visible_outlines) {
+      for (const auto& range : el->ranges) {
+        const std::size_t base = static_cast<std::size_t>(range.start) * 2;
         for (uint32_t k = 0; k < range.count * 2; ++k) {
           solid_indices.push_back(
-              static_cast<uint32_t>(
-                  lane_outline_indices_[range.start * 2 + k]) +
+              static_cast<uint32_t>(lane_outline_indices_[base + k]) +
               static_cast<uint32_t>(v_offset));
         }
       }

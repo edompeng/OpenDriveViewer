@@ -2,6 +2,8 @@
 #include <charconv>
 #include <cctype>
 #include <cstdlib>
+#include <sstream>
+#include <locale>
 
 namespace {
 
@@ -59,10 +61,15 @@ bool ParseDouble(const std::string& text, double* out) {
   if (out == nullptr || text.empty()) {
     return false;
   }
-  const char* first = text.data();
-  const char* last = text.data() + text.size();
-  auto [ptr, ec] = std::from_chars(first, last, *out);
-  return ec == std::errc() && ptr == last;
+  std::istringstream stream(text);
+  stream.imbue(std::locale::classic());
+  double val = 0.0;
+  stream >> val;
+  if (stream.fail() || !stream.eof()) {
+    return false;
+  }
+  *out = val;
+  return true;
 }
 
 bool ParseInt(const std::string& text, int* out) {

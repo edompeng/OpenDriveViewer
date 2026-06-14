@@ -381,22 +381,50 @@ void GlRenderer::DrawLayersByMode(GLenum target_mode) {
           (i == static_cast<int>(LayerType::kLaneLinesDashed)) ||
           (i == static_cast<int>(LayerType::kRoadmarks));
 
-      for (const auto& chunk : layers_[i].chunks) {
-        if (frustum_.IsAabbVisible(chunk.min_bound, chunk.max_bound)) {
-          if (is_minor_layer) {
-            const QVector3D chunk_center =
-                (chunk.min_bound + chunk.max_bound) * 0.5f;
-            const float dist = camera_pos_.distanceToPoint(chunk_center);
-            if (dist > 600.0f) {
-              continue;
-            }
+      const size_t num_chunks = layers_[i].chunks.size();
+      size_t batch_start_offset = 0;
+      size_t batch_index_count = 0;
+      bool has_batch = false;
+
+      for (size_t chunk_idx = 0; chunk_idx < num_chunks; ++chunk_idx) {
+        const auto& chunk = layers_[i].chunks[chunk_idx];
+        bool is_visible = frustum_.IsAabbVisible(chunk.min_bound, chunk.max_bound);
+        if (is_visible && is_minor_layer) {
+          const QVector3D chunk_center =
+              (chunk.min_bound + chunk.max_bound) * 0.5f;
+          const float dist = camera_pos_.distanceToPoint(chunk_center);
+          if (dist > 600.0f) {
+            is_visible = false;
           }
-          glDrawElements(layers_[i].draw_mode,
-                         static_cast<GLsizei>(chunk.index_count),
-                         GL_UNSIGNED_INT,
-                         reinterpret_cast<void*>(static_cast<intptr_t>(
-                             chunk.index_offset * sizeof(uint32_t))));
         }
+
+        if (is_visible) {
+          if (has_batch) {
+            if (batch_start_offset + batch_index_count == chunk.index_offset) {
+              batch_index_count += chunk.index_count;
+            } else {
+              glDrawElements(layers_[i].draw_mode,
+                             static_cast<GLsizei>(batch_index_count),
+                             GL_UNSIGNED_INT,
+                             reinterpret_cast<void*>(static_cast<intptr_t>(
+                                 batch_start_offset * sizeof(uint32_t))));
+              batch_start_offset = chunk.index_offset;
+              batch_index_count = chunk.index_count;
+            }
+          } else {
+            batch_start_offset = chunk.index_offset;
+            batch_index_count = chunk.index_count;
+            has_batch = true;
+          }
+        }
+      }
+
+      if (has_batch && batch_index_count > 0) {
+        glDrawElements(layers_[i].draw_mode,
+                       static_cast<GLsizei>(batch_index_count),
+                       GL_UNSIGNED_INT,
+                       reinterpret_cast<void*>(static_cast<intptr_t>(
+                           batch_start_offset * sizeof(uint32_t))));
       }
     }
 

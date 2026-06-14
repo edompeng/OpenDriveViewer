@@ -7,18 +7,22 @@ std::vector<uint32_t> CollectSceneIndices(
     const std::vector<uint32_t>& source_indices, size_t vertex_offset,
     const std::function<bool(const SceneCachedElement&)>& predicate) {
   std::size_t total_count = 0;
-  for (const auto& element : elements) {
-    if (!predicate(element)) continue;
-    for (const auto& range : element.ranges) {
-      total_count += static_cast<std::size_t>(range.count) * 3;
+  std::vector<char> valid_elements(elements.size());
+  for (std::size_t i = 0; i < elements.size(); ++i) {
+    char valid = predicate(elements[i]) ? 1 : 0;
+    valid_elements[i] = valid;
+    if (valid) {
+      for (const auto& range : elements[i].ranges) {
+        total_count += static_cast<std::size_t>(range.count) * 3;
+      }
     }
   }
 
   std::vector<uint32_t> indices;
   indices.reserve(total_count);
-  for (const auto& element : elements) {
-    if (!predicate(element)) continue;
-    for (const auto& range : element.ranges) {
+  for (std::size_t i = 0; i < elements.size(); ++i) {
+    if (!valid_elements[i]) continue;
+    for (const auto& range : elements[i].ranges) {
       const std::size_t base = static_cast<std::size_t>(range.start) * 3;
       if (base + static_cast<std::size_t>(range.count) * 3 >
           source_indices.size()) {
@@ -41,25 +45,33 @@ std::vector<SceneMeshChunk> BuildSceneMeshChunks(
     SceneMeshChunk chunk;
     chunk.index_offset = i;
     chunk.index_count = std::min(chunk_size, indices.size() - i);
-    QVector3D min_bound(1e9f, 1e9f, 1e9f);
-    QVector3D max_bound(-1e9f, -1e9f, -1e9f);
+    float min_x = 1e9f;
+    float min_y = 1e9f;
+    float min_z = 1e9f;
+    float max_x = -1e9f;
+    float max_y = -1e9f;
+    float max_z = -1e9f;
+    const uint32_t* chunk_indices = &indices[i];
     for (size_t j = 0; j < chunk.index_count; ++j) {
-      const uint32_t global_index = indices[i + j];
+      const uint32_t global_index = chunk_indices[j];
       if (global_index < vertex_offset) continue;
       const size_t local_index =
           static_cast<size_t>(global_index - vertex_offset);
       if (local_index >= mesh.vertices.size()) continue;
       const auto& vertex = mesh.vertices[local_index];
-      min_bound.setX(std::min(min_bound.x(), static_cast<float>(vertex[0])));
-      min_bound.setY(std::min(min_bound.y(), static_cast<float>(vertex[1])));
-      min_bound.setZ(std::min(min_bound.z(), static_cast<float>(vertex[2])));
-      max_bound.setX(std::max(max_bound.x(), static_cast<float>(vertex[0])));
-      max_bound.setY(std::max(max_bound.y(), static_cast<float>(vertex[1])));
-      max_bound.setZ(std::max(max_bound.z(), static_cast<float>(vertex[2])));
+      const float vx = static_cast<float>(vertex[0]);
+      const float vy = static_cast<float>(vertex[1]);
+      const float vz = static_cast<float>(vertex[2]);
+      if (vx < min_x) min_x = vx;
+      if (vx > max_x) max_x = vx;
+      if (vy < min_y) min_y = vy;
+      if (vy > max_y) max_y = vy;
+      if (vz < min_z) min_z = vz;
+      if (vz > max_z) max_z = vz;
     }
-    if (min_bound.x() <= max_bound.x()) {
-      chunk.min_bound = min_bound;
-      chunk.max_bound = max_bound;
+    if (min_x <= max_x) {
+      chunk.min_bound = QVector3D(min_x, min_y, min_z);
+      chunk.max_bound = QVector3D(max_x, max_y, max_z);
       chunks.push_back(chunk);
     }
   }
