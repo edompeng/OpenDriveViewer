@@ -443,8 +443,17 @@ jobs:
             QT_BIN_DIR=$(echo "$QT_ROOT_DIR/bin" | tr '\\' '/')
             VCPKG_BIN_DIR=$(echo "${{ github.workspace }}/vcpkg_installed/${{ matrix.vcpkg_triplet }}/bin" | tr '\\' '/')
             echo "Copying DLLs to build/bin..."
-            cp "$QT_BIN_DIR"/*.dll build/bin/
-            cp "$VCPKG_BIN_DIR"/*.dll build/bin/
+            cp "$QT_BIN_DIR"/*.dll build/bin/ || true
+            cp "$VCPKG_BIN_DIR"/*.dll build/bin/ || true
+            
+            echo "==== DLLs in build/bin/ ===="
+            ls -la build/bin/ || true
+            
+            echo "==== ldd ViewerCoreTests.exe ===="
+            ldd build/bin/ViewerCoreTests.exe || true
+            
+            echo "==== dumpbin ViewerCoreTests.exe ===="
+            dumpbin.exe /dependents build/bin/ViewerCoreTests.exe || true
           fi
           cd build
           if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
