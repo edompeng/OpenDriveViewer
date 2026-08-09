@@ -914,6 +914,7 @@ void GeoViewerWidget::FinalizeSceneUpdate() {
   spatial_index_ready_ = false;
   spatial_index_data_ = SpatialIndexData();
   StartSpatialIndexBuild();
+  emit MeshReady();
 }
 
 std::string GeoViewerWidget::GetRoadIdBySignalId(

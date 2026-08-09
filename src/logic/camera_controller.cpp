@@ -11,8 +11,14 @@ QMatrix4x4 CameraController::GetViewMatrix() const {
   dir.setY(qSin(pitch_rad));
   dir.setZ(qCos(pitch_rad) * qSin(yaw_rad));
 
+  constexpr float kGimbalLockThreshold = 0.99f;
+  QVector3D up(0, 1, 0);
+  if (std::abs(dir.y()) > kGimbalLockThreshold) {
+    up = QVector3D(0, 0, -1);
+  }
+
   QMatrix4x4 view;
-  view.lookAt(target_ - dir * distance_, target_, QVector3D(0, 1, 0));
+  view.lookAt(target_ - dir * distance_, target_, up);
   return view;
 }
 

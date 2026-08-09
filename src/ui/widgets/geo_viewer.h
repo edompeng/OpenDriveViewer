@@ -194,6 +194,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void UserPointsChanged();
   void MapDiffApplied();
   void SceneReset();
+  void MeshReady();
   void ViewModeChanged(CameraController::ViewMode mode);
   void ShowXmlRequested(const geoviewer::ui::XmlTarget& target,
                         const QString& xml_text);
@@ -234,6 +235,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
                        float speed_mps = 15.0f);
   void StopSimulation();
   bool IsSimulationActive() const;
+  bool IsMeshUpdated() const { return mesh_updated_; }
 
   // ---------- Map Diff Support ----------
   void CompareWithMap(const QString& path);

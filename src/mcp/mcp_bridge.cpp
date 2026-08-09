@@ -2,15 +2,16 @@
 
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QEventLoop>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMetaObject>
 #include <QThread>
+#include <QTimer>
 #include <QVector3D>
 #include <cmath>
 
-#include "OpenDriveMap.h"
 #include "RoutingGraph.h"
 #include "src/core/coordinate_util.h"
 #include "src/core/scene_enums.h"
@@ -33,8 +34,7 @@ QJsonObject McpBridge::RunOnMainThread(Func&& func) {
 
   QJsonObject result;
   QMetaObject::invokeMethod(
-      this,
-      [&result, f = std::forward<Func>(func)]() { result = f(); },
+      this, [&result, f = std::forward<Func>(func)]() { result = f(); },
       Qt::BlockingQueuedConnection);
   return result;
 }
@@ -47,17 +47,20 @@ QJsonObject McpBridge::SetCamera(const QJsonObject& args) {
       return QJsonObject{{"error", "Viewer widget not available"}};
     }
     const auto& camera = viewer_widget_->GetCamera();
-    QVector3D target = camera.GetTarget();
+    QVector3D current_target = camera.GetTarget();
+
+    bool rht = viewer_widget_->IsRightHandTraffic();
+    double local_x = current_target.x();
+    double local_y = rht ? -current_target.z() : current_target.z();
+    double local_z = current_target.y();
+
     float yaw = camera.GetYaw();
     float pitch = camera.GetPitch();
     float distance = camera.GetDistance();
 
-    if (args.contains("target_x"))
-      target.setX(static_cast<float>(args.value("target_x").toDouble()));
-    if (args.contains("target_y"))
-      target.setY(static_cast<float>(args.value("target_y").toDouble()));
-    if (args.contains("target_z"))
-      target.setZ(static_cast<float>(args.value("target_z").toDouble()));
+    if (args.contains("target_x")) local_x = args.value("target_x").toDouble();
+    if (args.contains("target_y")) local_y = args.value("target_y").toDouble();
+    if (args.contains("target_z")) local_z = args.value("target_z").toDouble();
     if (args.contains("yaw"))
       yaw = static_cast<float>(args.value("yaw").toDouble());
     if (args.contains("pitch"))
@@ -65,13 +68,17 @@ QJsonObject McpBridge::SetCamera(const QJsonObject& args) {
     if (args.contains("distance"))
       distance = static_cast<float>(args.value("distance").toDouble());
 
-    viewer_widget_->SetCameraState(target, yaw, pitch, distance);
+    float rx = static_cast<float>(local_x);
+    float ry = static_cast<float>(local_z);
+    float rz = static_cast<float>(rht ? -local_y : local_y);
+
+    viewer_widget_->SetCameraState(QVector3D(rx, ry, rz), yaw, pitch, distance);
 
     QJsonObject res;
     res["status"] = "success";
-    res["target_x"] = target.x();
-    res["target_y"] = target.y();
-    res["target_z"] = target.z();
+    res["target_x"] = local_x;
+    res["target_y"] = local_y;
+    res["target_z"] = local_z;
     res["yaw"] = yaw;
     res["pitch"] = pitch;
     res["distance"] = distance;
@@ -237,7 +244,8 @@ QJsonObject McpBridge::AddRoutingPath(const QJsonObject& args) {
     }
 
     if (start_road_id.empty() || end_road_id.empty()) {
-      return QJsonObject{{"error", "Could not map start/end points to road network"}};
+      return QJsonObject{
+          {"error", "Could not map start/end points to road network"}};
     }
 
     odr::RoutingGraph rgraph = map->get_routing_graph();
@@ -318,9 +326,8 @@ QJsonObject McpBridge::SetLayerVisibility(const QJsonObject& args) {
     }
 
     viewer_widget_->SetLayerVisible(type, visible);
-    return QJsonObject{{"status", "success"},
-                       {"layer", layer_name},
-                       {"visible", visible}};
+    return QJsonObject{
+        {"status", "success"}, {"layer", layer_name}, {"visible", visible}};
   });
 }
 
@@ -334,6 +341,23 @@ QJsonObject McpBridge::LoadMap(const QJsonObject& args) {
       return QJsonObject{{"error", "Map path is empty"}};
     }
     load_map_fn_(path);
+
+    if (viewer_widget_) {
+      QEventLoop loop;
+      QTimer timer;
+      timer.setSingleShot(true);
+
+      connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+      connect(viewer_widget_, &GeoViewerWidget::MeshReady, &loop,
+              &QEventLoop::quit);
+
+      if (!viewer_widget_->IsMeshUpdated()) {
+        timer.start(15000);  // 15 seconds timeout
+        loop.exec();
+      }
+      viewer_widget_->repaint();
+    }
+
     return QJsonObject{{"status", "success"}, {"path", path}};
   });
 }
@@ -343,7 +367,10 @@ QJsonObject McpBridge::TakeScreenshot(const QJsonObject& args) {
     if (!viewer_widget_) {
       return QJsonObject{{"error", "Viewer widget not available"}};
     }
+    viewer_widget_->makeCurrent();
+    viewer_widget_->repaint();
     QImage screenshot = viewer_widget_->grabFramebuffer();
+    viewer_widget_->doneCurrent();
     if (screenshot.isNull()) {
       return QJsonObject{{"error", "Failed to capture framebuffer"}};
     }
@@ -596,8 +623,7 @@ QJsonObject McpBridge::GetJunctions(const QJsonObject& args) {
         QJsonObject c_obj;
         c_obj["id"] = QString::fromStdString(conn.id);
         c_obj["incoming_road"] = QString::fromStdString(conn.incoming_road);
-        c_obj["connecting_road"] =
-            QString::fromStdString(conn.connecting_road);
+        c_obj["connecting_road"] = QString::fromStdString(conn.connecting_road);
         c_obj["contact_point"] =
             (conn.contact_point == odr::JunctionConnection::ContactPoint_Start)
                 ? "start"
@@ -731,8 +757,7 @@ QJsonObject McpBridge::QueryPoint(const QJsonObject& args) {
       ty = args.value("y").toDouble();
       tz = args.value("z").toDouble(0.0);
     } else {
-      return QJsonObject{
-          {"error", "Provide (lon, lat) or (x, y) coordinates"}};
+      return QJsonObject{{"error", "Provide (lon, lat) or (x, y) coordinates"}};
     }
 
     std::string best_road_id;
@@ -795,9 +820,9 @@ QJsonObject McpBridge::CoordinateTransform(const QJsonObject& args) {
     CoordinateUtil::Instance().LocalToWGS84(&lon, &lat, nullptr);
     return QJsonObject{{"lon", lon}, {"lat", lat}, {"alt", z}};
   }
-  return QJsonObject{
-      {"error",
-       "Invalid transform direction: use from='wgs84'/to='local' or vice versa"}};
+  return QJsonObject{{"error",
+                      "Invalid transform direction: use "
+                      "from='wgs84'/to='local' or vice versa"}};
 }
 
 }  // namespace geoviewer::mcp
