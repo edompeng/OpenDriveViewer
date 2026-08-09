@@ -78,6 +78,8 @@ int main(int argc, char** argv) {
     uint16_t port = parser.value(mcp_http_opt).toUShort(&ok);
     if (!ok || port == 0) port = 8080;
     w.StartMcpHttp(port);
+  } else {
+    w.StartMcpHttp(8080);
   }
 
   int exit_code = app.exec();

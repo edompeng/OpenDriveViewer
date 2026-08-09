@@ -132,7 +132,34 @@ OpenDriveViewer 内置了 MCP 服务端，允许 AI Agent（如 Claude Desktop�
 - **数据查询**: `get_roads`, `get_road_detail`, `get_lane_geometry`, `get_junctions`, `get_signals`, `get_objects`, `query_point`
 - **视角相机操控**: `set_camera`, `jump_to_location`, `highlight_element`, `set_layer_visibility`, `set_view_mode`, `take_screenshot`
 - **辅助工具**: `add_routing_path`, `clear_routing_paths`, `add_user_points`, `clear_user_points`, `coordinate_transform`
-
+#### mcp配置
+- stdio方式
+```json
+{
+  "mcpServers": {
+    "odrviewer": {
+      "args": [
+        "--mcp-stdio"
+      ],
+      "command": "/Users/edom/code/c++/geoviewer/bazel-bin/src/app/OpenDriveViewer",
+      "disabled": true
+    }
+  }
+}
+```
+- http方式(推荐)
+```json http方式
+{
+  "mcpServers": {
+    "odrviewer_web": {
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "serverUrl": "http://localhost:8080/"
+    }
+  }
+}
+```
 ---
 
 ## 第三方库声明

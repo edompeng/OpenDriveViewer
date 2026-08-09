@@ -134,7 +134,34 @@ OpenDriveViewer features a built-in MCP server, allowing AI agents (such as Clau
 - **Data Inspection**: `get_roads`, `get_road_detail`, `get_lane_geometry`, `get_junctions`, `get_signals`, `get_objects`, `query_point`
 - **Viewport & Camera**: `set_camera`, `jump_to_location`, `highlight_element`, `set_layer_visibility`, `set_view_mode`, `take_screenshot`
 - **Navigation & Utilities**: `add_routing_path`, `clear_routing_paths`, `add_user_points`, `clear_user_points`, `coordinate_transform`
-
+#### mcp config
+- mcp-stdio
+```json
+{
+  "mcpServers": {
+    "odrviewer": {
+      "args": [
+        "--mcp-stdio"
+      ],
+      "command": "/Users/edom/code/c++/geoviewer/bazel-bin/src/app/OpenDriveViewer",
+      "disabled": true
+    }
+  }
+}
+```
+- mcp-http(recommended)
+```json
+{
+  "mcpServers": {
+    "odrviewer_web": {
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "serverUrl": "http://localhost:8080/"
+    }
+  }
+}
+```
 ---
 
 ## Third-Party Libraries

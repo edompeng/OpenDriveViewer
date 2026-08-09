@@ -123,6 +123,27 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
     return;
   }
 
+  if (method == "GET") {
+    QJsonObject info;
+    info["status"] = "ok";
+    info["server"] = "GeoViewer MCP Server";
+    info["version"] = "1.0.0";
+    QByteArray body = QJsonDocument(info).toJson(QJsonDocument::Compact);
+
+    QByteArray response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/json\r\n"
+        "Access-Control-Allow-Origin: *\r\n"
+        "Content-Length: " +
+        QByteArray::number(body.size()) +
+        "\r\n"
+        "Connection: close\r\n\r\n" +
+        body;
+    socket->write(response);
+    socket->disconnectFromHost();
+    return;
+  }
+
   if (method == "POST") {
     QJsonParseError parse_error;
     QJsonDocument doc = QJsonDocument::fromJson(body_part, &parse_error);
