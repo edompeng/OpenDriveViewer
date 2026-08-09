@@ -71,7 +71,7 @@ StdioTransport::~StdioTransport() { Stop(); }
 void StdioTransport::Start() {
   if (is_running_) return;
 
-  reader_thread_ = new StdioThread(this);
+  reader_thread_ = new StdioThread();
   connect(reader_thread_, &StdioThread::LineReceived, this,
           &StdioTransport::OnLineReceived, Qt::QueuedConnection);
   reader_thread_->start();
@@ -84,7 +84,11 @@ void StdioTransport::Stop() {
   if (reader_thread_) {
     reader_thread_->Stop();
     reader_thread_->quit();
-    reader_thread_->wait(1000);
+    if (!reader_thread_->wait(300)) {
+      reader_thread_->terminate();
+      reader_thread_->wait(300);
+    }
+    delete reader_thread_;
     reader_thread_ = nullptr;
   }
   is_running_ = false;
