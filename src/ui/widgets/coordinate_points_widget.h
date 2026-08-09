@@ -36,6 +36,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
 
  private:
   void RefreshPointsList();
+  void UpdatePointsListState();
   QWidget* BuildPointItemWidget(int index);
 
   GeoViewerWidget* viewer_;

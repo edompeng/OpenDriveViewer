@@ -186,7 +186,17 @@ void CoordinatePointsWidget::Clear() {
 void CoordinatePointsWidget::HandlePointsChanged() {
   points_tree_dirty_ = true;
   if (!isVisible()) return;
-  RefreshPointsList();
+
+  int tree_point_count = 0;
+  for (int i = 0; i < points_tree_->topLevelItemCount(); ++i) {
+    tree_point_count += points_tree_->topLevelItem(i)->childCount();
+  }
+
+  if (tree_point_count == viewer_->UserPointCount()) {
+    UpdatePointsListState();
+  } else {
+    RefreshPointsList();
+  }
   points_tree_dirty_ = false;
 }
 
@@ -466,6 +476,97 @@ void CoordinatePointsWidget::RefreshPointsList() {
       item->setData(0, Qt::UserRole + 1, false);  // is_group
       item->setSizeHint(0, QSize(0, 24));
       points_tree_->setItemWidget(item, 0, BuildPointItemWidget(idx));
+    }
+  }
+
+  points_tree_->setUpdatesEnabled(true);
+}
+
+void CoordinatePointsWidget::UpdatePointsListState() {
+  points_tree_->setUpdatesEnabled(false);
+
+  for (int i = 0; i < points_tree_->topLevelItemCount(); ++i) {
+    QTreeWidgetItem* group_item = points_tree_->topLevelItem(i);
+    int group_id = group_item->data(0, Qt::UserRole).toInt();
+
+    bool all_visible = true;
+    int group_point_count = 0;
+
+    for (int j = 0; j < group_item->childCount(); ++j) {
+      QTreeWidgetItem* child_item = group_item->child(j);
+      int idx = child_item->data(0, Qt::UserRole).toInt();
+      auto snap = viewer_->GetUserPointSnapshot(idx);
+
+      if (!snap.visible) {
+        all_visible = false;
+      }
+      group_point_count++;
+
+      // Update child item widget
+      QWidget* widget = points_tree_->itemWidget(child_item, 0);
+      if (widget) {
+        QLayout* layout = widget->layout();
+        if (layout && layout->count() >= 3) {
+          // Checkbox
+          QCheckBox* checkbox =
+              qobject_cast<QCheckBox*>(layout->itemAt(0)->widget());
+          if (checkbox) {
+            checkbox->blockSignals(true);
+            checkbox->setChecked(snap.visible);
+            checkbox->blockSignals(false);
+          }
+          // Color button
+          QToolButton* color_btn =
+              qobject_cast<QToolButton*>(layout->itemAt(1)->widget());
+          if (color_btn) {
+            QColor point_color = QColor::fromRgbF(
+                snap.color.x(), snap.color.y(), snap.color.z());
+            color_btn->setStyleSheet(
+                QString("background-color: %1; border: 1px solid "
+                        "rgba(255,255,255,0.3); border-radius: 3px;")
+                    .arg(point_color.name()));
+          }
+          // Label
+          QLabel* label = qobject_cast<QLabel*>(layout->itemAt(2)->widget());
+          if (label) {
+            QString coordText;
+            if (coord_mode_ == CoordinateMode::kWGS84) {
+              coordText = QString("%1, %2, %3")
+                              .arg(snap.lon, 0, 'f', 7)
+                              .arg(snap.lat, 0, 'f', 7)
+                              .arg(snap.alt, 0, 'f', 2);
+            } else {
+              coordText = QString("%1, %2, %3")
+                              .arg(snap.x, 0, 'f', 3)
+                              .arg(snap.y, 0, 'f', 3)
+                              .arg(snap.z, 0, 'f', 3);
+            }
+            label->setText(coordText);
+            label->setStyleSheet(QString("color: %1; font-size: 11px;")
+                                     .arg(snap.visible ? "#eee" : "#777"));
+          }
+        }
+      }
+    }
+
+    // Update group item widget
+    QWidget* widget = points_tree_->itemWidget(group_item, 0);
+    if (widget) {
+      QLayout* layout = widget->layout();
+      if (layout && layout->count() >= 2) {
+        QCheckBox* checkbox =
+            qobject_cast<QCheckBox*>(layout->itemAt(0)->widget());
+        if (checkbox) {
+          checkbox->blockSignals(true);
+          checkbox->setChecked(all_visible);
+          checkbox->blockSignals(false);
+        }
+        QLabel* label = qobject_cast<QLabel*>(layout->itemAt(1)->widget());
+        if (label) {
+          label->setText(
+              tr("Group %1 (%2 points)").arg(group_id).arg(group_point_count));
+        }
+      }
     }
   }
 

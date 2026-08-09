@@ -51,6 +51,11 @@ void GeoViewerWidget::paintGL() {
     UpdateMeshIndices();
   }
 
+  if (user_points_buffer_dirty_) {
+    UpdateUserPointsBuffers();
+    user_points_buffer_dirty_ = false;
+  }
+
   if (!mesh_updated_) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     return;
@@ -372,16 +377,20 @@ void GeoViewerWidget::StartSpatialIndexBuild() {
   auto map = map_;
   auto network_mesh = network_mesh_;
   auto junction_mesh = junction_mesh_;
-  auto signal_id_to_road_id = signal_id_to_road_id_; // copy for thread safety
+  auto signal_id_to_road_id = signal_id_to_road_id_;  // copy for thread safety
   auto facility_mesh = facility_mesh_;
 
   QPointer<GeoViewerWidget> weak_self(this);
 
   geoviewer::utility::ThreadPool::Instance().Enqueue(
-      [map, network_mesh, junction_mesh, signal_id_to_road_id, facility_mesh, generation, weak_self]() {
-        auto result = BuildSpatialIndexData(map, *network_mesh, *junction_mesh, signal_id_to_road_id, facility_mesh.get());
+      [map, network_mesh, junction_mesh, signal_id_to_road_id, facility_mesh,
+       generation, weak_self]() {
+        auto result =
+            BuildSpatialIndexData(map, *network_mesh, *junction_mesh,
+                                  signal_id_to_road_id, facility_mesh.get());
         QMetaObject::invokeMethod(
-            weak_self, [weak_self, res = std::move(result), generation]() mutable {
+            weak_self,
+            [weak_self, res = std::move(result), generation]() mutable {
               if (!weak_self) return;
               if (generation == weak_self->spatial_index_generation_.load()) {
                 weak_self->spatial_index_data_ = std::move(res);
@@ -394,14 +403,14 @@ void GeoViewerWidget::StartSpatialIndexBuild() {
 
 void GeoViewerWidget::ForceRebuildSpatialIndex() {
   spatial_index_data_ =
-      BuildSpatialIndexData(map_, *network_mesh_, *junction_mesh_, signal_id_to_road_id_, facility_mesh_.get());
+      BuildSpatialIndexData(map_, *network_mesh_, *junction_mesh_,
+                            signal_id_to_road_id_, facility_mesh_.get());
   spatial_index_ready_ = true;
 }
 
 SpatialIndexData GeoViewerWidget::BuildSpatialIndexData(
     std::shared_ptr<odr::OpenDriveMap> map,
-    const odr::RoadNetworkMesh& network_mesh,
-    const odr::Mesh3D& junction_mesh,
+    const odr::RoadNetworkMesh& network_mesh, const odr::Mesh3D& junction_mesh,
     const std::unordered_map<std::string, std::string>& signal_id_to_road_id,
     const odr::Mesh3D* facility_mesh) {
   std::vector<SceneMeshLayerView> views = {
@@ -440,10 +449,8 @@ SpatialIndexData GeoViewerWidget::BuildSpatialIndexData(
           }}};
 
   if (facility_mesh) {
-    views.push_back(
-        SceneMeshLayerView{facility_mesh,
-                           static_cast<uint32_t>(LayerType::kFacilities),
-                           {}});
+    views.push_back(SceneMeshLayerView{
+        facility_mesh, static_cast<uint32_t>(LayerType::kFacilities), {}});
   }
 
   return BuildSpatialIndex(views);

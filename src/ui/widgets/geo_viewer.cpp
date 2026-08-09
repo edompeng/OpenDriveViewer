@@ -52,7 +52,7 @@ void GeoViewerWidget::CommitUserPointsChange(bool buffer_dirty) {
   }
 
   if (buffer_dirty) {
-    UpdateUserPointsBuffers();
+    user_points_buffer_dirty_ = true;
   }
   update();
   emit UserPointsChanged();
@@ -71,7 +71,7 @@ void GeoViewerWidget::EndUserPointsBatch() {
   if (user_points_batch_depth_ != 0 || !user_points_batch_dirty_) return;
 
   if (user_points_batch_buffer_dirty_) {
-    UpdateUserPointsBuffers();
+    user_points_buffer_dirty_ = true;
   }
   user_points_batch_dirty_ = false;
   user_points_batch_buffer_dirty_ = false;
@@ -340,7 +340,6 @@ GeoViewerWidget::UserPointSnapshot GeoViewerWidget::GetUserPointSnapshot(
 
 void GeoViewerWidget::UpdateUserPointsBuffers() {
   if (!gl_renderer_) return;
-  makeCurrent();
 
   // Upload position (3 floats) + color (4 floats) for each point.
   // Visibility is handled by alpha=0 in the color or discarding in shader.
@@ -358,7 +357,6 @@ void GeoViewerWidget::UpdateUserPointsBuffers() {
   }
 
   gl_renderer_->UploadUserPointsData(data);
-  doneCurrent();
 }
 
 void GeoViewerWidget::UpdateMeasureBuffers() {
@@ -526,9 +524,8 @@ void GeoViewerWidget::UpdateMeshIndices() {
       for (const auto& range : el->ranges) {
         const std::size_t base = static_cast<std::size_t>(range.start) * 3;
         for (uint32_t k = 0; k < range.count * 3; ++k) {
-          indices.push_back(
-              src_indices[base + k] +
-              static_cast<uint32_t>(signal_lights_offset));
+          indices.push_back(src_indices[base + k] +
+                            static_cast<uint32_t>(signal_lights_offset));
         }
       }
     }
@@ -562,9 +559,8 @@ void GeoViewerWidget::UpdateMeshIndices() {
       for (const auto& range : el->ranges) {
         const std::size_t base = static_cast<std::size_t>(range.start) * 3;
         for (uint32_t k = 0; k < range.count * 3; ++k) {
-          indices.push_back(
-              src_indices[base + k] +
-              static_cast<uint32_t>(signal_signs_offset));
+          indices.push_back(src_indices[base + k] +
+                            static_cast<uint32_t>(signal_signs_offset));
         }
       }
     }

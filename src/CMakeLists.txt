@@ -8,5 +8,6 @@ add_definitions(-DGEOVIEWER_BUILD_LIB)
 
 add_subdirectory(core)
 add_subdirectory(logic)
+add_subdirectory(mcp)
 add_subdirectory(app)
 add_subdirectory(ui)

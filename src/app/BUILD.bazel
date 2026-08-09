@@ -15,6 +15,7 @@ cc_binary(
     deps = [
         "//bazel:qt6",
         "//src/core",
+        "//src/mcp",
         "//src/ui:main_window",
         "//src/ui/widgets",
     ] + select({

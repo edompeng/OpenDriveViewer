@@ -6,7 +6,7 @@ qt_add_translations(
 
 
 target_include_directories(OpenDriveViewer PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(OpenDriveViewer PRIVATE GeoViewerUIWidgets MainWindow)
+target_link_libraries(OpenDriveViewer PRIVATE GeoViewerUIWidgets MainWindow GeoViewerMcp)
 
 if(NOT APPLE)
   find_package(gperftools CONFIG QUIET)

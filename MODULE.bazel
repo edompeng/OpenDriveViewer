@@ -19,6 +19,7 @@ qt6_config(
     modules = [
         "QtCore",
         "QtGui",
+        "QtNetwork",
         "QtOpenGL",
         "QtOpenGLWidgets",
         "QtWidgets",

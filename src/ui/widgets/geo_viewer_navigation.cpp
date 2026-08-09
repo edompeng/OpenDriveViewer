@@ -124,6 +124,14 @@ void GeoViewerWidget::JumpToRendererLocation(const QVector3D& world_pos) {
   update();
 }
 
+void GeoViewerWidget::SetCameraState(const QVector3D& target, float yaw, float pitch, float distance) {
+  camera_.SetTarget(target);
+  camera_.SetYaw(yaw);
+  camera_.SetPitch(pitch);
+  camera_.SetDistance(distance);
+  update();
+}
+
 void GeoViewerWidget::SetViewMode(CameraController::ViewMode mode) {
   camera_.SetViewMode(mode);
   emit ViewModeChanged(mode);

@@ -1,0 +1,46 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:qt.bzl", "QT_COPTS", "qt_moc_genrule")
+
+qt_moc_genrule(
+    name = "moc_files",
+    headers = [
+        "mcp_bridge.h",
+        "mcp_protocol.h",
+        "mcp_server.h",
+        "mcp_transport_http.h",
+        "mcp_transport_stdio.h",
+    ],
+)
+
+cc_library(
+    name = "mcp",
+    srcs = [
+        "mcp_bridge.cpp",
+        "mcp_protocol.cpp",
+        "mcp_server.cpp",
+        "mcp_tools_data.cpp",
+        "mcp_tools_ui.cpp",
+        "mcp_transport_http.cpp",
+        "mcp_transport_stdio.cpp",
+        ":moc_files",
+    ],
+    hdrs = [
+        "mcp_bridge.h",
+        "mcp_protocol.h",
+        "mcp_server.h",
+        "mcp_tools_data.h",
+        "mcp_tools_ui.h",
+        "mcp_transport_http.h",
+        "mcp_transport_stdio.h",
+    ],
+    copts = QT_COPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//bazel:qt6",
+        "//src:export_header",
+        "//src/core",
+        "//src/logic",
+        "//src/ui/widgets",
+        "//third_party/libOpenDRIVE:opendrive",
+    ],
+)

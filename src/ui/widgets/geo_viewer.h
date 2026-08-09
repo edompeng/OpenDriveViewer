@@ -76,6 +76,9 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
     return routing_graph_.get();
   }
   QMatrix4x4 GetViewMatrix() const;
+  const CameraController& GetCamera() const { return camera_; }
+  CameraController& GetCamera() { return camera_; }
+  void SetCameraState(const QVector3D& target, float yaw, float pitch, float distance);
   CameraController::ViewMode GetViewMode() const {
     return camera_.GetViewMode();
   }
@@ -420,6 +423,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   int user_points_batch_depth_ = 0;
   bool user_points_batch_dirty_ = false;
   bool user_points_batch_buffer_dirty_ = false;
+  bool user_points_buffer_dirty_ = false;
   int next_point_group_id_ = 1;
   int current_point_group_id_ = 0;
   void CommitUserPointsChange(bool buffer_dirty);

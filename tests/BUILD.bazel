@@ -5,6 +5,7 @@ COMMON_DEPS = [
     "//bazel:qt6",
     "//src/core:core",
     "//src/logic:logic",
+    "//src/mcp:mcp",
     "//src/ui/widgets:widgets",
     "@googletest//:gtest_main",
 ]
@@ -35,6 +36,9 @@ cc_test(
         "junction_grouping_test.cpp",
         "async_map_loader_test.cpp",
         "map_loader_test.cpp",
+        "mcp_protocol_test.cpp",
+        "mcp_transport_test.cpp",
+        "mcp_tools_test.cpp",
     ],
     copts = QT_COPTS,
     data = COMMON_DATA,

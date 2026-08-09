@@ -29,10 +29,22 @@ class XmlEditorDialog;
 struct XmlTarget;
 }
 
+namespace geoviewer::mcp {
+class McpServer;
+}
+
 class MainWindow : public QMainWindow {
   Q_OBJECT
  public:
   MainWindow(QWidget *parent = nullptr);
+  ~MainWindow() override;
+  void StartMapLoad(const QString &path);
+  GeoViewerWidget *GetViewerWidget() const { return view_; }
+
+  void StartMcpStdio();
+  bool StartMcpHttp(uint16_t port = 8080);
+  void StopMcpServer();
+  geoviewer::mcp::McpServer *GetMcpServer() const { return mcp_server_; }
 
  private slots:
   void HandleLoadMap();
@@ -55,6 +67,7 @@ class MainWindow : public QMainWindow {
   void HandleXmlSaved(const geoviewer::ui::XmlTarget& target, const QString& xml_text);
   void HandleSaveMapAs();
   void TriggerMeshUpdate(const std::string& target_road_id = "");
+  void HandleToggleMcpServer();
 
  protected:
   void resizeEvent(QResizeEvent *event) override;
@@ -69,7 +82,6 @@ class MainWindow : public QMainWindow {
   QWidget *BuildCoordinateTools();
   void SetupConnections();
   void UpdateWindowTitle();
-  void StartMapLoad(const QString &path);
   void ApplyCoordinateModePolicy(bool georeference_valid);
   void SaveSettingsToStruct();
 
@@ -92,7 +104,9 @@ class MainWindow : public QMainWindow {
   QAction *screenshot_action_ = nullptr;
   QAction *stats_action_ = nullptr;
   QAction *save_as_action_ = nullptr;
+  QAction *mcp_action_ = nullptr;
   geoviewer::ui::XmlEditorDialog *xml_editor_ = nullptr;
+  geoviewer::mcp::McpServer *mcp_server_ = nullptr;
   bool is_modified_ = false;
 
   AsyncMapLoader *map_loader_;

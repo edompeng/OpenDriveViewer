@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QInputDialog>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPushButton>
@@ -18,6 +19,7 @@
 #include <QToolBar>
 #include <QTranslator>
 #include <QWidget>
+#include "src/mcp/mcp_server.h"
 #include "OpenDriveMap.h"
 #include "Road.h"
 #include "src/core/app_settings.h"
@@ -420,7 +422,74 @@ void MainWindow::SetupToolbar() {
   connect(stats_action_, &QAction::triggered, this,
           &MainWindow::HandleShowStats);
 
+  toolbar->addSeparator();
+
+  mcp_action_ = toolbar->addAction(tr("MCP Server"));
+  mcp_action_->setCheckable(true);
+  mcp_action_->setToolTip(tr("Start/Stop HTTP MCP Server"));
+  connect(mcp_action_, &QAction::triggered, this,
+          &MainWindow::HandleToggleMcpServer);
+
   toolbar->addWidget(BuildCoordinateTools());
+}
+
+MainWindow::~MainWindow() {
+  StopMcpServer();
+}
+
+void MainWindow::StartMcpStdio() {
+  if (!mcp_server_) {
+    mcp_server_ = new geoviewer::mcp::McpServer(
+        view_, [this](const QString& path) { StartMapLoad(path); }, this);
+  }
+  mcp_server_->StartStdio();
+  if (status_) {
+    status_->showMessage(tr("MCP Server running in stdio mode"));
+  }
+}
+
+bool MainWindow::StartMcpHttp(uint16_t port) {
+  if (!mcp_server_) {
+    mcp_server_ = new geoviewer::mcp::McpServer(
+        view_, [this](const QString& path) { StartMapLoad(path); }, this);
+  }
+  bool ok = mcp_server_->StartHttp(port);
+  if (ok) {
+    if (mcp_action_) mcp_action_->setChecked(true);
+    if (status_) {
+      status_->showMessage(
+          tr("MCP HTTP Server listening on port %1").arg(port));
+    }
+  } else {
+    QMessageBox::warning(this, tr("MCP Server Error"),
+                         tr("Failed to start HTTP server on port %1").arg(port));
+  }
+  return ok;
+}
+
+void MainWindow::StopMcpServer() {
+  if (mcp_server_) {
+    mcp_server_->StopAll();
+  }
+  if (mcp_action_) mcp_action_->setChecked(false);
+  if (status_) {
+    status_->showMessage(tr("MCP Server stopped"));
+  }
+}
+
+void MainWindow::HandleToggleMcpServer() {
+  if (mcp_server_ && mcp_server_->IsHttpRunning()) {
+    StopMcpServer();
+  } else {
+    bool ok = false;
+    int port = QInputDialog::getInt(this, tr("Start MCP Server"),
+                                    tr("Port number:"), 8080, 1024, 65535, 1, &ok);
+    if (ok) {
+      StartMcpHttp(static_cast<uint16_t>(port));
+    } else if (mcp_action_) {
+      mcp_action_->setChecked(false);
+    }
+  }
 }
 
 QWidget* MainWindow::BuildCoordinateTools() {

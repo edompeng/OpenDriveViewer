@@ -49,7 +49,7 @@ endif()
 
 find_package(
   Qt6
-  COMPONENTS Widgets Gui OpenGL OpenGLWidgets Concurrent LinguistTools
+  COMPONENTS Widgets Gui Network OpenGL OpenGLWidgets Concurrent LinguistTools
   REQUIRED)
 find_package(OpenGL REQUIRED)
 
@@ -157,7 +157,7 @@ macro(add_geoviewer_test name)
   add_executable(${name} ${ARGN})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(${name} PRIVATE GeoViewerCore GeoViewerLogic
-                                        GeoViewerUIWidgets gtest_main Qt6::Gui)
+                                        GeoViewerUIWidgets GeoViewerMcp gtest_main Qt6::Gui Qt6::Network)
   if(MSVC)
     target_compile_options(${name} PRIVATE /WX)
   else()
@@ -223,4 +223,7 @@ add_geoviewer_test(
   tests/junction_grouping_test.cpp
   tests/async_map_loader_test.cpp
   tests/map_loader_test.cpp
+  tests/mcp_protocol_test.cpp
+  tests/mcp_transport_test.cpp
+  tests/mcp_tools_test.cpp
   ${GEOVIEWER_APP_TEST_SOURCES})

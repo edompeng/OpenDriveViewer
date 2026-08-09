@@ -29,6 +29,7 @@ cc_library(
         "//src:export_header",
         "//src/core",
         "//src/logic",
+        "//src/mcp",
         "//src/ui/render",
         "//src/ui/widgets",
     ],
