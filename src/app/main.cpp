@@ -9,6 +9,7 @@
 
 #include "src/core/crash_handler.h"
 #include "src/core/thread_pool.h"
+#include "src/mcp/mcp_transport_stdio.h"
 #include "src/ui/main_window.h"
 
 // Redirect Qt logs to stderr to preserve clean stdout for stdio MCP
@@ -21,19 +22,30 @@ void CustomStderrMessageHandler(QtMsgType type,
 }
 
 int main(int argc, char** argv) {
+  // Immediately redirect stdout to stderr if --mcp-stdio is set in command
+  // line, ensuring stdout is reserved strictly for clean MCP JSON-RPC messages.
+  for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]) == "--mcp-stdio") {
+      geoviewer::mcp::StdioTransport::RedirectStdoutToStderr();
+      break;
+    }
+  }
+
   Q_INIT_RESOURCE(OpenDriveViewer_translations);
   QApplication app(argc, argv);
 
   // Parse command line arguments
   QCommandLineParser parser;
-  parser.setApplicationDescription("GeoViewer - 3D Geospatial OpenDRIVE Viewer");
+  parser.setApplicationDescription(
+      "GeoViewer - 3D Geospatial OpenDRIVE Viewer");
   parser.addHelpOption();
 
   QCommandLineOption mcp_stdio_opt("mcp-stdio",
                                    "Enable MCP Server in stdio transport mode");
   QCommandLineOption mcp_http_opt(
-      "mcp-http", "Enable MCP Server in HTTP transport mode (default port 8080)",
-      "port", "8080");
+      "mcp-http",
+      "Enable MCP Server in HTTP transport mode (default port 8080)", "port",
+      "8080");
 
   parser.addOption(mcp_stdio_opt);
   parser.addOption(mcp_http_opt);

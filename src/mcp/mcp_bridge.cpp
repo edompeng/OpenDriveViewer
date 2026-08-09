@@ -340,8 +340,6 @@ QJsonObject McpBridge::LoadMap(const QJsonObject& args) {
     if (path.isEmpty()) {
       return QJsonObject{{"error", "Map path is empty"}};
     }
-    load_map_fn_(path);
-
     if (viewer_widget_) {
       QEventLoop loop;
       QTimer timer;
@@ -351,11 +349,14 @@ QJsonObject McpBridge::LoadMap(const QJsonObject& args) {
       connect(viewer_widget_, &GeoViewerWidget::MeshReady, &loop,
               &QEventLoop::quit);
 
-      if (!viewer_widget_->IsMeshUpdated()) {
-        timer.start(15000);  // 15 seconds timeout
-        loop.exec();
-      }
+      load_map_fn_(path);
+
+      timer.start(120000);  // 120 seconds timeout for large maps
+      loop.exec();
+
       viewer_widget_->repaint();
+    } else {
+      load_map_fn_(path);
     }
 
     return QJsonObject{{"status", "success"}, {"path", path}};

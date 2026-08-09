@@ -7,6 +7,7 @@
 ## 功能
 
 - **3D 地理空间渲染**: 使用 OpenGL 快速渲染复杂的道路网络、交叉口和道路标记。
+- **Model Context Protocol (MCP) 集成**: 内置 MCP 服务端，支持 Stdio 和 HTTP JSON-RPC 传输模式，实现与 AI Agent 和外部工具的无缝交互。
 - **交互式地图组件**: 支持车道几何、交通信号、道路标志和包围盒。
 - **射线检测拾取与高亮**: 高精度鼠标交互，支持精确拾取单个地图几何元素（车道、物体、逻辑端点）。
 - **测量工具**: 内置交互式 3D 长度和距离测量工具，与 UI 完全解耦。
@@ -97,7 +98,7 @@ mkdir build && cd build
 cmake .. -DCMAKE_PREFIX_PATH="C:\Qt\6.9.1\msvc2022_64;C:\OSGeo4W" -A x64
 ```
 
-> **注意**: CMake 构建时会自动触发 `lupdate` 更新 `.ts` 文件。对于 Windows 的 `vcpkg` 用户，可以在配置时指定 toolchain。
+> **注意**: 对于 Windows 的 `vcpkg` 用户，可以在配置时指定 toolchain。
 
 #### 2. 构建与运行
 ```bash
@@ -107,6 +108,30 @@ cmake --build . --config Release
 # 运行测试
 ctest --build-config Release --output-on-failure
 ```
+
+---
+
+## 🤖 Model Context Protocol (MCP) 服务集成
+
+OpenDriveViewer 内置了 MCP 服务端，允许 AI Agent（如 Claude Desktop、Gemini Antigravity 或自定义 LLM 客户端）通过代码操控地图，进行地图结构查询、几何检验、视角控制以及视口截图抓取。
+
+### 命令行启动 MCP 模式
+
+- **Stdio 模式**（标准输入输出，适用于作为 LLM 子进程启动）：
+  ```bash
+  ./OpenDriveViewer --mcp-stdio
+  ```
+- **HTTP 模式**（JSON-RPC HTTP 服务，默认端口 8080）：
+  ```bash
+  ./OpenDriveViewer --mcp-http 8080
+  ```
+
+### 支持的核心 MCP 工具
+
+- **地图管理**: `load_map`, `get_map_info`
+- **数据查询**: `get_roads`, `get_road_detail`, `get_lane_geometry`, `get_junctions`, `get_signals`, `get_objects`, `query_point`
+- **视角相机操控**: `set_camera`, `jump_to_location`, `highlight_element`, `set_layer_visibility`, `set_view_mode`, `take_screenshot`
+- **辅助工具**: `add_routing_path`, `clear_routing_paths`, `add_user_points`, `clear_user_points`, `coordinate_transform`
 
 ---
 
@@ -130,6 +155,7 @@ ctest --build-config Release --output-on-failure
 │   ├── app/                # 程序入口与启动逻辑
 │   ├── core/               # 核心领域与基础设施模块
 │   ├── logic/              # 业务逻辑与交互逻辑
+│   ├── mcp/                # Model Context Protocol (MCP) 服务与传输逻辑
 │   └── ui/                 # Qt UI 与渲染层
 ├── tests/                  # GoogleTest 单元测试
 ├── data/                   # 示例 OpenDRIVE 与测试数据
@@ -146,6 +172,7 @@ ctest --build-config Release --output-on-failure
 - 主窗口与核心视图：`src/ui/main_window.*`、`src/ui/widgets/geo_viewer.*`
 - 核心数据与模型：`src/core/`
 - 业务与交互逻辑：`src/logic/`
+- MCP 服务与工具：`src/mcp/`
 - 单元测试：`tests/*_test.cpp`
 
 ## 📦 贡献指南

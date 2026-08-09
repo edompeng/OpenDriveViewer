@@ -12,8 +12,8 @@ void McpProtocolHandler::RegisterTool(const ToolDefinition& tool) {
 }
 
 QJsonObject McpProtocolHandler::CreateErrorResponse(const QJsonValue& id,
-                                                     JsonRpcErrorCode code,
-                                                     const QString& message) {
+                                                    JsonRpcErrorCode code,
+                                                    const QString& message) {
   QJsonObject error_obj;
   error_obj["code"] = static_cast<int>(code);
   error_obj["message"] = message;
@@ -25,8 +25,8 @@ QJsonObject McpProtocolHandler::CreateErrorResponse(const QJsonValue& id,
   return response;
 }
 
-QJsonObject McpProtocolHandler::CreateSuccessResponse(const QJsonValue& id,
-                                                       const QJsonObject& result) {
+QJsonObject McpProtocolHandler::CreateSuccessResponse(
+    const QJsonValue& id, const QJsonObject& result) {
   QJsonObject response;
   response["jsonrpc"] = "2.0";
   response["id"] = id;
@@ -68,7 +68,7 @@ QJsonObject McpProtocolHandler::HandleMessage(const QJsonObject& message) {
 }
 
 QJsonObject McpProtocolHandler::HandleInitialize(const QJsonValue& id,
-                                                  const QJsonObject& params) {
+                                                 const QJsonObject& params) {
   Q_UNUSED(params);
   QJsonObject capabilities;
   QJsonObject tools_cap;
@@ -108,25 +108,50 @@ QJsonObject McpProtocolHandler::HandleToolsList(const QJsonValue& id) {
 }
 
 QJsonObject McpProtocolHandler::HandleToolsCall(const QJsonValue& id,
-                                                 const QJsonObject& params) {
+                                                const QJsonObject& params) {
   const std::string name = params.value("name").toString().toStdString();
   const QJsonObject arguments = params.value("arguments").toObject();
 
   auto it = tools_.find(name);
   if (it == tools_.end()) {
     return CreateErrorResponse(id, JsonRpcErrorCode::kInvalidParams,
-                                "Unknown tool: " + QString::fromStdString(name));
+                               "Unknown tool: " + QString::fromStdString(name));
   }
 
   try {
-    QJsonObject tool_result = it->second.handler(arguments);
-    return CreateSuccessResponse(id, tool_result);
+    QJsonObject raw_result = it->second.handler(arguments);
+    QJsonObject mcp_result;
+
+    if (raw_result.contains("content") &&
+        raw_result.value("content").isArray()) {
+      mcp_result = raw_result;
+    } else {
+      bool is_error = raw_result.contains("error");
+      QJsonObject content_item;
+      if (is_error) {
+        content_item["type"] = "text";
+        content_item["text"] = raw_result.value("error").toString();
+      } else {
+        content_item["type"] = "text";
+        content_item["text"] = QString::fromUtf8(
+            QJsonDocument(raw_result).toJson(QJsonDocument::Compact));
+      }
+
+      QJsonArray content_array;
+      content_array.append(content_item);
+
+      mcp_result["content"] = content_array;
+      mcp_result["isError"] = is_error;
+    }
+
+    return CreateSuccessResponse(id, mcp_result);
   } catch (const std::exception& e) {
-    return CreateErrorResponse(id, JsonRpcErrorCode::kInternalError,
-                                QString("Tool execution error: %1").arg(e.what()));
+    return CreateErrorResponse(
+        id, JsonRpcErrorCode::kInternalError,
+        QString("Tool execution error: %1").arg(e.what()));
   } catch (...) {
     return CreateErrorResponse(id, JsonRpcErrorCode::kInternalError,
-                                "Tool execution error: unknown exception");
+                               "Tool execution error: unknown exception");
   }
 }
 

@@ -7,6 +7,7 @@ A high-performance, cross-platform 3D geospatial viewer designed for OpenDRIVE m
 ## Features
 
 - **3D Geospatial Rendering**: Fast rendering of complex road networks, junctions, and roadmarks using OpenGL.
+- **Model Context Protocol (MCP) Integration**: Built-in MCP server supporting stdio and HTTP JSON-RPC transports for seamless interaction with AI agents and external tools.
 - **Interactive Map Components**: Supports lane geometries, traffic signals, road signs, and bounding boxes.
 - **Ray-cast Picking & Highlighting**: High-precision mouse interaction, enabling precise picking of individual map geometry elements (lanes, objects, logic endpoints).
 - **Measurement Tool**: Built-in interactive 3D length and distance measurement tools completely decoupled from the UI.
@@ -29,7 +30,7 @@ Regardless of your build system choice, you must have the following dependencies
 
 ---
 
-## <a id="build-instructions" name="build-instructions"></a>🚀 Building & Testing
+## 🚀 Building & Testing
 
 This project concurrently supports **CMake** and **Bazel** across three major platforms (macOS, Linux, Windows).
 Choose your preferred build system below.
@@ -112,6 +113,30 @@ ctest --build-config Release --output-on-failure
 
 ---
 
+## 🤖 Model Context Protocol (MCP) Integration
+
+OpenDriveViewer features a built-in MCP server, allowing AI agents (such as Claude Desktop, Gemini Antigravity, or custom LLM clients) to query map structures, inspect geometries, control camera viewports, and capture screenshots programmatically.
+
+### Launching MCP Modes via CLI
+
+- **Stdio Mode** (standard I/O for LLM subprocess integration):
+  ```bash
+  ./OpenDriveViewer --mcp-stdio
+  ```
+- **HTTP Mode** (JSON-RPC HTTP server, default port 8080):
+  ```bash
+  ./OpenDriveViewer --mcp-http 8080
+  ```
+
+### Key MCP Tools Supported
+
+- **Map Management**: `load_map`, `get_map_info`
+- **Data Inspection**: `get_roads`, `get_road_detail`, `get_lane_geometry`, `get_junctions`, `get_signals`, `get_objects`, `query_point`
+- **Viewport & Camera**: `set_camera`, `jump_to_location`, `highlight_element`, `set_layer_visibility`, `set_view_mode`, `take_screenshot`
+- **Navigation & Utilities**: `add_routing_path`, `clear_routing_paths`, `add_user_points`, `clear_user_points`, `coordinate_transform`
+
+---
+
 ## Third-Party Libraries
 
 This project leverages several high-quality open-source libraries. We are grateful to the authors and maintainers of these projects:
@@ -132,6 +157,7 @@ This project leverages several high-quality open-source libraries. We are gratef
 │   ├── app/                # Program entry and app bootstrap
 │   ├── core/               # Core domain/infrastructure modules
 │   ├── logic/              # Business logic and interaction logic
+│   ├── mcp/                # Model Context Protocol (MCP) server & transport logic
 │   └── ui/                 # Qt UI and rendering layer
 ├── tests/                  # GoogleTest test cases
 ├── data/                   # Sample OpenDRIVE files and test data
@@ -148,6 +174,7 @@ This project leverages several high-quality open-source libraries. We are gratef
 - Main window and viewer UI: `src/ui/main_window.*`, `src/ui/widgets/geo_viewer.*`
 - Core data/model modules: `src/core/`
 - Domain and interaction logic: `src/logic/`
+- MCP server & tools: `src/mcp/`
 - Unit tests: `tests/*_test.cpp`
 - Build scripts:
   - CMake entry: `CMakeLists.txt`

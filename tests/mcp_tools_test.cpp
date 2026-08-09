@@ -85,8 +85,8 @@ TEST(McpToolsTest, ToolExecutionCoordinateTransform) {
   EXPECT_EQ(call_res["id"].toInt(), 100);
   EXPECT_TRUE(call_res.contains("result"));
   QJsonObject result = call_res["result"].toObject();
-  EXPECT_TRUE(result.contains("lon") || result.contains("x") ||
-              result.contains("error"));
+  EXPECT_TRUE(result.contains("content") || result.contains("lon") ||
+              result.contains("x") || result.contains("error"));
 }
 
 }  // namespace geoviewer::mcp
