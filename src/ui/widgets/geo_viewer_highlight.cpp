@@ -755,7 +755,7 @@ void GeoViewerWidget::JumpToLocalLocation(double x, double y, double z) {
 
   camera_.SetTarget(
       QVector3D(static_cast<float>(x), static_cast<float>(z), rz));
-  camera_.SetPitch(-89.0f);  // Look straight down
+  camera_.SetPitch(-90.0f);  // Look straight down vertically
   camera_.SetYaw(0.0f);
   camera_.SetDistance(100.0f);  // Zoom level
   update();

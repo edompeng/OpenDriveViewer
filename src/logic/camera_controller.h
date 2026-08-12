@@ -41,7 +41,7 @@ class GEOVIEWER_EXPORT CameraController {
   // --- Positioning ---
   void SetTarget(const QVector3D& target) { target_ = target; }
   void SetDistance(float d) { distance_ = d; }
-  void SetPitch(float p) { pitch_ = p; }
+  void SetPitch(float p) { pitch_ = qBound(-90.0f, p, 90.0f); }
   void SetYaw(float y) { yaw_ = y; }
 
   /// Calculate initial camera position based on the scene's bounding box

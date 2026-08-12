@@ -34,7 +34,7 @@ void CameraController::SetViewMode(ViewMode mode) {
   mode_ = mode;
   if (mode_ == ViewMode::k2D) {
     yaw_ = 0.0f;
-    pitch_ = -89.999f;
+    pitch_ = -90.0f;
   }
 }
 
@@ -70,7 +70,7 @@ void CameraController::OrbitByDelta(const QPoint& delta) {
 
   if (mode_ != ViewMode::k2D) {
     pitch_ += static_cast<float>(safe_dy) * kSensitivity;
-    pitch_ = qBound(-89.0f, pitch_, 89.0f);
+    pitch_ = qBound(-89.99f, pitch_, 89.99f);
   }
 }
 
