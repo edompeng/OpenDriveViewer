@@ -83,6 +83,10 @@ QJsonObject McpProtocolHandler::HandleInitialize(const QJsonValue& id,
   result["protocolVersion"] = "2024-11-05";
   result["capabilities"] = capabilities;
   result["serverInfo"] = server_info;
+  result["instructions"] =
+      "Use GeoViewer tools to inspect OpenDRIVE map data and control the "
+      "running viewer. Call get_map_info before map-dependent tools when the "
+      "current map state is unknown.";
 
   initialized_ = true;
   return CreateSuccessResponse(id, result);

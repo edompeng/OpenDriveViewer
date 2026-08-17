@@ -123,7 +123,7 @@ OpenDriveViewer features a built-in MCP server, allowing AI agents (such as Clau
   ```bash
   ./OpenDriveViewer --mcp-stdio
   ```
-- **HTTP Mode** (JSON-RPC HTTP server, default port 8080):
+- **HTTP Mode** (MCP Streamable HTTP server, default port 8080):
   ```bash
   ./OpenDriveViewer --mcp-http 8080
   ```
@@ -134,34 +134,15 @@ OpenDriveViewer features a built-in MCP server, allowing AI agents (such as Clau
 - **Data Inspection**: `get_roads`, `get_road_detail`, `get_lane_geometry`, `get_junctions`, `get_signals`, `get_objects`, `query_point`
 - **Viewport & Camera**: `set_camera`, `jump_to_location`, `highlight_element`, `set_layer_visibility`, `set_view_mode`, `take_screenshot`
 - **Navigation & Utilities**: `add_routing_path`, `clear_routing_paths`, `add_user_points`, `clear_user_points`, `coordinate_transform`
-#### mcp config
-- mcp-stdio
-```json
-{
-  "mcpServers": {
-    "odrviewer": {
-      "args": [
-        "--mcp-stdio"
-      ],
-      "command": "/Users/edom/code/c++/geoviewer/bazel-bin/src/app/OpenDriveViewer",
-      "disabled": true
-    }
-  }
-}
-```
-- mcp-http(recommended)
-```json
-{
-  "mcpServers": {
-    "odrviewer_web": {
-      "headers": {
-        "Content-Type": "application/json"
-      },
-      "serverUrl": "http://localhost:8080/"
-    }
-  }
-}
-```
+### Agent compatibility
+
+The server uses standard MCP transports rather than client-specific behavior.
+It works with Codex, Claude Code, Google Antigravity, OpenCode, and other MCP
+clients that support stdio or Streamable HTTP. Start `OpenDriveViewer` and keep
+it running, then configure the client with `http://127.0.0.1:8080/mcp`.
+
+See [MCP client configuration](docs/mcp_clients.md) for verified configuration
+examples and a generic stdio fallback.
 ---
 
 ## Third-Party Libraries

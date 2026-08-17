@@ -95,7 +95,7 @@ void HttpTransport::ProcessSocketBuffer(QTcpSocket* socket) {
 }
 
 void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
-                                       const QByteArray& request_data) {
+                                      const QByteArray& request_data) {
   int header_end = request_data.indexOf("\r\n\r\n");
   if (header_end == -1) return;
 
@@ -109,6 +109,7 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
   if (tokens.size() < 2) return;
 
   QString method = tokens[0];
+  QString path = tokens[1].section('?', 0, 0);
 
   // CORS Options Preflight
   if (method == "OPTIONS") {
@@ -116,14 +117,15 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
         "HTTP/1.1 204 No Content\r\n"
         "Access-Control-Allow-Origin: *\r\n"
         "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
-        "Access-Control-Allow-Headers: Content-Type\r\n"
+        "Access-Control-Allow-Headers: Content-Type, Accept, "
+        "Mcp-Protocol-Version, Mcp-Session-Id\r\n"
         "Connection: close\r\n\r\n";
     socket->write(response);
     socket->disconnectFromHost();
     return;
   }
 
-  if (method == "GET") {
+  if (method == "GET" && (path == "/" || path == "/health")) {
     QJsonObject info;
     info["status"] = "ok";
     info["server"] = "GeoViewer MCP Server";
@@ -144,16 +146,32 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
     return;
   }
 
-  if (method == "POST") {
+  if (method == "POST" && path == "/mcp") {
     QJsonParseError parse_error;
     QJsonDocument doc = QJsonDocument::fromJson(body_part, &parse_error);
 
     QJsonObject json_response;
+    bool is_notification = false;
     if (parse_error.error != QJsonParseError::NoError || !doc.isObject()) {
       json_response = McpProtocolHandler::CreateErrorResponse(
           QJsonValue(), JsonRpcErrorCode::kParseError, "Parse error");
     } else {
-      json_response = handler_->HandleMessage(doc.object());
+      const QJsonObject request = doc.object();
+      is_notification = !request.contains("id") ||
+                        request.value("id").isNull() ||
+                        request.value("id").isUndefined();
+      json_response = handler_->HandleMessage(request);
+    }
+
+    if (is_notification) {
+      QByteArray http_response =
+          "HTTP/1.1 202 Accepted\r\n"
+          "Access-Control-Allow-Origin: *\r\n"
+          "Content-Length: 0\r\n"
+          "Connection: close\r\n\r\n";
+      socket->write(http_response);
+      socket->disconnectFromHost();
+      return;
     }
 
     QByteArray response_body =
@@ -172,9 +190,11 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
     socket->write(http_response);
     socket->disconnectFromHost();
   } else {
-    QByteArray response =
-        "HTTP/1.1 405 Method Not Allowed\r\n"
-        "Connection: close\r\n\r\n";
+    QByteArray status =
+        path == "/mcp" ? "405 Method Not Allowed" : "404 Not Found";
+    QByteArray allow_header = path == "/mcp" ? "Allow: POST, OPTIONS\r\n" : "";
+    QByteArray response = "HTTP/1.1 " + status + "\r\n" + allow_header +
+                          "Connection: close\r\n\r\n";
     socket->write(response);
     socket->disconnectFromHost();
   }

@@ -97,4 +97,78 @@ TEST(McpTransportTest, HttpTransportOptionsPreflight) {
   transport.Stop();
 }
 
+TEST(McpTransportTest, HttpTransportAcceptsMcpNotification) {
+  int argc = 1;
+  char app_name[] = "mcp_test";
+  char* argv[] = {app_name, nullptr};
+  QCoreApplication app(argc, argv);
+
+  McpProtocolHandler handler;
+  HttpTransport transport(&handler);
+
+  uint16_t test_port = 18082;
+  ASSERT_TRUE(transport.Start(test_port));
+
+  QTcpSocket socket;
+  socket.connectToHost("127.0.0.1", test_port);
+  ASSERT_TRUE(socket.waitForConnected(2000));
+
+  QJsonObject notification;
+  notification["jsonrpc"] = "2.0";
+  notification["method"] = "notifications/initialized";
+  QByteArray body = QJsonDocument(notification).toJson(QJsonDocument::Compact);
+  QByteArray http_req =
+      "POST /mcp HTTP/1.1\r\n"
+      "Host: 127.0.0.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Accept: application/json, text/event-stream\r\n"
+      "Content-Length: " +
+      QByteArray::number(body.size()) + "\r\n\r\n" + body;
+
+  socket.write(http_req);
+  socket.flush();
+
+  QEventLoop loop;
+  QObject::connect(&socket, &QTcpSocket::readyRead, &loop, &QEventLoop::quit);
+  QTimer::singleShot(2000, &loop, &QEventLoop::quit);
+  loop.exec();
+
+  QByteArray response_data = socket.readAll();
+  EXPECT_TRUE(response_data.contains("HTTP/1.1 202 Accepted"));
+  EXPECT_TRUE(response_data.contains("Content-Length: 0"));
+
+  transport.Stop();
+}
+
+TEST(McpTransportTest, HttpTransportRejectsSseGetWithAllowedMethods) {
+  int argc = 1;
+  char app_name[] = "mcp_test";
+  char* argv[] = {app_name, nullptr};
+  QCoreApplication app(argc, argv);
+
+  McpProtocolHandler handler;
+  HttpTransport transport(&handler);
+
+  uint16_t test_port = 18083;
+  ASSERT_TRUE(transport.Start(test_port));
+
+  QTcpSocket socket;
+  socket.connectToHost("127.0.0.1", test_port);
+  ASSERT_TRUE(socket.waitForConnected(2000));
+
+  socket.write("GET /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+  socket.flush();
+
+  QEventLoop loop;
+  QObject::connect(&socket, &QTcpSocket::readyRead, &loop, &QEventLoop::quit);
+  QTimer::singleShot(2000, &loop, &QEventLoop::quit);
+  loop.exec();
+
+  QByteArray response_data = socket.readAll();
+  EXPECT_TRUE(response_data.contains("HTTP/1.1 405 Method Not Allowed"));
+  EXPECT_TRUE(response_data.contains("Allow: POST, OPTIONS"));
+
+  transport.Stop();
+}
+
 }  // namespace geoviewer::mcp

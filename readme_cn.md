@@ -121,7 +121,7 @@ OpenDriveViewer 内置了 MCP 服务端，允许 AI Agent（如 Claude Desktop�
   ```bash
   ./OpenDriveViewer --mcp-stdio
   ```
-- **HTTP 模式**（JSON-RPC HTTP 服务，默认端口 8080）：
+- **HTTP 模式**（MCP Streamable HTTP 服务，默认端口 8080）：
   ```bash
   ./OpenDriveViewer --mcp-http 8080
   ```
@@ -132,34 +132,15 @@ OpenDriveViewer 内置了 MCP 服务端，允许 AI Agent（如 Claude Desktop�
 - **数据查询**: `get_roads`, `get_road_detail`, `get_lane_geometry`, `get_junctions`, `get_signals`, `get_objects`, `query_point`
 - **视角相机操控**: `set_camera`, `jump_to_location`, `highlight_element`, `set_layer_visibility`, `set_view_mode`, `take_screenshot`
 - **辅助工具**: `add_routing_path`, `clear_routing_paths`, `add_user_points`, `clear_user_points`, `coordinate_transform`
-#### mcp配置
-- stdio方式
-```json
-{
-  "mcpServers": {
-    "odrviewer": {
-      "args": [
-        "--mcp-stdio"
-      ],
-      "command": "/Users/edom/code/c++/geoviewer/bazel-bin/src/app/OpenDriveViewer",
-      "disabled": true
-    }
-  }
-}
-```
-- http方式(推荐)
-```json http方式
-{
-  "mcpServers": {
-    "odrviewer_web": {
-      "headers": {
-        "Content-Type": "application/json"
-      },
-      "serverUrl": "http://localhost:8080/"
-    }
-  }
-}
-```
+### Agent 兼容性
+
+服务端使用标准 MCP 传输，不依赖某个客户端的私有行为。它兼容 Codex、Claude
+Code、Google Antigravity、OpenCode，以及其他支持 stdio 或 Streamable HTTP
+的 MCP 客户端。启动并保持 `OpenDriveViewer` 运行，然后在客户端配置
+`http://127.0.0.1:8080/mcp`。
+
+各主流 Agent 的配置示例及通用 stdio 备用方案请参阅
+[MCP 客户端配置](docs/mcp_clients_cn.md)。
 ---
 
 ## 第三方库声明

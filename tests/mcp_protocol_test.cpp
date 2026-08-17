@@ -31,6 +31,7 @@ TEST(McpProtocolTest, InitializeAndPing) {
   QJsonObject result = init_res["result"].toObject();
   EXPECT_TRUE(result.contains("protocolVersion"));
   EXPECT_TRUE(result.contains("serverInfo"));
+  EXPECT_FALSE(result["instructions"].toString().isEmpty());
 
   // Test ping
   QJsonObject ping_req;
