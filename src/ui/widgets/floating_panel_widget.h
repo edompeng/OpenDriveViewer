@@ -21,7 +21,7 @@ class FloatingPanelWidget : public QWidget {
   virtual void RetranslateUi() {}
   virtual void ToggleCollapse() = 0;
 
-  QWidget* CreateTitleBar(const QString& title_text, const QString& color_hex);
+  QWidget* CreateTitleBar(const QString& title_text);
 
   void changeEvent(QEvent* event) override;
 

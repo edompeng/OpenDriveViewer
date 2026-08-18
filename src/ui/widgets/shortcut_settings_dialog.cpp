@@ -6,6 +6,8 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 
+#include "src/ui/widgets/subwindow_style.h"
+
 namespace geoviewer::ui {
 
 ShortcutSettingsDialog::ShortcutSettingsDialog(ShortcutManager* manager,
@@ -13,6 +15,7 @@ ShortcutSettingsDialog::ShortcutSettingsDialog(ShortcutManager* manager,
     : QDialog(parent), manager_(manager) {
   setWindowTitle(tr("Keyboard Shortcuts"));
   resize(680, 520);
+  ApplySubwindowStyle(this);
 
   auto* layout = new QVBoxLayout(this);
   auto* description = new QLabel(
@@ -38,7 +41,7 @@ ShortcutSettingsDialog::ShortcutSettingsDialog(ShortcutManager* manager,
   layout->addWidget(table_, 1);
 
   validation_label_ = new QLabel(this);
-  validation_label_->setStyleSheet("color: #c62828;");
+  validation_label_->setStyleSheet("color: #ff6b6b;");
   layout->addWidget(validation_label_);
 
   auto* footer = new QHBoxLayout();

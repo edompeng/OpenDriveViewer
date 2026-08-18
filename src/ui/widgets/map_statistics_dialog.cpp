@@ -20,6 +20,7 @@
 #include "Lane.h"
 #include "OpenDriveMap.h"
 #include "Road.h"
+#include "src/ui/widgets/subwindow_style.h"
 
 namespace geoviewer::ui {
 
@@ -82,21 +83,7 @@ void MapStatisticsDialog::SetupUi() {
   layout->setContentsMargins(15, 15, 15, 15);
   layout->setSpacing(15);
 
-  // Modern Dark Stylesheet
-  setStyleSheet(
-      "QDialog { background-color: #2b2b36; color: #eee; }"
-      "QLabel { color: #eee; font-size: 13px; }"
-      "QTableWidget { background-color: #1e1e24; color: #ddd; gridline-color: "
-      "#3e3e4a; "
-      "border: 1px solid #4e4e5a; border-radius: 4px; font-size: 12px; }"
-      "QHeaderView::section { background-color: #32323e; color: #eee; padding: "
-      "4px; "
-      "border: 1px solid #4e4e5a; font-weight: bold; }"
-      "QPushButton { background-color: #007bff; color: white; border: none; "
-      "border-radius: 4px; padding: 6px 12px; font-weight: bold; min-width: "
-      "80px; }"
-      "QPushButton:hover { background-color: #0069d9; }"
-      "QPushButton:pressed { background-color: #0056b3; }");
+  ApplySubwindowStyle(this);
 
   // General Metadata Table
   auto* table = new QTableWidget(this);

@@ -23,6 +23,8 @@ add_library(
   shortcut_manager.h
   shortcut_settings_dialog.cpp
   shortcut_settings_dialog.h
+  subwindow_style.cpp
+  subwindow_style.h
   loading_progress_widget.cpp
   loading_progress_widget.h
   favorites_widget.cpp

@@ -10,15 +10,13 @@ FloatingPanelWidget::FloatingPanelWidget(QWidget* parent) : QWidget(parent) {
   setMouseTracking(true);
 }
 
-QWidget* FloatingPanelWidget::CreateTitleBar(const QString& title_text,
-                                             const QString& color_hex) {
+QWidget* FloatingPanelWidget::CreateTitleBar(const QString& title_text) {
   auto* title_bar = new QWidget(this);
   title_bar_ = title_bar;
   title_bar->setFixedHeight(30);
   title_bar->setStyleSheet(
-      QString("background-color: %1; border-top-left-radius: 8px; "
-              "border-top-right-radius: 8px;")
-          .arg(color_hex));
+      "background-color: #333; border-top-left-radius: 8px; "
+      "border-top-right-radius: 8px;");
 
   auto* title_layout = new QHBoxLayout(title_bar);
   title_layout->setContentsMargins(10, 5, 5, 5);

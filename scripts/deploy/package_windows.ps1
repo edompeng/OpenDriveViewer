@@ -49,6 +49,8 @@ Write-Host "  -> Copied $BINARY_NAME.exe"
 # Bazel's rules_cc does not support .rc files, so we embed resources after build.
 Write-Host "`n=== Embedding Windows Resources ==="
 $TARGET_EXE = "${BUNDLE_DIR}\bin\${BINARY_NAME}.exe"
+$TargetFile = Get-Item $TARGET_EXE
+$TargetFile.IsReadOnly = $false
 
 # Download rcedit for setting version info and icon
 $RCEDIT_URL = "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe"
@@ -76,7 +78,7 @@ Write-Host "  -> Setting version information..."
     --set-file-version $WindowsVersion `
     --set-product-version $WindowsVersion
 if ($LASTEXITCODE -ne 0) {
-    Write-Warning "  -> rcedit version info failed (non-fatal)"
+    throw "rcedit failed to write version information (exit code $LASTEXITCODE)"
 }
 
 # Set icon
@@ -85,7 +87,7 @@ if (Test-Path $ICON_FILE) {
     Write-Host "  -> Setting application icon..."
     & $RCEDIT $TARGET_EXE --set-icon $ICON_FILE
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "  -> rcedit icon failed (non-fatal)"
+        throw "rcedit failed to write the application icon (exit code $LASTEXITCODE)"
     }
 }
 
@@ -98,7 +100,7 @@ if (Test-Path $MANIFEST_FILE) {
         Write-Host "  -> Embedding application manifest..."
         & $MT.FullName -manifest $MANIFEST_FILE -outputresource:"${TARGET_EXE};#1" -nologo
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "  -> mt.exe manifest embedding failed (non-fatal)"
+            throw "mt.exe failed to embed the application manifest (exit code $LASTEXITCODE)"
         }
     } else {
         Write-Warning "  -> mt.exe not found, skipping manifest embedding"

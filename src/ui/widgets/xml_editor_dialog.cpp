@@ -1,20 +1,22 @@
 #include "src/ui/widgets/xml_editor_dialog.h"
-#include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QMessageBox>
 #include <QHeaderView>
+#include <QMessageBox>
 #include <QRegularExpression>
 #include <QTextCursor>
+#include <QVBoxLayout>
+
+#include "src/ui/widgets/subwindow_style.h"
 
 namespace geoviewer::ui {
 
-XmlEditorDialog::XmlEditorDialog(QWidget* parent)
-    : QDialog(parent) {
+XmlEditorDialog::XmlEditorDialog(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("XML Element Editor"));
   resize(900, 650);
 
   // Set non-modal behavior by default, but allow dragging/resizing
   setWindowFlags(windowFlags() | Qt::Window);
+  ApplySubwindowStyle(this);
 
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(10, 10, 10, 10);
@@ -42,7 +44,7 @@ XmlEditorDialog::XmlEditorDialog(QWidget* parent)
   // Bottom action bar
   QHBoxLayout* bottom_layout = new QHBoxLayout();
   status_label_ = new QLabel(this);
-  status_label_->setStyleSheet("color: green; font-weight: bold;");
+  status_label_->setStyleSheet("color: #66cc66; font-weight: bold;");
   bottom_layout->addWidget(status_label_);
   bottom_layout->addStretch();
 
@@ -54,9 +56,11 @@ XmlEditorDialog::XmlEditorDialog(QWidget* parent)
   main_layout->addLayout(bottom_layout);
 
   // Connect actions
-  connect(save_button_, &QPushButton::clicked, this, &XmlEditorDialog::HandleSave);
+  connect(save_button_, &QPushButton::clicked, this,
+          &XmlEditorDialog::HandleSave);
   connect(close_button_, &QPushButton::clicked, this, &XmlEditorDialog::reject);
-  connect(tree_widget_, &QTreeWidget::itemClicked, this, &XmlEditorDialog::HandleTreeItemClicked);
+  connect(tree_widget_, &QTreeWidget::itemClicked, this,
+          &XmlEditorDialog::HandleTreeItemClicked);
 }
 
 void XmlEditorDialog::SetXml(const QString& xml_text, const XmlTarget& target) {
@@ -70,7 +74,8 @@ void XmlEditorDialog::SetXml(const QString& xml_text, const XmlTarget& target) {
   QString target_info;
   switch (target_.type) {
     case XmlTargetType::kRoad:
-      target_info = QString("Road ID: %1").arg(QString::fromStdString(target_.road_id));
+      target_info =
+          QString("Road ID: %1").arg(QString::fromStdString(target_.road_id));
       break;
     case XmlTargetType::kLane:
       target_info = QString("Lane: Road %1 / s0 %2 / ID %3")
@@ -79,7 +84,8 @@ void XmlEditorDialog::SetXml(const QString& xml_text, const XmlTarget& target) {
                         .arg(target_.lane_id);
       break;
     case XmlTargetType::kJunction:
-      target_info = QString("Junction ID: %1").arg(QString::fromStdString(target_.element_id));
+      target_info = QString("Junction ID: %1")
+                        .arg(QString::fromStdString(target_.element_id));
       break;
     case XmlTargetType::kObject:
       target_info = QString("Object ID: %1 (Road: %2)")
@@ -92,21 +98,24 @@ void XmlEditorDialog::SetXml(const QString& xml_text, const XmlTarget& target) {
                         .arg(QString::fromStdString(target_.road_id));
       break;
   }
-  setWindowTitle(QString("%1 - %2").arg(tr("XML Element Editor")).arg(target_info));
+  setWindowTitle(
+      QString("%1 - %2").arg(tr("XML Element Editor")).arg(target_info));
 
   // Clear tree and rebuild it
   tree_widget_->clear();
   status_label_->clear();
 
   pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_text.toStdString().c_str());
+  pugi::xml_parse_result result =
+      doc.load_string(xml_text.toStdString().c_str());
   if (result) {
     PopulateTree(doc.first_child(), nullptr);
     tree_widget_->expandAll();
   }
 }
 
-void XmlEditorDialog::PopulateTree(const pugi::xml_node& node, QTreeWidgetItem* parent_item) {
+void XmlEditorDialog::PopulateTree(const pugi::xml_node& node,
+                                   QTreeWidgetItem* parent_item) {
   if (node.type() != pugi::node_element) return;
 
   QTreeWidgetItem* item = nullptr;
@@ -148,7 +157,8 @@ void XmlEditorDialog::HandleTreeItemClicked(QTreeWidgetItem* item, int column) {
   HighlightNodeInText(tag_name, id_attr);
 }
 
-void XmlEditorDialog::HighlightNodeInText(const QString& tag_name, const QString& id_attr) {
+void XmlEditorDialog::HighlightNodeInText(const QString& tag_name,
+                                          const QString& id_attr) {
   if (tag_name.isEmpty()) return;
 
   QTextDocument* doc = text_edit_->document();
@@ -158,8 +168,9 @@ void XmlEditorDialog::HighlightNodeInText(const QString& tag_name, const QString
   // We can search for "<tag_name" or "<tag_name ... id="id_attr""
   QRegularExpression regex;
   if (!id_attr.isEmpty()) {
-    regex = QRegularExpression(
-        QString("<%1\\b[^>]*\\bid\\s*=\\s*[\"']%2[\"']").arg(tag_name).arg(QRegularExpression::escape(id_attr)));
+    regex = QRegularExpression(QString("<%1\\b[^>]*\\bid\\s*=\\s*[\"']%2[\"']")
+                                   .arg(tag_name)
+                                   .arg(QRegularExpression::escape(id_attr)));
   } else {
     regex = QRegularExpression(QString("<%1\\b").arg(tag_name));
   }
@@ -178,7 +189,8 @@ void XmlEditorDialog::HandleSave() {
 
   // Validate XML syntax
   pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_string(xml_text.toStdString().c_str());
+  pugi::xml_parse_result result =
+      doc.load_string(xml_text.toStdString().c_str());
   if (!result) {
     QMessageBox::critical(this, tr("XML Validation Error"),
                           tr("Invalid XML format:\n%1\nOffset: %2")
@@ -219,13 +231,18 @@ void XmlEditorDialog::HandleSave() {
   }
 
   // Check if ID changed (if applicable) and matches expected target ID
-  if (target_.type == XmlTargetType::kRoad || target_.type == XmlTargetType::kJunction) {
+  if (target_.type == XmlTargetType::kRoad ||
+      target_.type == XmlTargetType::kJunction) {
     QString root_id = QString::fromStdString(root.attribute("id").value());
-    QString expected_id = QString::fromStdString(target_.type == XmlTargetType::kRoad ? target_.road_id : target_.element_id);
+    QString expected_id = QString::fromStdString(
+        target_.type == XmlTargetType::kRoad ? target_.road_id
+                                             : target_.element_id);
     if (root_id != expected_id) {
       auto response = QMessageBox::warning(
           this, tr("XML Validation Warning"),
-          tr("You changed the element ID from '%1' to '%2'. Are you sure?").arg(expected_id).arg(root_id),
+          tr("You changed the element ID from '%1' to '%2'. Are you sure?")
+              .arg(expected_id)
+              .arg(root_id),
           QMessageBox::Yes | QMessageBox::No);
       if (response == QMessageBox::No) {
         return;

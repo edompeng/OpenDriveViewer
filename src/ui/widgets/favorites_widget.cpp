@@ -3,6 +3,7 @@
 #include <QClipboard>
 #include <QDebug>
 #include "src/core/viewer_text_util.h"
+#include "src/ui/widgets/subwindow_style.h"
 
 FavoritesWidget::FavoritesWidget(
     GeoViewerWidget* viewer, const geoviewer::core::AppSettings& /*settings*/,
@@ -13,7 +14,7 @@ FavoritesWidget::FavoritesWidget(
   main_layout->setSpacing(0);
 
   // Title Bar
-  main_layout->addWidget(CreateTitleBar(tr("<b>Favorites</b>"), "#544"));
+  main_layout->addWidget(CreateTitleBar(tr("<b>Favorites</b>")));
 
   // Content Area
   content_area_ = new QWidget(this);
@@ -23,14 +24,6 @@ FavoritesWidget::FavoritesWidget(
   list_ = new QListWidget(content_area_);
   list_->setContextMenuPolicy(Qt::CustomContextMenu);
   list_->setMouseTracking(true);
-  list_->setStyleSheet(
-      "QListWidget { background-color: transparent; color: #eee; border: none; "
-      "padding: 5px; } "
-      "QListWidget::item { padding: 8px; border-bottom: 1px solid "
-      "rgba(255,255,255,0.05); } "
-      "QListWidget::item:hover { background-color: rgba(255,255,255,0.1); } "
-      "QListWidget::item:selected { background-color: rgba(255,255,255,0.2); "
-      "}");
 
   connect(list_, &QListWidget::customContextMenuRequested, this,
           &FavoritesWidget::HandleCustomContextMenu);
@@ -42,9 +35,7 @@ FavoritesWidget::FavoritesWidget(
   content_layout->addWidget(list_);
   main_layout->addWidget(content_area_);
 
-  setStyleSheet(
-      "FavoritesWidget { background-color: rgba(70, 60, 60, 230); "
-      "border-radius: 8px; border: 1px solid #766; } ");
+  geoviewer::ui::ApplySubwindowStyle(this);
 
   setFixedWidth(250);
 }

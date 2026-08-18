@@ -18,6 +18,7 @@
 #include <QTreeWidgetItem>
 
 #include "src/logic/input_parsing.h"
+#include "src/ui/widgets/subwindow_style.h"
 
 CoordinatePointsWidget::CoordinatePointsWidget(
     GeoViewerWidget* viewer, const geoviewer::core::AppSettings& settings,
@@ -32,8 +33,7 @@ CoordinatePointsWidget::CoordinatePointsWidget(
   main_layout->setSpacing(0);
 
   // Title Bar
-  main_layout->addWidget(
-      CreateTitleBar(tr("<b>Coordinate Points</b>"), "#445544"));
+  main_layout->addWidget(CreateTitleBar(tr("<b>Coordinate Points</b>")));
 
   // Content
   content_area_ = new QWidget(this);
@@ -43,15 +43,12 @@ CoordinatePointsWidget::CoordinatePointsWidget(
 
   // Input area
   input_label_ = new QLabel(tr("(lon,lat[,alt]); ...:"), content_area_);
-  input_label_->setStyleSheet("color: #ccc; font-size: 11px;");
+  input_label_->setStyleSheet("font-size: 11px;");
   content_layout->addWidget(input_label_);
 
   input_points_edit_ = new QLineEdit(content_area_);
   input_points_edit_->setPlaceholderText(
       tr("(lon,lat) or (lon,lat,alt) semicolon separated"));
-  input_points_edit_->setStyleSheet(
-      "background: rgba(255,255,255,0.1); color: white; border: 1px solid "
-      "rgba(255,255,255,0.2); border-radius: 4px; padding: 5px;");
   content_layout->addWidget(input_points_edit_);
 
   auto* btn_layout = new QHBoxLayout();
@@ -95,7 +92,7 @@ CoordinatePointsWidget::CoordinatePointsWidget(
 
   // Points list
   list_label_ = new QLabel(tr("Added points:"), content_area_);
-  list_label_->setStyleSheet("color: #aaa; font-size: 11px;");
+  list_label_->setStyleSheet("font-size: 11px;");
   content_layout->addWidget(list_label_);
 
   points_tree_ = new QTreeWidget(content_area_);
@@ -103,15 +100,6 @@ CoordinatePointsWidget::CoordinatePointsWidget(
   points_tree_->setIndentation(12);
   points_tree_->setUniformRowHeights(true);
   points_tree_->setContextMenuPolicy(Qt::CustomContextMenu);
-  points_tree_->setStyleSheet(
-      "QTreeWidget { background-color: rgba(0,0,0,0.2); color: #eee; "
-      "border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; "
-      "padding: 2px; } "
-      "QTreeWidget::item { padding: 2px 4px; border-bottom: 1px solid "
-      "rgba(255,255,255,0.05); } "
-      "QTreeWidget::item:hover { background-color: rgba(255,255,255,0.08); } "
-      "QTreeWidget::item:selected { background-color: rgba(255,255,255,0.15); "
-      "}");
   content_layout->addWidget(points_tree_, 1);
 
   connect(points_tree_, &QTreeWidget::itemDoubleClicked, this,
@@ -121,9 +109,7 @@ CoordinatePointsWidget::CoordinatePointsWidget(
 
   main_layout->addWidget(content_area_);
 
-  setStyleSheet(
-      "CoordinatePointsWidget { background-color: rgba(50, 60, 50, 230); "
-      "border-radius: 8px; border: 1px solid #556655; } ");
+  geoviewer::ui::ApplySubwindowStyle(this);
 
   // Listen for viewer point changes
   connect(viewer_, &GeoViewerWidget::UserPointsChanged, this,
@@ -309,6 +295,7 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
   auto snap = viewer_->GetUserPointSnapshot(index);
 
   auto* widget = new QWidget();
+  widget->setStyleSheet("background-color: transparent;");
   auto* layout = new QHBoxLayout(widget);
   layout->setContentsMargins(2, 1, 2, 1);
   layout->setSpacing(4);
@@ -361,7 +348,7 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
   auto* label = new QLabel(coordText, widget);
 
   label->setStyleSheet(QString("color: %1; font-size: 11px;")
-                           .arg(snap.visible ? "#eee" : "#777"));
+                           .arg(snap.visible ? "#eee" : "#aaa"));
   layout->addWidget(label, 1);
 
   // Delete button
@@ -426,6 +413,7 @@ void CoordinatePointsWidget::RefreshPointsList() {
     }
 
     auto* widget = new QWidget();
+    widget->setStyleSheet("background-color: transparent;");
     auto* layout = new QHBoxLayout(widget);
     layout->setContentsMargins(2, 2, 2, 2);
     layout->setSpacing(4);
@@ -450,7 +438,7 @@ void CoordinatePointsWidget::RefreshPointsList() {
 
     auto* label = new QLabel(
         tr("Group %1 (%2 points)").arg(gid).arg(grp.indices.size()), widget);
-    label->setStyleSheet("color: #ddd; font-weight: bold; font-size: 11px;");
+    label->setStyleSheet("color: #eee; font-weight: bold; font-size: 11px;");
     layout->addWidget(label, 1);
 
     auto* delete_btn = new QToolButton(widget);
@@ -549,7 +537,7 @@ void CoordinatePointsWidget::UpdatePointsListState() {
             }
             label->setText(coordText);
             label->setStyleSheet(QString("color: %1; font-size: 11px;")
-                                     .arg(snap.visible ? "#eee" : "#777"));
+                                     .arg(snap.visible ? "#eee" : "#aaa"));
           }
         }
       }

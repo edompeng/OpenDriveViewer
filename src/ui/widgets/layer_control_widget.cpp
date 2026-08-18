@@ -22,6 +22,7 @@
 #include "src/core/viewer_text_util.h"
 #include "src/logic/event_bus.h"
 #include "src/ui/widgets/layer_tree_model.h"
+#include "src/ui/widgets/subwindow_style.h"
 #include "src/ui/widgets/xml_editor_types.h"
 
 namespace {
@@ -116,19 +117,7 @@ LayerControlWidget::LayerControlWidget(
 
   main_layout->addWidget(tree_box);
 
-  setStyleSheet(
-      "LayerControlWidget { background-color: #2b2b2b; color: #eee; } "
-      "QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: "
-      "6px; margin-top: 1.1em; padding-top: 10px; } "
-      "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 "
-      "3px; } "
-      "QCheckBox { spacing: 5px; } "
-      "QTreeWidget { background-color: #222; color: #eee; border: 1px solid "
-      "#444; border-radius: 4px; } "
-      "QTreeWidget::item:hover { background-color: #3d3d3d; } "
-      "QTreeWidget::item:selected { background-color: #4a4a4a; } "
-      "QLineEdit { background-color: #333; color: white; border: 1px solid "
-      "#555; border-radius: 4px; padding: 4px; }");
+  geoviewer::ui::ApplySubwindowStyle(this);
 
   connect(tree_, &QTreeWidget::customContextMenuRequested, this,
           &LayerControlWidget::HandleCustomContextMenu);
@@ -866,7 +855,8 @@ void LayerControlWidget::HandleCustomContextMenu(const QPoint& pos) {
       }
 
       if (!xml_str.empty()) {
-        emit viewer_->ShowXmlRequested(xml_target, QString::fromStdString(xml_str));
+        emit viewer_->ShowXmlRequested(xml_target,
+                                       QString::fromStdString(xml_str));
       }
     }
   } else if (selected == goTo) {

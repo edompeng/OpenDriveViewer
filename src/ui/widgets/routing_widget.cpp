@@ -7,6 +7,7 @@
 #include "RoutingGraph.h"
 #include "src/logic/input_parsing.h"
 #include "src/logic/routing_logic.h"
+#include "src/ui/widgets/subwindow_style.h"
 
 RoutingWidget::RoutingWidget(GeoViewerWidget* viewer,
                              const geoviewer::core::AppSettings& /*settings*/,
@@ -17,7 +18,7 @@ RoutingWidget::RoutingWidget(GeoViewerWidget* viewer,
   main_layout->setSpacing(0);
 
   // Title Bar
-  main_layout->addWidget(CreateTitleBar(tr("<b>Routing</b>"), "#445"));
+  main_layout->addWidget(CreateTitleBar(tr("<b>Routing</b>")));
 
   // Content Area
   content_area_ = new QWidget(this);
@@ -26,18 +27,12 @@ RoutingWidget::RoutingWidget(GeoViewerWidget* viewer,
 
   start_input_ = new QLineEdit(content_area_);
   start_input_->setPlaceholderText(tr("Start: road/section/lane"));
-  start_input_->setStyleSheet(
-      "background: rgba(255,255,255,0.1); color: white; border: 1px solid "
-      "rgba(255,255,255,0.2); border-radius: 4px; padding: 5px;");
   start_label_ = new QLabel(tr("Start (road/section/lane):"), content_area_);
   content_layout->addWidget(start_label_);
   content_layout->addWidget(start_input_);
 
   end_input_ = new QLineEdit(content_area_);
   end_input_->setPlaceholderText(tr("End: road/section/lane"));
-  end_input_->setStyleSheet(
-      "background: rgba(255,255,255,0.1); color: white; border: 1px solid "
-      "rgba(255,255,255,0.2); border-radius: 4px; padding: 5px;");
   end_label_ = new QLabel(tr("End (road/section/lane):"), content_area_);
   content_layout->addWidget(end_label_);
   content_layout->addWidget(end_input_);
@@ -55,9 +50,6 @@ RoutingWidget::RoutingWidget(GeoViewerWidget* viewer,
   history_tree_ = new QTreeWidget(content_area_);
   history_tree_->setHeaderHidden(true);
   history_tree_->setMinimumHeight(150);
-  history_tree_->setStyleSheet(
-      "QTreeWidget { background: rgba(0,0,0,0.2); color: #eee; border: 1px "
-      "solid rgba(255,255,255,0.1); }");
   history_tree_->setContextMenuPolicy(Qt::CustomContextMenu);
   connect(history_tree_, &QTreeWidget::itemChanged, this,
           &RoutingWidget::HandleHistoryItemChanged);
@@ -72,10 +64,7 @@ RoutingWidget::RoutingWidget(GeoViewerWidget* viewer,
 
   main_layout->addWidget(content_area_);
 
-  setStyleSheet(
-      "RoutingWidget { background-color: rgba(60, 60, 70, 230); border-radius: "
-      "8px; border: 1px solid #666; color: #eee; } "
-      "QLabel { color: #ccc; }");
+  geoviewer::ui::ApplySubwindowStyle(this);
 
   setFixedWidth(250);
   adjustSize();

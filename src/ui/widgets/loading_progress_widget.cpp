@@ -1,6 +1,7 @@
 #include "src/ui/widgets/loading_progress_widget.h"
 #include <QHBoxLayout>
 #include <QPainter>
+#include "src/ui/widgets/subwindow_style.h"
 
 LoadingProgressWidget::LoadingProgressWidget(QWidget* parent)
     : FloatingPanelWidget(parent) {
@@ -11,8 +12,7 @@ LoadingProgressWidget::LoadingProgressWidget(QWidget* parent)
   main_layout->setSpacing(0);
 
   // Title Bar
-  main_layout->addWidget(
-      CreateTitleBar(tr("<b>Loading Project...</b>"), "#556"));
+  main_layout->addWidget(CreateTitleBar(tr("<b>Loading Project...</b>")));
 
   // Progress bar doesn't usually need to be collapsed or closed manually,
   // but we follow the base class requirements.
@@ -24,24 +24,17 @@ LoadingProgressWidget::LoadingProgressWidget(QWidget* parent)
   content_layout->setContentsMargins(10, 5, 10, 10);
 
   label_ = new QLabel(tr("Initializing..."), content_area_);
-  label_->setStyleSheet("color: #eee;");
   content_layout->addWidget(label_);
 
   progress_bar_ = new QProgressBar(content_area_);
   progress_bar_->setRange(0, 0);  // Indeterminate by default
   progress_bar_->setTextVisible(false);
   progress_bar_->setFixedHeight(15);
-  progress_bar_->setStyleSheet(
-      "QProgressBar { background: rgba(0,0,0,0.3); border: 1px solid #444; "
-      "border-radius: 4px; } "
-      "QProgressBar::chunk { background-color: #007bff; border-radius: 3px; }");
   content_layout->addWidget(progress_bar_);
 
   main_layout->addWidget(content_area_);
 
-  setStyleSheet(
-      "LoadingProgressWidget { background-color: rgba(55, 55, 65, 230); "
-      "border-radius: 8px; border: 1px solid #666; } ");
+  geoviewer::ui::ApplySubwindowStyle(this);
 
   hide();
 }

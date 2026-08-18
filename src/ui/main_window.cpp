@@ -35,6 +35,7 @@
 #include "src/ui/widgets/layer_control_widget.h"
 #include "src/ui/widgets/map_statistics_dialog.h"
 #include "src/ui/widgets/shortcut_settings_dialog.h"
+#include "src/ui/widgets/subwindow_style.h"
 #include "src/ui/widgets/topology_validator_widget.h"
 #include "src/ui/widgets/xml_editor_dialog.h"
 #include "src/ui/widgets/xml_editor_types.h"
@@ -372,6 +373,7 @@ QDockWidget* MainWindow::CreateToolDock(const QString& object_name,
   dock->setFeatures(QDockWidget::DockWidgetClosable |
                     QDockWidget::DockWidgetMovable |
                     QDockWidget::DockWidgetFloatable);
+  geoviewer::ui::ApplyDockStyle(dock);
   dock->setWidget(content);
   content->show();
   addDockWidget(area, dock);

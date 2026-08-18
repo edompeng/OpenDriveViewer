@@ -7,6 +7,7 @@
 
 #include "OpenDriveMap.h"
 #include "RoutingGraph.h"
+#include "src/ui/widgets/subwindow_style.h"
 
 TopologyValidatorWidget::TopologyValidatorWidget(
     GeoViewerWidget* viewer, const geoviewer::core::AppSettings& settings,
@@ -15,9 +16,7 @@ TopologyValidatorWidget::TopologyValidatorWidget(
   SetupUi();
   RetranslateUi();
 
-  setStyleSheet(
-      "TopologyValidatorWidget { background-color: rgba(60, 60, 70, 230); "
-      "border-radius: 8px; border: 1px solid #667; } ");
+  geoviewer::ui::ApplySubwindowStyle(this);
 
   hide();
 }
@@ -28,8 +27,7 @@ void TopologyValidatorWidget::SetupUi() {
   main_layout->setSpacing(0);
 
   // Title Bar
-  main_layout->addWidget(
-      CreateTitleBar(tr("<b>Topology Validator</b>"), "#556"));
+  main_layout->addWidget(CreateTitleBar(tr("<b>Topology Validator</b>")));
 
   content_area_ = new QWidget(this);
   auto* content_layout = new QVBoxLayout(content_area_);
@@ -49,12 +47,6 @@ void TopologyValidatorWidget::SetupUi() {
   tree_widget_->setColumnCount(1);
   tree_widget_->setHeaderHidden(true);
   tree_widget_->setWordWrap(true);
-  tree_widget_->setStyleSheet(
-      "QTreeWidget { background-color: rgba(0,0,0,0.3); border: 1px solid "
-      "#444; "
-      "border-radius: 4px; color: #ddd; } "
-      "QTreeWidget::item:hover { background-color: rgba(255,255,255,0.1); } "
-      "QTreeWidget::item:selected { background-color: rgba(0,123,255,0.4); }");
 
   connect(tree_widget_, &QTreeWidget::itemDoubleClicked, this,
           &TopologyValidatorWidget::HandleItemDoubleClicked);
