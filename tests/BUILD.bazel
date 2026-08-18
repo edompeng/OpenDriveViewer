@@ -28,7 +28,6 @@ cc_test(
         "object_pool_test.cpp",
         "routing_logic_test.cpp",
         "scene_index_builder_test.cpp",
-        "shortcut_manager_test.cpp",
         "settings_persistence_test.cpp",
         "spatial_index_test.cpp",
         "viewer_text_util_test.cpp",
@@ -44,6 +43,14 @@ cc_test(
     ],
     copts = QT_COPTS,
     data = COMMON_DATA,
+    defines = COMMON_DEFINES,
+    deps = COMMON_DEPS,
+)
+
+cc_test(
+    name = "ShortcutManagerTests",
+    srcs = ["shortcut_manager_test.cpp"],
+    copts = QT_COPTS,
     defines = COMMON_DEFINES,
     deps = COMMON_DEPS,
 )
