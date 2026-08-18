@@ -12,7 +12,6 @@ namespace geoviewer::ui {
 class ShortcutManagerTest : public ::testing::Test {
  protected:
   static void SetUpTestSuite() {
-    qputenv("QT_QPA_PLATFORM", QByteArray("offscreen"));
     static int argc = 1;
     static char app_name[] = "shortcut_manager_test";
     static char* argv[] = {app_name, nullptr};
