@@ -245,7 +245,7 @@ jobs:
               --test_env=PATH
           else
             bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=macos \
-              --copt="-DGEOVIEWER_VERSION=\\\"${GEOVIEWER_VERSION}\\\"" \
+              --copt="-DGEOVIEWER_VERSION=\"${GEOVIEWER_VERSION}\"" \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -499,7 +499,7 @@ jobs:
           COMMON_FLAGS="-c opt"
           
           xvfb-run --auto-servernum bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=linux \
-            --copt="-DGEOVIEWER_VERSION=\\\"${GEOVIEWER_VERSION}\\\"" \
+            --copt="-DGEOVIEWER_VERSION=\"${GEOVIEWER_VERSION}\"" \
             --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
             --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
 
