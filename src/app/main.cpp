@@ -7,6 +7,7 @@
 
 #include <iostream>
 
+#include "src/core/app_version.h"
 #include "src/core/crash_handler.h"
 #include "src/core/thread_pool.h"
 #include "src/mcp/mcp_transport_stdio.h"
@@ -22,6 +23,10 @@ void CustomStderrMessageHandler(QtMsgType type,
 }
 
 int main(int argc, char** argv) {
+  QCoreApplication::setApplicationName("OpenDriveViewer");
+  QCoreApplication::setOrganizationName("GeoViewer");
+  QCoreApplication::setApplicationVersion(
+      geoviewer::core::AppVersion::Current());
   // Immediately redirect stdout to stderr if --mcp-stdio is set in command
   // line, ensuring stdout is reserved strictly for clean MCP JSON-RPC messages.
   for (int i = 1; i < argc; ++i) {
@@ -39,6 +44,7 @@ int main(int argc, char** argv) {
   parser.setApplicationDescription(
       "GeoViewer - 3D Geospatial OpenDRIVE Viewer");
   parser.addHelpOption();
+  parser.addVersionOption();
 
   QCommandLineOption mcp_stdio_opt("mcp-stdio",
                                    "Enable MCP Server in stdio transport mode");

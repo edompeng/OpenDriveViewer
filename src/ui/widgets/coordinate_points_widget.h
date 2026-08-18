@@ -18,6 +18,7 @@ class CoordinatePointsWidget : public FloatingPanelWidget {
 
   void SetCoordinateMode(CoordinateMode mode);
   void Clear();
+  void FocusInput();
 
  protected:
   void RetranslateUi() override;

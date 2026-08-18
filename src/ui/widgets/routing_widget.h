@@ -26,6 +26,9 @@ class RoutingWidget : public FloatingPanelWidget {
   void SetEndLane(const QString& lane_pos);
   void Clear();
 
+ signals:
+  void ShowRequested();
+
  protected:
   void RetranslateUi() override;
   void ToggleCollapse() override;

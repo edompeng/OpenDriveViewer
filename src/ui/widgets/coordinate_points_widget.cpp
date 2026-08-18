@@ -183,6 +183,12 @@ void CoordinatePointsWidget::Clear() {
   HandleClearPoints();
 }
 
+void CoordinatePointsWidget::FocusInput() {
+  if (!input_points_edit_) return;
+  input_points_edit_->setFocus(Qt::ShortcutFocusReason);
+  input_points_edit_->selectAll();
+}
+
 void CoordinatePointsWidget::HandlePointsChanged() {
   points_tree_dirty_ = true;
   if (!isVisible()) return;

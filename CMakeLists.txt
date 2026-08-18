@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
-project(OpenDriveViewer LANGUAGES CXX)
+project(OpenDriveViewer VERSION 0.0.0 LANGUAGES CXX)
+
+set(GEOVIEWER_VERSION
+    "0.0.0-dev"
+    CACHE STRING "OpenDriveViewer display version")
 
 # Ensure imported targets (like PROJ from vcpkg) fall back to Release, not Debug, 
 # when building in RelWithDebInfo, avoiding CRT mismatch and missing DLL issues.
@@ -206,6 +210,7 @@ endmacro()
 add_geoviewer_test(
   ViewerCoreTests
   tests/scene_index_builder_test.cpp
+  tests/shortcut_manager_test.cpp
   tests/spatial_index_test.cpp
   tests/viewer_text_util_test.cpp
   tests/favorites_store_test.cpp
@@ -222,6 +227,7 @@ add_geoviewer_test(
   tests/simulation_controller_test.cpp
   tests/junction_grouping_test.cpp
   tests/async_map_loader_test.cpp
+  tests/app_version_test.cpp
   tests/map_loader_test.cpp
   tests/mcp_protocol_test.cpp
   tests/mcp_transport_test.cpp

@@ -265,17 +265,15 @@ void RoutingWidget::HandleItemEntered(QTreeWidgetItem* item, int /*column*/) {
 }
 
 void RoutingWidget::SetStartLane(const QString& lane_pos) {
-  if (isHidden()) show();
   if (is_collapsed_) ToggleCollapse();
   start_input_->setText(lane_pos);
-  raise();
+  emit ShowRequested();
 }
 
 void RoutingWidget::SetEndLane(const QString& lane_pos) {
-  if (isHidden()) show();
   if (is_collapsed_) ToggleCollapse();
   end_input_->setText(lane_pos);
-  raise();
+  emit ShowRequested();
 }
 
 void RoutingWidget::Clear() {

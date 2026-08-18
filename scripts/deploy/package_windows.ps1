@@ -60,6 +60,10 @@ if (-not (Test-Path $RCEDIT)) {
 
 # Set version info
 $RC_DIR = "src\app\resources"
+$DisplayVersion = if ($env:GEOVIEWER_VERSION) { $env:GEOVIEWER_VERSION } else { "0.0.0-dev" }
+$NumericParts = [regex]::Matches($DisplayVersion, '\d+') | ForEach-Object { $_.Value }
+while ($NumericParts.Count -lt 4) { $NumericParts += "0" }
+$WindowsVersion = ($NumericParts[0..3] -join '.')
 Write-Host "  -> Setting version information..."
 & $RCEDIT $TARGET_EXE `
     --set-version-string "CompanyName" "GeoViewer Team" `
@@ -67,8 +71,10 @@ Write-Host "  -> Setting version information..."
     --set-version-string "LegalCopyright" "Copyright (C) 2026 GeoViewer" `
     --set-version-string "OriginalFilename" "OpenDriveViewer.exe" `
     --set-version-string "ProductName" "GeoViewer" `
-    --set-file-version "1.0.0.0" `
-    --set-product-version "1.0.0.0"
+    --set-version-string "FileVersion" $DisplayVersion `
+    --set-version-string "ProductVersion" $DisplayVersion `
+    --set-file-version $WindowsVersion `
+    --set-product-version $WindowsVersion
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "  -> rcedit version info failed (non-fatal)"
 }

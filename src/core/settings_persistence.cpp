@@ -12,6 +12,7 @@ const char* kConfigFileName = "geoviewer_settings.ini";
 const char* kSectionWindows = "Windows";
 const char* kSectionLayers = "Layers";
 const char* kSectionGeneral = "General";
+const char* kSectionShortcuts = "Shortcuts";
 }  // namespace
 
 QString SettingsPersistence::GetConfigPath(const QString& app_dir_path) {
@@ -37,6 +38,18 @@ AppSettings SettingsPersistence::Load(const QString& app_dir_path) {
       s.value("Favorites", settings.favorites_visible).toBool();
   settings.coordinate_points_visible =
       s.value("CoordinatePoints", settings.coordinate_points_visible).toBool();
+  settings.topology_validator_visible =
+      s.value("TopologyValidator", settings.topology_validator_visible)
+          .toBool();
+  settings.main_window_geometry = s.value("MainWindowGeometry").toByteArray();
+  settings.main_window_state = s.value("MainWindowState").toByteArray();
+  s.endGroup();
+
+  s.beginGroup(kSectionShortcuts);
+  for (const QString& key : s.childKeys()) {
+    settings.shortcuts[key.toStdString()] =
+        s.value(key).toString().toStdString();
+  }
   s.endGroup();
 
   // Load Global Layer Visibility
@@ -96,6 +109,16 @@ void SettingsPersistence::Save(const AppSettings& settings,
   s.setValue("Routing", settings.routing_visible);
   s.setValue("Favorites", settings.favorites_visible);
   s.setValue("CoordinatePoints", settings.coordinate_points_visible);
+  s.setValue("TopologyValidator", settings.topology_validator_visible);
+  s.setValue("MainWindowGeometry", settings.main_window_geometry);
+  s.setValue("MainWindowState", settings.main_window_state);
+  s.endGroup();
+
+  s.beginGroup(kSectionShortcuts);
+  s.remove("");
+  for (const auto& [id, sequence] : settings.shortcuts) {
+    s.setValue(QString::fromStdString(id), QString::fromStdString(sequence));
+  }
   s.endGroup();
 
   s.beginGroup(kSectionLayers);

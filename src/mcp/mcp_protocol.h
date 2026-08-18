@@ -46,6 +46,7 @@ class GEOVIEWER_EXPORT McpProtocolHandler : public QObject {
 
  private:
   QJsonObject HandleInitialize(const QJsonValue& id, const QJsonObject& params);
+  QJsonObject HandleDiscover(const QJsonValue& id);
   QJsonObject HandleToolsList(const QJsonValue& id);
   QJsonObject HandleToolsCall(const QJsonValue& id, const QJsonObject& params);
   QJsonObject HandlePing(const QJsonValue& id);

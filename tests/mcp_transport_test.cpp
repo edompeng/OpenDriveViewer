@@ -79,6 +79,7 @@ TEST(McpTransportTest, HttpTransportOptionsPreflight) {
   QByteArray http_req =
       "OPTIONS /mcp HTTP/1.1\r\n"
       "Host: 127.0.0.1\r\n"
+      "Origin: http://127.0.0.1:3000\r\n"
       "Access-Control-Request-Method: POST\r\n"
       "\r\n";
 
@@ -92,8 +93,37 @@ TEST(McpTransportTest, HttpTransportOptionsPreflight) {
 
   QByteArray response_data = socket.readAll();
   EXPECT_TRUE(response_data.contains("HTTP/1.1 204 No Content"));
-  EXPECT_TRUE(response_data.contains("Access-Control-Allow-Origin: *"));
+  EXPECT_TRUE(response_data.contains(
+      "Access-Control-Allow-Origin: http://127.0.0.1:3000"));
 
+  transport.Stop();
+}
+
+TEST(McpTransportTest, HttpTransportRejectsNonLocalBrowserOrigin) {
+  int argc = 1;
+  char app_name[] = "mcp_test";
+  char* argv[] = {app_name, nullptr};
+  QCoreApplication app(argc, argv);
+
+  McpProtocolHandler handler;
+  HttpTransport transport(&handler);
+  constexpr uint16_t kTestPort = 18084;
+  ASSERT_TRUE(transport.Start(kTestPort));
+
+  QTcpSocket socket;
+  socket.connectToHost("127.0.0.1", kTestPort);
+  ASSERT_TRUE(socket.waitForConnected(2000));
+  socket.write(
+      "OPTIONS /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+      "Origin: https://example.com\r\n\r\n");
+  socket.flush();
+
+  QEventLoop loop;
+  QObject::connect(&socket, &QTcpSocket::readyRead, &loop, &QEventLoop::quit);
+  QTimer::singleShot(2000, &loop, &QEventLoop::quit);
+  loop.exec();
+
+  EXPECT_TRUE(socket.readAll().contains("HTTP/1.1 403 Forbidden"));
   transport.Stop();
 }
 

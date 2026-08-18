@@ -3,6 +3,9 @@
 #include <QJsonDocument>
 #include <QString>
 
+#include "src/core/app_version.h"
+#include "src/mcp/mcp_protocol_version.h"
+
 namespace geoviewer::mcp {
 
 McpProtocolHandler::McpProtocolHandler(QObject* parent) : QObject(parent) {}
@@ -55,6 +58,8 @@ QJsonObject McpProtocolHandler::HandleMessage(const QJsonObject& message) {
 
   if (method == "initialize") {
     return HandleInitialize(id, params);
+  } else if (method == "server/discover") {
+    return HandleDiscover(id);
   } else if (method == "ping") {
     return HandlePing(id);
   } else if (method == "tools/list") {
@@ -69,7 +74,6 @@ QJsonObject McpProtocolHandler::HandleMessage(const QJsonObject& message) {
 
 QJsonObject McpProtocolHandler::HandleInitialize(const QJsonValue& id,
                                                  const QJsonObject& params) {
-  Q_UNUSED(params);
   QJsonObject capabilities;
   QJsonObject tools_cap;
   tools_cap["listChanged"] = false;
@@ -77,10 +81,11 @@ QJsonObject McpProtocolHandler::HandleInitialize(const QJsonValue& id,
 
   QJsonObject server_info;
   server_info["name"] = "GeoViewer MCP Server";
-  server_info["version"] = "1.0.0";
+  server_info["version"] = geoviewer::core::AppVersion::Current();
 
   QJsonObject result;
-  result["protocolVersion"] = "2024-11-05";
+  result["protocolVersion"] = McpProtocolVersionPolicy::NegotiateLegacyVersion(
+      params.value("protocolVersion").toString());
   result["capabilities"] = capabilities;
   result["serverInfo"] = server_info;
   result["instructions"] =
@@ -89,6 +94,36 @@ QJsonObject McpProtocolHandler::HandleInitialize(const QJsonValue& id,
       "current map state is unknown.";
 
   initialized_ = true;
+  return CreateSuccessResponse(id, result);
+}
+
+QJsonObject McpProtocolHandler::HandleDiscover(const QJsonValue& id) {
+  QJsonArray supported_versions;
+  for (const QString& version : McpProtocolVersionPolicy::SupportedVersions()) {
+    supported_versions.append(version);
+  }
+
+  QJsonObject capabilities;
+  capabilities["tools"] = QJsonObject();
+
+  QJsonObject server_info;
+  server_info["name"] = "GeoViewer MCP Server";
+  server_info["version"] = geoviewer::core::AppVersion::Current();
+
+  QJsonObject metadata;
+  metadata["io.modelcontextprotocol/serverInfo"] = server_info;
+
+  QJsonObject result;
+  result["resultType"] = "complete";
+  result["supportedVersions"] = supported_versions;
+  result["capabilities"] = capabilities;
+  result["_meta"] = metadata;
+  result["instructions"] =
+      "Use GeoViewer tools to inspect OpenDRIVE map data and control the "
+      "running viewer. Call get_map_info before map-dependent tools when the "
+      "current map state is unknown.";
+  result["ttlMs"] = 3600000;
+  result["cacheScope"] = "public";
   return CreateSuccessResponse(id, result);
 }
 

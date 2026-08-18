@@ -76,9 +76,8 @@ void FavoritesWidget::ToggleCollapse() {
 void FavoritesWidget::AddFavorite(const QString& road_id, TreeNodeType type,
                                   const QString& element_id,
                                   const QString& name) {
-  if (isHidden()) show();
   if (is_collapsed_) ToggleCollapse();
-  raise();
+  emit ShowRequested();
 
   const std::string display_name_std =
       BuildFavoriteDisplayName(road_id.toStdString(), type,

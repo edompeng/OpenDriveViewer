@@ -1,6 +1,7 @@
 add_library(
   GeoViewerCore
   ${LIB_TYPE}
+  app_version.cpp
   coordinate_util.cpp
   map_loader.cpp
   thread_pool.cpp
@@ -9,6 +10,7 @@ add_library(
   crash_handler.cpp
   settings_persistence.cpp
   # Headers only
+  app_version.h
   app_settings.h
   coordinate_mode_policy.h
   scene_enums.h
@@ -38,6 +40,8 @@ else()
 endif()
 
 target_link_libraries(GeoViewerCore PUBLIC Qt6::Core Qt6::Gui OpenDrive)
+target_compile_definitions(
+  GeoViewerCore PRIVATE GEOVIEWER_VERSION="${GEOVIEWER_VERSION}")
 
 # On musl/non-glibc Linux, link libunwind for backtrace support in crash_handler
 if(UNIX AND NOT APPLE)

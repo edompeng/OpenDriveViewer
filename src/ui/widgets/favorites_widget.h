@@ -26,6 +26,9 @@ class FavoritesWidget : public FloatingPanelWidget {
                    const QString& element_id, const QString& name);
   void Clear();
 
+ signals:
+  void ShowRequested();
+
  protected:
   void RetranslateUi() override;
   void ToggleCollapse() override;

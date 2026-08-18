@@ -1,8 +1,10 @@
 #pragma once
 
+#include <QByteArray>
 #include <QString>
 #include <QVector3D>
 #include <map>
+#include <string>
 #include "src/core/scene_enums.h"
 
 namespace geoviewer::core {
@@ -13,6 +15,14 @@ struct AppSettings {
   bool routing_visible = false;
   bool favorites_visible = false;
   bool coordinate_points_visible = false;
+  bool topology_validator_visible = false;
+
+  // Main window geometry and QDockWidget layout.
+  QByteArray main_window_geometry;
+  QByteArray main_window_state;
+
+  // Stable command id -> portable QKeySequence string. Empty disables it.
+  std::map<std::string, std::string> shortcuts;
 
   // clang-format off
   std::map<LayerType, bool> global_layer_visibility = {

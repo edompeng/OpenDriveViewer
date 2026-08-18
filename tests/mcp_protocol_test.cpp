@@ -5,6 +5,7 @@
 #include <QJsonObject>
 
 #include "src/mcp/mcp_protocol.h"
+#include "src/mcp/mcp_protocol_version.h"
 
 namespace geoviewer::mcp {
 
@@ -21,7 +22,7 @@ TEST(McpProtocolTest, InitializeAndPing) {
   init_req["jsonrpc"] = "2.0";
   init_req["id"] = 1;
   init_req["method"] = "initialize";
-  init_req["params"] = QJsonObject();
+  init_req["params"] = QJsonObject{{"protocolVersion", "2025-06-18"}};
 
   QJsonObject init_res = handler.HandleMessage(init_req);
   EXPECT_EQ(init_res["jsonrpc"].toString(), "2.0");
@@ -30,6 +31,7 @@ TEST(McpProtocolTest, InitializeAndPing) {
 
   QJsonObject result = init_res["result"].toObject();
   EXPECT_TRUE(result.contains("protocolVersion"));
+  EXPECT_EQ(result["protocolVersion"].toString(), "2025-06-18");
   EXPECT_TRUE(result.contains("serverInfo"));
   EXPECT_FALSE(result["instructions"].toString().isEmpty());
 
@@ -42,6 +44,31 @@ TEST(McpProtocolTest, InitializeAndPing) {
   QJsonObject ping_res = handler.HandleMessage(ping_req);
   EXPECT_EQ(ping_res["id"].toInt(), 2);
   EXPECT_TRUE(ping_res.contains("result"));
+}
+
+TEST(McpProtocolTest, NegotiatesLegacyVersionsAndSupportsModernDiscovery) {
+  McpProtocolHandler handler;
+
+  QJsonObject init_req{
+      {"jsonrpc", "2.0"},
+      {"id", 1},
+      {"method", "initialize"},
+      {"params", QJsonObject{{"protocolVersion", "unsupported"}}}};
+  const QJsonObject init_result =
+      handler.HandleMessage(init_req)["result"].toObject();
+  EXPECT_EQ(init_result["protocolVersion"].toString(), "2025-11-25");
+
+  QJsonObject discover_req{{"jsonrpc", "2.0"},
+                           {"id", "discover-1"},
+                           {"method", "server/discover"},
+                           {"params", QJsonObject()}};
+  const QJsonObject discover_result =
+      handler.HandleMessage(discover_req)["result"].toObject();
+  EXPECT_EQ(discover_result["resultType"].toString(), "complete");
+  EXPECT_TRUE(
+      discover_result["supportedVersions"].toArray().contains("2026-07-28"));
+  EXPECT_TRUE(discover_result["capabilities"].toObject().contains("tools"));
+  EXPECT_TRUE(McpProtocolVersionPolicy::IsSupported("2025-03-26"));
 }
 
 TEST(McpProtocolTest, ToolRegistrationAndCall) {

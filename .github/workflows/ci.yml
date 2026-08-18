@@ -60,6 +60,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Resolve application version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="0.0.0-dev+${GITHUB_SHA:0:7}"
+          fi
+          echo "GEOVIEWER_VERSION=${version}" >> "$GITHUB_ENV"
+
       - name: Install System Dependencies (macOS)
         if: matrix.os == 'macos-14'
         run: |
@@ -171,6 +181,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/cmake_deps
           mkdir -p ${{ github.workspace }}/.ccache
           docker run -i --rm \
+            -e GEOVIEWER_VERSION="${GEOVIEWER_VERSION}" \
             -v ${{ github.workspace }}:/workspace \
             -v ${{ github.workspace }}/.ccache:/root/.ccache \
             -w /workspace alpine:3.20 sh << 'EOF'
@@ -187,6 +198,7 @@ jobs:
           # Configure and Build with ccache
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DGEOVIEWER_VERSION="${GEOVIEWER_VERSION}" \
             -DFETCHCONTENT_BASE_DIR="/workspace/cmake_deps" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
@@ -226,12 +238,14 @@ jobs:
             TCMALLOC_LIB=$(find "${{ env.PROJ_ROOT }}/lib" -name "*tcmalloc*.lib" | head -n 1 | tr '/' '\\')
             export PATH="${{ env.PROJ_ROOT }}/bin:$PATH"
             bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS --linkopt="${TCMALLOC_LIB}" //... --test_output=errors $BAZEL_OPTS --config=windows \
+              --copt="/DGEOVIEWER_VERSION=\\\"${GEOVIEWER_VERSION}\\\"" \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}" \
               --action_env=GITHUB_WORKSPACE="${{ github.workspace }}" \
               --test_env=PATH
           else
             bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=macos \
+              --copt="-DGEOVIEWER_VERSION=\\\"${GEOVIEWER_VERSION}\\\"" \
               --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
               --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
           fi
@@ -325,6 +339,16 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: recursive
+
+      - name: Resolve application version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="0.0.0-dev+${GITHUB_SHA:0:7}"
+          fi
+          echo "GEOVIEWER_VERSION=${version}" >> "$GITHUB_ENV"
 
       - name: Install System Dependencies
         if: matrix.os != 'windows-2022'
@@ -428,6 +452,7 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DGEOVIEWER_VERSION="${GEOVIEWER_VERSION}" \
             -DFETCHCONTENT_BASE_DIR="${{ github.workspace }}/cmake_deps" \
             -DQT_PATH="${{ env.QT_ROOT_DIR }}" \
             -DPROJ_ROOT="${{ env.PROJ_ROOT }}" \
@@ -474,6 +499,7 @@ jobs:
           COMMON_FLAGS="-c opt"
           
           xvfb-run --auto-servernum bazel $BAZEL_STARTUP_OPTS test $COMMON_FLAGS //... --test_output=errors $BAZEL_OPTS --config=linux \
+            --copt="-DGEOVIEWER_VERSION=\\\"${GEOVIEWER_VERSION}\\\"" \
             --action_env=QT6_ROOT="${{ env.QT_ROOT_DIR }}" \
             --action_env=PROJ_ROOT="${{ env.PROJ_ROOT }}"
 

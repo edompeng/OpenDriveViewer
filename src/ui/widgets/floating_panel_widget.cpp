@@ -13,6 +13,7 @@ FloatingPanelWidget::FloatingPanelWidget(QWidget* parent) : QWidget(parent) {
 QWidget* FloatingPanelWidget::CreateTitleBar(const QString& title_text,
                                              const QString& color_hex) {
   auto* title_bar = new QWidget(this);
+  title_bar_ = title_bar;
   title_bar->setFixedHeight(30);
   title_bar->setStyleSheet(
       QString("background-color: %1; border-top-left-radius: 8px; "
@@ -50,6 +51,15 @@ QWidget* FloatingPanelWidget::CreateTitleBar(const QString& title_text,
   return title_bar;
 }
 
+void FloatingPanelWidget::SetDockedMode(bool docked) {
+  docked_mode_ = docked;
+  if (title_bar_) title_bar_->setVisible(!docked);
+  if (docked) {
+    setMinimumSize(0, 0);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+  }
+}
+
 void FloatingPanelWidget::changeEvent(QEvent* event) {
   if (event->type() == QEvent::LanguageChange) {
     RetranslateUi();
@@ -68,6 +78,7 @@ void FloatingPanelWidget::setVisible(bool visible) {
 
 bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,
                                          int draggable_height) {
+  if (docked_mode_) return false;
   if (event->button() != Qt::LeftButton ||
       event->position().y() >= draggable_height) {
     return false;
@@ -79,6 +90,7 @@ bool FloatingPanelWidget::BeginPanelDrag(QMouseEvent* event,
 }
 
 bool FloatingPanelWidget::DragPanel(QMouseEvent* event, bool clamp_to_parent) {
+  if (docked_mode_) return false;
   if (drag_origin_.isNull() || !(event->buttons() & Qt::LeftButton)) {
     return false;
   }
@@ -124,6 +136,10 @@ void FloatingPanelWidget::TogglePanelCollapse(QWidget* content, bool& collapsed,
 }
 
 void FloatingPanelWidget::mousePressEvent(QMouseEvent* event) {
+  if (docked_mode_) {
+    QWidget::mousePressEvent(event);
+    return;
+  }
   forwarding_target_ = nullptr;
 
   if (BeginPanelDrag(event)) {
@@ -159,6 +175,10 @@ void FloatingPanelWidget::mousePressEvent(QMouseEvent* event) {
 }
 
 void FloatingPanelWidget::mouseMoveEvent(QMouseEvent* event) {
+  if (docked_mode_) {
+    QWidget::mouseMoveEvent(event);
+    return;
+  }
   if (forwarding_target_) {
     QMouseEvent forwardedEvent(
         event->type(),
@@ -178,6 +198,10 @@ void FloatingPanelWidget::mouseMoveEvent(QMouseEvent* event) {
 }
 
 void FloatingPanelWidget::mouseReleaseEvent(QMouseEvent* event) {
+  if (docked_mode_) {
+    QWidget::mouseReleaseEvent(event);
+    return;
+  }
   if (forwarding_target_) {
     QMouseEvent forwardedEvent(
         event->type(),

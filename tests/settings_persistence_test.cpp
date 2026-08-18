@@ -26,6 +26,11 @@ TEST_F(SettingsPersistenceTest, RoundTripDefaults) {
   EXPECT_EQ(loaded.favorites_visible, original.favorites_visible);
   EXPECT_EQ(loaded.coordinate_points_visible,
             original.coordinate_points_visible);
+  EXPECT_EQ(loaded.topology_validator_visible,
+            original.topology_validator_visible);
+  EXPECT_EQ(loaded.main_window_geometry, original.main_window_geometry);
+  EXPECT_EQ(loaded.main_window_state, original.main_window_state);
+  EXPECT_EQ(loaded.shortcuts, original.shortcuts);
   EXPECT_EQ(loaded.coordinate_mode, original.coordinate_mode);
   EXPECT_EQ(loaded.language, original.language);
   EXPECT_EQ(loaded.default_point_color, original.default_point_color);
@@ -41,6 +46,11 @@ TEST_F(SettingsPersistenceTest, ModifyAndSave) {
   AppSettings original;
   original.layer_manager_visible = false;
   original.routing_visible = true;
+  original.topology_validator_visible = true;
+  original.main_window_geometry = QByteArray("geometry");
+  original.main_window_state = QByteArray("dock-state");
+  original.shortcuts["open_map"] = "";
+  original.shortcuts["toggle_coordinates"] = "Ctrl+4";
   original.coordinate_mode = CoordinateMode::kLocal;
   original.language = "en_US";
   original.default_point_color = QVector3D(0.1f, 0.2f, 0.3f);
@@ -53,6 +63,11 @@ TEST_F(SettingsPersistenceTest, ModifyAndSave) {
 
   EXPECT_EQ(loaded.layer_manager_visible, false);
   EXPECT_EQ(loaded.routing_visible, true);
+  EXPECT_EQ(loaded.topology_validator_visible, true);
+  EXPECT_EQ(loaded.main_window_geometry, QByteArray("geometry"));
+  EXPECT_EQ(loaded.main_window_state, QByteArray("dock-state"));
+  EXPECT_EQ(loaded.shortcuts.at("open_map"), "");
+  EXPECT_EQ(loaded.shortcuts.at("toggle_coordinates"), "Ctrl+4");
   EXPECT_EQ(loaded.coordinate_mode, CoordinateMode::kLocal);
   EXPECT_EQ(loaded.language, "en_US");
   EXPECT_NEAR(loaded.default_point_color.x(), 0.1f, 1e-5);

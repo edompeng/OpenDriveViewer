@@ -141,8 +141,8 @@ It works with Codex, Claude Code, Google Antigravity, OpenCode, and other MCP
 clients that support stdio or Streamable HTTP. Start `OpenDriveViewer` and keep
 it running, then configure the client with `http://127.0.0.1:8080/mcp`.
 
-See [MCP client configuration](docs/mcp_clients.md) for verified configuration
-examples and a generic stdio fallback.
+See [MCP client configuration](docs/mcp_clients.md) for configuration and
+verification steps plus a generic stdio fallback.
 ---
 
 ## Third-Party Libraries

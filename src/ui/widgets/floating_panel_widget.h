@@ -11,6 +11,8 @@ class FloatingPanelWidget : public QWidget {
   Q_OBJECT
  public:
   explicit FloatingPanelWidget(QWidget* parent = nullptr);
+  void SetDockedMode(bool docked);
+  bool IsDockedMode() const { return docked_mode_; }
  signals:
   void VisibilityChanged(bool visible);
   void SettingsChanged();
@@ -27,7 +29,6 @@ class FloatingPanelWidget : public QWidget {
   void setVisible(bool visible) override;
 
  protected:
-
   bool BeginPanelDrag(QMouseEvent* event, int draggable_height = 30);
   bool DragPanel(QMouseEvent* event, bool clamp_to_parent);
   void TogglePanelCollapse(QWidget* content, bool& collapsed,
@@ -40,9 +41,11 @@ class FloatingPanelWidget : public QWidget {
 
  protected:
   QLabel* title_label_ = nullptr;
+  QWidget* title_bar_ = nullptr;
   QToolButton* collapse_button_ = nullptr;
   QToolButton* close_button_ = nullptr;
   bool is_collapsed_ = false;
+  bool docked_mode_ = false;
 
  private:
   QPoint drag_origin_;

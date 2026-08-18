@@ -9,8 +9,9 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
-#include <QLabel>
 #include <QInputDialog>
+#include <QLabel>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPushButton>
@@ -19,7 +20,6 @@
 #include <QToolBar>
 #include <QTranslator>
 #include <QWidget>
-#include "src/mcp/mcp_server.h"
 #include "OpenDriveMap.h"
 #include "Road.h"
 #include "src/core/app_settings.h"
@@ -30,9 +30,11 @@
 #include "src/core/thread_pool.h"
 #include "src/logic/event_bus.h"
 #include "src/logic/input_parsing.h"
+#include "src/mcp/mcp_server.h"
 #include "src/ui/widgets/floating_panel_widget.h"
 #include "src/ui/widgets/layer_control_widget.h"
 #include "src/ui/widgets/map_statistics_dialog.h"
+#include "src/ui/widgets/shortcut_settings_dialog.h"
 #include "src/ui/widgets/topology_validator_widget.h"
 #include "src/ui/widgets/xml_editor_dialog.h"
 #include "src/ui/widgets/xml_editor_types.h"
@@ -61,6 +63,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   status_ = statusBar();
   SetupPanels();
   SetupToolbar();
+  SetupMenus();
+  SetupShortcuts();
+
+  version_label_ =
+      new QLabel(tr("Version %1").arg(qApp->applicationVersion()), status_);
+  version_label_->setObjectName("VersionLabel");
+  version_label_->setStyleSheet("color: palette(mid); padding: 0 8px;");
+  status_->addPermanentWidget(version_label_);
 
   // Apply coordinate mode from settings
   coord_mode_ = settings_.coordinate_mode;
@@ -70,6 +80,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   }
 
   SetupConnections();
+
+  if (!settings_.main_window_geometry.isEmpty()) {
+    restoreGeometry(settings_.main_window_geometry);
+  }
+  if (!settings_.main_window_state.isEmpty()) {
+    restoreState(settings_.main_window_state, 1);
+  }
 
   setAcceptDrops(true);
   UpdateWindowTitle();
@@ -223,10 +240,16 @@ void MainWindow::RetranslateUi() {
   // Update main window elements
   load_action_->setText(tr("Load .xodr"));
   load_action_->setToolTip(tr("Open an OpenDRIVE map file"));
-  panels_btn_->setText(tr("Windows"));
-  lang_btn_->setText(tr("Language"));
+  compare_action_->setText(tr("Compare .xodr"));
+  save_as_action_->setText(tr("Save As .xodr"));
   measure_action_->setText(tr("Measure"));
   measure_action_->setToolTip(tr("Measure distance between points"));
+  screenshot_action_->setText(tr("Screenshot"));
+  screenshot_action_->setToolTip(tr("Save 3D view screenshot"));
+  stats_action_->setText(tr("Map Stats"));
+  stats_action_->setToolTip(tr("Show Map Statistics"));
+  mcp_action_->setText(tr("MCP Server"));
+  mcp_action_->setToolTip(tr("Start/Stop HTTP MCP Server"));
   if (view_ && view_->GetViewMode() == CameraController::ViewMode::k2D) {
     view_mode_action_->setText(tr("2D"));
   } else {
@@ -255,18 +278,38 @@ void MainWindow::RetranslateUi() {
     coord_mode_combo_->setItemText(1, tr("Local (x, y)"));
   }
 
+  if (file_menu_) file_menu_->setTitle(tr("File"));
+  if (view_menu_) view_menu_->setTitle(tr("View"));
+  if (tools_menu_) tools_menu_->setTitle(tr("Tools"));
+  if (settings_menu_) settings_menu_->setTitle(tr("Settings"));
+  if (help_menu_) help_menu_->setTitle(tr("Help"));
+
   // Update Panel menu
   panels_menu_->setTitle(tr("Panels"));
-  auto actions = panels_menu_->actions();
-  if (actions.size() >= 4) {
-    actions[0]->setText(tr("Layer Manager"));
-    actions[1]->setText(tr("Routing"));
-    actions[2]->setText(tr("Favorites"));
-    actions[3]->setText(tr("Coordinate Inputs"));
-  }
+  if (layer_control_dock_)
+    layer_control_dock_->setWindowTitle(tr("Layer Manager"));
+  if (routing_dock_) routing_dock_->setWindowTitle(tr("Routing"));
+  if (favorites_dock_) favorites_dock_->setWindowTitle(tr("Favorites"));
+  if (coordinate_points_dock_)
+    coordinate_points_dock_->setWindowTitle(tr("Coordinate Inputs"));
+  if (topology_validator_dock_)
+    topology_validator_dock_->setWindowTitle(tr("Topology Validator"));
 
   // Update Language menu
   lang_menu_->setTitle(tr("Language"));
+
+  if (coordinate_mode_action_)
+    coordinate_mode_action_->setText(tr("Toggle Coordinate System"));
+  if (shortcut_settings_action_)
+    shortcut_settings_action_->setText(tr("Keyboard Shortcuts..."));
+  if (about_action_) about_action_->setText(tr("About OpenDriveViewer"));
+  if (reset_layout_action_)
+    reset_layout_action_->setText(tr("Reset Window Layout"));
+  if (cycle_language_action_)
+    cycle_language_action_->setText(tr("Switch Language"));
+  if (exit_action_) exit_action_->setText(tr("Exit"));
+  if (version_label_)
+    version_label_->setText(tr("Version %1").arg(qApp->applicationVersion()));
 
   if (layer_control_dock_) {
     layer_control_dock_->setWindowTitle(tr("Layer Manager"));
@@ -275,45 +318,74 @@ void MainWindow::RetranslateUi() {
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
   QMainWindow::resizeEvent(event);
-  if (favorites_panel_ && view_) {
-    favorites_panel_->move(view_->width() - favorites_panel_->width() - 20, 20);
-  }
 }
 
 void MainWindow::SetupPanels() {
-  layer_control_dock_ = new QDockWidget(tr("Layer Manager"), this);
-  layer_control_dock_->setObjectName("LayerManagerDock");
-  layer_control_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                       Qt::RightDockWidgetArea);
+  setDockNestingEnabled(true);
+  setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
 
-  layer_control_ =
-      new LayerControlWidget(view_, settings_, layer_control_dock_);
-  layer_control_dock_->setWidget(layer_control_);
-  addDockWidget(Qt::LeftDockWidgetArea, layer_control_dock_);
+  layer_control_ = new LayerControlWidget(view_, settings_);
+  layer_control_dock_ = CreateToolDock("LayerManagerDock", tr("Layer Manager"),
+                                       layer_control_, Qt::LeftDockWidgetArea);
 
-  routing_panel_ = new RoutingWidget(view_, settings_, view_);
-  routing_panel_->move(20, 530);
+  routing_panel_ = new RoutingWidget(view_, settings_);
+  routing_panel_->SetDockedMode(true);
+  routing_dock_ = CreateToolDock("RoutingDock", tr("Routing"), routing_panel_,
+                                 Qt::RightDockWidgetArea);
 
-  favorites_panel_ = new FavoritesWidget(view_, settings_, view_);
-  favorites_panel_->move(view_->width() - 270, 20);
+  favorites_panel_ = new FavoritesWidget(view_, settings_);
+  favorites_panel_->SetDockedMode(true);
+  favorites_dock_ = CreateToolDock("FavoritesDock", tr("Favorites"),
+                                   favorites_panel_, Qt::RightDockWidgetArea);
 
-  coordinate_points_panel_ =
-      new CoordinatePointsWidget(view_, settings_, view_);
-  coordinate_points_panel_->move(290, 330);
+  coordinate_points_panel_ = new CoordinatePointsWidget(view_, settings_);
+  coordinate_points_panel_->SetDockedMode(true);
+  coordinate_points_dock_ =
+      CreateToolDock("CoordinatePointsDock", tr("Coordinate Inputs"),
+                     coordinate_points_panel_, Qt::RightDockWidgetArea);
 
   load_progress_ = new LoadingProgressWidget(view_);
   load_progress_->move(view_->width() / 2 - 150, view_->height() / 2 - 50);
 
-  topology_validator_panel_ =
-      new TopologyValidatorWidget(view_, settings_, view_);
-  topology_validator_panel_->move(20, 20);
-  topology_validator_panel_->setVisible(false);
+  topology_validator_panel_ = new TopologyValidatorWidget(view_, settings_);
+  topology_validator_panel_->SetDockedMode(true);
+  topology_validator_dock_ =
+      CreateToolDock("TopologyValidatorDock", tr("Topology Validator"),
+                     topology_validator_panel_, Qt::RightDockWidgetArea);
+
+  SetDefaultDockLayout();
 
   // Apply visibility from settings
   layer_control_dock_->setVisible(settings_.layer_manager_visible);
-  routing_panel_->setVisible(settings_.routing_visible);
-  favorites_panel_->setVisible(settings_.favorites_visible);
-  coordinate_points_panel_->setVisible(settings_.coordinate_points_visible);
+  routing_dock_->setVisible(settings_.routing_visible);
+  favorites_dock_->setVisible(settings_.favorites_visible);
+  coordinate_points_dock_->setVisible(settings_.coordinate_points_visible);
+  topology_validator_dock_->setVisible(settings_.topology_validator_visible);
+}
+
+QDockWidget* MainWindow::CreateToolDock(const QString& object_name,
+                                        const QString& title, QWidget* content,
+                                        Qt::DockWidgetArea area) {
+  auto* dock = new QDockWidget(title, this);
+  dock->setObjectName(object_name);
+  dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+  dock->setFeatures(QDockWidget::DockWidgetClosable |
+                    QDockWidget::DockWidgetMovable |
+                    QDockWidget::DockWidgetFloatable);
+  dock->setWidget(content);
+  content->show();
+  addDockWidget(area, dock);
+  return dock;
+}
+
+void MainWindow::SetDefaultDockLayout() {
+  addDockWidget(Qt::LeftDockWidgetArea, layer_control_dock_);
+  addDockWidget(Qt::RightDockWidgetArea, routing_dock_);
+  tabifyDockWidget(routing_dock_, favorites_dock_);
+  tabifyDockWidget(routing_dock_, coordinate_points_dock_);
+  tabifyDockWidget(routing_dock_, topology_validator_dock_);
+  resizeDocks({layer_control_dock_}, {300}, Qt::Horizontal);
+  resizeDocks({routing_dock_}, {340}, Qt::Horizontal);
 }
 
 void MainWindow::ToggleWidgetVisibility(QWidget* widget, bool visible) {
@@ -323,119 +395,160 @@ void MainWindow::ToggleWidgetVisibility(QWidget* widget, bool visible) {
 }
 
 void MainWindow::SetupToolbar() {
-  QToolBar* toolbar = addToolBar("Main");
-  addToolBar(Qt::TopToolBarArea, toolbar);
-
-  load_action_ = toolbar->addAction(tr("Load .xodr"));
+  load_action_ = new QAction(tr("Load .xodr"), this);
   connect(load_action_, &QAction::triggered, this, &MainWindow::HandleLoadMap);
 
-  compare_action_ = toolbar->addAction(tr("Compare .xodr"));
+  compare_action_ = new QAction(tr("Compare .xodr"), this);
   compare_action_->setEnabled(false);
   connect(compare_action_, &QAction::triggered, this,
           &MainWindow::HandleCompareMap);
 
-  save_as_action_ = toolbar->addAction(tr("Save As .xodr"));
+  save_as_action_ = new QAction(tr("Save As .xodr"), this);
   save_as_action_->setEnabled(false);
   connect(save_as_action_, &QAction::triggered, this,
           &MainWindow::HandleSaveMapAs);
 
-  toolbar->addSeparator();
-
-  // Widget visibility menu
-  panels_menu_ = new QMenu(tr("Panels"), this);
-  auto addToggle = [&](const QString& name, QWidget* w) {
-    QAction* act = panels_menu_->addAction(name);
-    act->setCheckable(true);
-    act->setChecked(!w->isHidden());
-    connect(act, &QAction::toggled, this,
-            [this, w](bool checked) { ToggleWidgetVisibility(w, checked); });
-
-    // Synchronize UI state when widget is shown/hidden externally
-    if (auto* panel = qobject_cast<FloatingPanelWidget*>(w)) {
-      connect(panel, &FloatingPanelWidget::VisibilityChanged, act,
-              &QAction::setChecked);
-    }
-  };
-
-  QAction* layerAct = layer_control_dock_->toggleViewAction();
-  layerAct->setText(tr("Layer Manager"));
-  panels_menu_->addAction(layerAct);
-
-  addToggle(tr("Routing"), routing_panel_);
-  addToggle(tr("Favorites"), favorites_panel_);
-  addToggle(tr("Coordinate Inputs"), coordinate_points_panel_);
-  addToggle(tr("Topology Validator"), topology_validator_panel_);
-
-  panels_btn_ = new QToolButton(this);
-  panels_btn_->setText(tr("Windows"));
-  panels_btn_->setMenu(panels_menu_);
-  panels_btn_->setPopupMode(QToolButton::InstantPopup);
-  panels_btn_->setStyleSheet("padding: 2px 10px; font-weight: bold;");
-  toolbar->addWidget(panels_btn_);
-
-  toolbar->addSeparator();
-
-  // Language selection menu
-  lang_menu_ = new QMenu(tr("Language"), this);
-  QAction* zhAction = lang_menu_->addAction("简体中文");
-  QAction* enAction = lang_menu_->addAction("English");
-  connect(zhAction, &QAction::triggered, this,
-          [this]() { ChangeLanguage("zh_CN"); });
-  connect(enAction, &QAction::triggered, this,
-          [this]() { ChangeLanguage("en_US"); });
-
-  lang_btn_ = new QToolButton(this);
-  lang_btn_->setText(tr("Language"));
-  lang_btn_->setMenu(lang_menu_);
-  lang_btn_->setPopupMode(QToolButton::InstantPopup);
-  lang_btn_->setStyleSheet("padding: 2px 10px; font-weight: bold;");
-  toolbar->addWidget(lang_btn_);
-
-  toolbar->addSeparator();
-
-  measure_action_ = toolbar->addAction(tr("Measure"));
+  measure_action_ = new QAction(tr("Measure"), this);
   measure_action_->setCheckable(true);
 
-  view_mode_action_ = toolbar->addAction(tr("2D/3D"));
+  view_mode_action_ = new QAction(tr("2D/3D"), this);
   view_mode_action_->setCheckable(true);
   view_mode_action_->setToolTip(
       tr("Toggle between 2D (Overhead) and 3D views"));
   connect(view_mode_action_, &QAction::toggled, this,
           &MainWindow::HandleViewModeToggle);
 
-  copy_map_name_action_ = toolbar->addAction(tr("Copy Map Name"));
+  copy_map_name_action_ = new QAction(tr("Copy Map Name"), this);
   copy_map_name_action_->setToolTip(
       tr("Copy current map file name without extension"));
   connect(copy_map_name_action_, &QAction::triggered, this,
           &MainWindow::HandleCopyMapBaseName);
 
-  toolbar->addSeparator();
-
-  screenshot_action_ = toolbar->addAction(tr("Screenshot"));
+  screenshot_action_ = new QAction(tr("Screenshot"), this);
   screenshot_action_->setToolTip(tr("Save 3D view screenshot"));
   connect(screenshot_action_, &QAction::triggered, this,
           &MainWindow::HandleScreenshot);
 
-  stats_action_ = toolbar->addAction(tr("Map Stats"));
+  stats_action_ = new QAction(tr("Map Stats"), this);
   stats_action_->setToolTip(tr("Show Map Statistics"));
   stats_action_->setEnabled(false);
   connect(stats_action_, &QAction::triggered, this,
           &MainWindow::HandleShowStats);
 
-  toolbar->addSeparator();
-
-  mcp_action_ = toolbar->addAction(tr("MCP Server"));
+  mcp_action_ = new QAction(tr("MCP Server"), this);
   mcp_action_->setCheckable(true);
   mcp_action_->setToolTip(tr("Start/Stop HTTP MCP Server"));
   connect(mcp_action_, &QAction::triggered, this,
           &MainWindow::HandleToggleMcpServer);
 
-  toolbar->addWidget(BuildCoordinateTools());
+  coordinate_mode_action_ = new QAction(tr("Toggle Coordinate System"), this);
+  connect(coordinate_mode_action_, &QAction::triggered, this,
+          &MainWindow::HandleToggleCoordinateMode);
+
+  exit_action_ = new QAction(tr("Exit"), this);
+  connect(exit_action_, &QAction::triggered, this, &QWidget::close);
+  shortcut_settings_action_ = new QAction(tr("Keyboard Shortcuts..."), this);
+  connect(shortcut_settings_action_, &QAction::triggered, this,
+          &MainWindow::HandleShowShortcutSettings);
+  about_action_ = new QAction(tr("About OpenDriveViewer"), this);
+  connect(about_action_, &QAction::triggered, this,
+          &MainWindow::HandleShowAbout);
+  reset_layout_action_ = new QAction(tr("Reset Window Layout"), this);
+  connect(reset_layout_action_, &QAction::triggered, this,
+          &MainWindow::HandleResetLayout);
+  cycle_language_action_ = new QAction(tr("Switch Language"), this);
+  connect(cycle_language_action_, &QAction::triggered, this,
+          &MainWindow::HandleCycleLanguage);
+
+  auto* navigation_toolbar = new QToolBar(tr("Navigation Toolbar"), this);
+  navigation_toolbar->setObjectName("NavigationToolbar");
+  navigation_toolbar->addWidget(BuildCoordinateTools());
+  addToolBar(Qt::TopToolBarArea, navigation_toolbar);
 }
 
-MainWindow::~MainWindow() {
-  StopMcpServer();
+void MainWindow::SetupMenus() {
+  file_menu_ = menuBar()->addMenu(tr("File"));
+  file_menu_->addAction(load_action_);
+  file_menu_->addAction(compare_action_);
+  file_menu_->addAction(save_as_action_);
+  file_menu_->addSeparator();
+  file_menu_->addAction(exit_action_);
+
+  view_menu_ = menuBar()->addMenu(tr("View"));
+  panels_menu_ = view_menu_->addMenu(tr("Panels"));
+  panels_menu_->addAction(layer_control_dock_->toggleViewAction());
+  panels_menu_->addAction(routing_dock_->toggleViewAction());
+  panels_menu_->addAction(favorites_dock_->toggleViewAction());
+  panels_menu_->addAction(coordinate_points_dock_->toggleViewAction());
+  panels_menu_->addAction(topology_validator_dock_->toggleViewAction());
+  view_menu_->addSeparator();
+  view_menu_->addAction(view_mode_action_);
+  view_menu_->addAction(coordinate_mode_action_);
+  view_menu_->addSeparator();
+  view_menu_->addAction(reset_layout_action_);
+
+  tools_menu_ = menuBar()->addMenu(tr("Tools"));
+  tools_menu_->addAction(measure_action_);
+  tools_menu_->addAction(screenshot_action_);
+  tools_menu_->addAction(stats_action_);
+  tools_menu_->addAction(copy_map_name_action_);
+  tools_menu_->addSeparator();
+  tools_menu_->addAction(mcp_action_);
+
+  settings_menu_ = menuBar()->addMenu(tr("Settings"));
+  lang_menu_ = settings_menu_->addMenu(tr("Language"));
+  QAction* zh_action = lang_menu_->addAction("简体中文");
+  QAction* en_action = lang_menu_->addAction("English");
+  connect(zh_action, &QAction::triggered, this,
+          [this]() { ChangeLanguage("zh_CN"); });
+  connect(en_action, &QAction::triggered, this,
+          [this]() { ChangeLanguage("en_US"); });
+  settings_menu_->addAction(cycle_language_action_);
+  settings_menu_->addAction(shortcut_settings_action_);
+
+  help_menu_ = menuBar()->addMenu(tr("Help"));
+  help_menu_->addAction(about_action_);
 }
+
+void MainWindow::SetupShortcuts() {
+  auto register_action = [this](const char* id,
+                                geoviewer::ui::ShortcutCategory category,
+                                QAction* action) {
+    shortcut_manager_.RegisterAction(QString::fromLatin1(id), category, action);
+  };
+
+  using Category = geoviewer::ui::ShortcutCategory;
+  register_action("open_map", Category::kFile, load_action_);
+  register_action("compare_map", Category::kFile, compare_action_);
+  register_action("save_map_as", Category::kFile, save_as_action_);
+  register_action("exit", Category::kFile, exit_action_);
+  register_action("toggle_layer_manager", Category::kPanels,
+                  layer_control_dock_->toggleViewAction());
+  register_action("toggle_routing", Category::kPanels,
+                  routing_dock_->toggleViewAction());
+  register_action("toggle_favorites", Category::kPanels,
+                  favorites_dock_->toggleViewAction());
+  register_action("toggle_coordinate_points", Category::kPanels,
+                  coordinate_points_dock_->toggleViewAction());
+  register_action("toggle_topology_validator", Category::kPanels,
+                  topology_validator_dock_->toggleViewAction());
+  register_action("toggle_view_mode", Category::kView, view_mode_action_);
+  register_action("toggle_coordinate_mode", Category::kView,
+                  coordinate_mode_action_);
+  register_action("reset_layout", Category::kView, reset_layout_action_);
+  register_action("measure", Category::kTools, measure_action_);
+  register_action("copy_map_name", Category::kTools, copy_map_name_action_);
+  register_action("screenshot", Category::kTools, screenshot_action_);
+  register_action("map_stats", Category::kTools, stats_action_);
+  register_action("toggle_mcp", Category::kTools, mcp_action_);
+  register_action("cycle_language", Category::kSettings,
+                  cycle_language_action_);
+  register_action("shortcut_settings", Category::kSettings,
+                  shortcut_settings_action_);
+  shortcut_manager_.Load(settings_.shortcuts);
+}
+
+MainWindow::~MainWindow() { StopMcpServer(); }
 
 void MainWindow::StartMcpStdio() {
   if (!mcp_server_) {
@@ -461,8 +574,9 @@ bool MainWindow::StartMcpHttp(uint16_t port) {
           tr("MCP HTTP Server listening on port %1").arg(port));
     }
   } else {
-    QMessageBox::warning(this, tr("MCP Server Error"),
-                         tr("Failed to start HTTP server on port %1").arg(port));
+    QMessageBox::warning(
+        this, tr("MCP Server Error"),
+        tr("Failed to start HTTP server on port %1").arg(port));
   }
   return ok;
 }
@@ -482,8 +596,9 @@ void MainWindow::HandleToggleMcpServer() {
     StopMcpServer();
   } else {
     bool ok = false;
-    int port = QInputDialog::getInt(this, tr("Start MCP Server"),
-                                    tr("Port number:"), 8080, 1024, 65535, 1, &ok);
+    int port =
+        QInputDialog::getInt(this, tr("Start MCP Server"), tr("Port number:"),
+                             8080, 1024, 65535, 1, &ok);
     if (ok) {
       StartMcpHttp(static_cast<uint16_t>(port));
     } else if (mcp_action_) {
@@ -656,27 +771,35 @@ void MainWindow::SetupConnections() {
   connect(view_, &GeoViewerWidget::SceneReset, topology_validator_panel_,
           &TopologyValidatorWidget::Clear);
 
-  connect(view_, &GeoViewerWidget::ViewResized, this, [this]() {
-    if (favorites_panel_) {
-      favorites_panel_->move(view_->width() - favorites_panel_->width() - 20,
-                             20);
-    }
-    if (routing_panel_) {
-      routing_panel_->move(20, view_->height() - routing_panel_->height() - 20);
-    }
-  });
-
   // Settings persistence connections
   connect(layer_control_, &LayerControlWidget::SettingsChanged, this,
           &MainWindow::HandleSettingsChanged);
-  connect(routing_panel_, &RoutingWidget::SettingsChanged, this,
-          &MainWindow::HandleSettingsChanged);
-  connect(favorites_panel_, &FavoritesWidget::SettingsChanged, this,
-          &MainWindow::HandleSettingsChanged);
-  connect(coordinate_points_panel_, &CoordinatePointsWidget::SettingsChanged,
-          this, &MainWindow::HandleSettingsChanged);
-  connect(layer_control_dock_, &QDockWidget::visibilityChanged, this,
-          &MainWindow::HandleSettingsChanged);
+  const QList<QDockWidget*> docks = {layer_control_dock_, routing_dock_,
+                                     favorites_dock_, coordinate_points_dock_,
+                                     topology_validator_dock_};
+  for (QDockWidget* dock : docks) {
+    connect(dock, &QDockWidget::visibilityChanged, this,
+            &MainWindow::HandleSettingsChanged);
+    connect(dock, &QDockWidget::dockLocationChanged, this,
+            &MainWindow::HandleSettingsChanged);
+    connect(dock, &QDockWidget::topLevelChanged, this,
+            &MainWindow::HandleSettingsChanged);
+  }
+  connect(routing_panel_, &RoutingWidget::ShowRequested, this, [this]() {
+    routing_dock_->show();
+    routing_dock_->raise();
+  });
+  connect(favorites_panel_, &FavoritesWidget::ShowRequested, this, [this]() {
+    favorites_dock_->show();
+    favorites_dock_->raise();
+  });
+  connect(coordinate_points_dock_, &QDockWidget::visibilityChanged, this,
+          [this](bool visible) {
+            if (!visible) return;
+            coordinate_points_dock_->raise();
+            QTimer::singleShot(0, coordinate_points_panel_,
+                               &CoordinatePointsWidget::FocusInput);
+          });
 }
 
 void MainWindow::StartMapLoad(const QString& path) {
@@ -770,11 +893,14 @@ void MainWindow::HandleSettingsChanged() {
 void MainWindow::SaveSettingsToStruct() {
   if (layer_control_dock_)
     settings_.layer_manager_visible = !layer_control_dock_->isHidden();
-  if (routing_panel_) settings_.routing_visible = !routing_panel_->isHidden();
-  if (favorites_panel_)
-    settings_.favorites_visible = !favorites_panel_->isHidden();
-  if (coordinate_points_panel_)
-    settings_.coordinate_points_visible = !coordinate_points_panel_->isHidden();
+  if (routing_dock_) settings_.routing_visible = routing_dock_->isVisible();
+  if (favorites_dock_)
+    settings_.favorites_visible = favorites_dock_->isVisible();
+  if (coordinate_points_dock_)
+    settings_.coordinate_points_visible = coordinate_points_dock_->isVisible();
+  if (topology_validator_dock_)
+    settings_.topology_validator_visible =
+        topology_validator_dock_->isVisible();
 
   if (view_) {
     for (auto& [layer, visibility] : settings_.global_layer_visibility) {
@@ -782,12 +908,86 @@ void MainWindow::SaveSettingsToStruct() {
     }
   }
   settings_.coordinate_mode = coord_mode_;
+  settings_.main_window_geometry = saveGeometry();
+  settings_.main_window_state = saveState(1);
+  settings_.shortcuts = shortcut_manager_.Save();
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+  HandleSettingsChanged();
+  QMainWindow::closeEvent(event);
 }
 
 void MainWindow::HandleViewModeToggle(bool is_2d) {
   if (view_) {
     view_->SetViewMode(is_2d ? CameraController::ViewMode::k2D
                              : CameraController::ViewMode::k3D);
+  }
+}
+
+void MainWindow::HandleToggleCoordinateMode() {
+  if (!coord_mode_combo_) return;
+  if (coord_mode_ == CoordinateMode::kLocal && !wgs84_mode_allowed_) {
+    status_->showMessage(
+        tr("WGS84 is unavailable because this map has no valid "
+           "georeference."),
+        4000);
+    return;
+  }
+  coord_mode_combo_->setCurrentIndex(coord_mode_ == CoordinateMode::kWGS84 ? 1
+                                                                           : 0);
+}
+
+void MainWindow::HandleShowShortcutSettings() {
+  geoviewer::ui::ShortcutSettingsDialog dialog(&shortcut_manager_, this);
+  connect(&dialog, &geoviewer::ui::ShortcutSettingsDialog::ShortcutsApplied,
+          this, &MainWindow::HandleSettingsChanged);
+  dialog.exec();
+}
+
+void MainWindow::HandleShowAbout() {
+  QMessageBox::about(
+      this, tr("About OpenDriveViewer"),
+      tr("<h3>OpenDriveViewer</h3>"
+         "<p>Version %1</p>"
+         "<p>Cross-platform OpenDRIVE map visualization and inspection "
+         "tool.</p>"
+         "<p>Built with Qt %2</p>")
+          .arg(qApp->applicationVersion(), QString::fromLatin1(qVersion())));
+}
+
+void MainWindow::HandleResetLayout() {
+  const QList<QDockWidget*> docks = {layer_control_dock_, routing_dock_,
+                                     favorites_dock_, coordinate_points_dock_,
+                                     topology_validator_dock_};
+  for (QDockWidget* dock : docks) {
+    dock->setFloating(false);
+  }
+  SetDefaultDockLayout();
+  layer_control_dock_->show();
+  routing_dock_->hide();
+  favorites_dock_->hide();
+  coordinate_points_dock_->hide();
+  topology_validator_dock_->hide();
+  HandleSettingsChanged();
+  status_->showMessage(tr("Window layout restored."), 3000);
+}
+
+void MainWindow::HandleCycleLanguage() {
+  ChangeLanguage(settings_.language == "zh_CN" ? "en_US" : "zh_CN");
+}
+
+void MainWindow::ToggleDock(QDockWidget* dock, bool focus_coordinate_input) {
+  if (!dock) return;
+  if (dock->isVisible()) {
+    dock->hide();
+    return;
+  }
+  dock->show();
+  dock->raise();
+  if (focus_coordinate_input && dock == coordinate_points_dock_) {
+    QTimer::singleShot(0, coordinate_points_panel_,
+                       &CoordinatePointsWidget::FocusInput);
   }
 }
 

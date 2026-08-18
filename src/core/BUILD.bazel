@@ -4,6 +4,7 @@ load("//bazel:qt.bzl", "QT_COPTS")
 cc_library(
     name = "core",
     srcs = [
+        "app_version.cpp",
         "coordinate_util.cpp",
         "crash_handler.cpp",
         "junction_grouping.cpp",
@@ -13,6 +14,7 @@ cc_library(
         "viewer_text_util.cpp",
     ],
     hdrs = [
+        "app_version.h",
         "app_settings.h",
         "coordinate_mode_policy.h",
         "coordinate_util.h",

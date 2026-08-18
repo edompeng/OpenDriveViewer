@@ -3,6 +3,7 @@ set -e
 
 # --- Configuration ---
 BINARY_NAME="OpenDriveViewer"
+GEOVIEWER_VERSION="${GEOVIEWER_VERSION:-0.0.0-dev}"
 DIST_DIR="dist/linux"
 BUNDLE_DIR="${DIST_DIR}/${BINARY_NAME}_linux_x64"
 
@@ -28,6 +29,7 @@ else
     exit 1
 fi
 chmod +w "${BUNDLE_DIR}/bin/${BINARY_NAME}"
+printf '%s\n' "${GEOVIEWER_VERSION}" > "${BUNDLE_DIR}/VERSION"
 
 # Extract symbols
 echo "Extracting debug symbols..."

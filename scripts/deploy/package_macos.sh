@@ -3,6 +3,12 @@ set -e
 
 # --- Configuration ---
 BINARY_NAME="OpenDriveViewer"
+GEOVIEWER_VERSION="${GEOVIEWER_VERSION:-0.0.0-dev}"
+if [[ "${GEOVIEWER_VERSION}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    GEOVIEWER_BUILD_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+else
+    GEOVIEWER_BUILD_VERSION="0.0.0"
+fi
 TARGET="//src/app:OpenDriveViewer"
 DIST_DIR="dist/mac"
 APP_BUNDLE="${DIST_DIR}/${BINARY_NAME}.app"
@@ -102,7 +108,9 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>${GEOVIEWER_VERSION}</string>
+    <key>CFBundleVersion</key>
+    <string>${GEOVIEWER_BUILD_VERSION}</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
     <key>NSPrincipalClass</key>

@@ -1,10 +1,41 @@
 #include "src/mcp/mcp_transport_http.h"
 
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QUrl>
+
+#include "src/core/app_version.h"
 #include "src/mcp/mcp_protocol.h"
+#include "src/mcp/mcp_protocol_version.h"
 
 namespace geoviewer::mcp {
+
+namespace {
+
+QMap<QByteArray, QByteArray> ParseHeaders(const QByteArray& header_part) {
+  QMap<QByteArray, QByteArray> headers;
+  const QList<QByteArray> lines = header_part.split('\n');
+  for (int i = 1; i < lines.size(); ++i) {
+    const QByteArray line = lines.at(i).trimmed();
+    const int separator = line.indexOf(':');
+    if (separator <= 0) continue;
+    headers.insert(line.left(separator).trimmed().toLower(),
+                   line.mid(separator + 1).trimmed());
+  }
+  return headers;
+}
+
+bool IsAllowedOrigin(const QByteArray& origin_header) {
+  if (origin_header.isEmpty()) return true;
+  const QUrl origin(QString::fromUtf8(origin_header));
+  const QString host = origin.host().toLower();
+  return origin.isValid() &&
+         (origin.scheme() == "http" || origin.scheme() == "https") &&
+         (host == "localhost" || host == "127.0.0.1" || host == "::1");
+}
+
+}  // namespace
 
 HttpTransport::HttpTransport(McpProtocolHandler* handler, QObject* parent)
     : QObject(parent), handler_(handler) {
@@ -19,7 +50,7 @@ bool HttpTransport::Start(uint16_t port) {
   if (is_running_) return true;
   port_ = port;
 
-  if (!server_->listen(QHostAddress::Any, port_)) {
+  if (!server_->listen(QHostAddress::LocalHost, port_)) {
     return false;
   }
 
@@ -110,16 +141,29 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
 
   QString method = tokens[0];
   QString path = tokens[1].section('?', 0, 0);
+  const QMap<QByteArray, QByteArray> headers = ParseHeaders(header_part);
+
+  if (!IsAllowedOrigin(headers.value("origin"))) {
+    socket->write(
+        "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n"
+        "Connection: close\r\n\r\n");
+    socket->disconnectFromHost();
+    return;
+  }
+
+  const QByteArray origin = headers.value("origin");
+  const QByteArray cors_header =
+      origin.isEmpty() ? QByteArray()
+                       : "Access-Control-Allow-Origin: " + origin + "\r\n";
 
   // CORS Options Preflight
   if (method == "OPTIONS") {
-    QByteArray response =
-        "HTTP/1.1 204 No Content\r\n"
-        "Access-Control-Allow-Origin: *\r\n"
-        "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
-        "Access-Control-Allow-Headers: Content-Type, Accept, "
-        "Mcp-Protocol-Version, Mcp-Session-Id\r\n"
-        "Connection: close\r\n\r\n";
+    QByteArray response = "HTTP/1.1 204 No Content\r\n" + cors_header +
+                          "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+                          "Access-Control-Allow-Headers: Content-Type, Accept, "
+                          "MCP-Protocol-Version, Mcp-Session-Id, Mcp-Method, "
+                          "Mcp-Name\r\n"
+                          "Connection: close\r\n\r\n";
     socket->write(response);
     socket->disconnectFromHost();
     return;
@@ -129,18 +173,23 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
     QJsonObject info;
     info["status"] = "ok";
     info["server"] = "GeoViewer MCP Server";
-    info["version"] = "1.0.0";
+    info["version"] = geoviewer::core::AppVersion::Current();
+    info["transport"] = "streamable-http";
+    info["endpoint"] = "/mcp";
+    QJsonArray protocol_versions;
+    for (const QString& version :
+         McpProtocolVersionPolicy::SupportedVersions()) {
+      protocol_versions.append(version);
+    }
+    info["protocolVersions"] = protocol_versions;
     QByteArray body = QJsonDocument(info).toJson(QJsonDocument::Compact);
 
     QByteArray response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: application/json\r\n"
-        "Access-Control-Allow-Origin: *\r\n"
         "Content-Length: " +
-        QByteArray::number(body.size()) +
-        "\r\n"
-        "Connection: close\r\n\r\n" +
-        body;
+        QByteArray::number(body.size()) + "\r\n" + cors_header +
+        "Connection: close\r\n\r\n" + body;
     socket->write(response);
     socket->disconnectFromHost();
     return;
@@ -166,9 +215,8 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
     if (is_notification) {
       QByteArray http_response =
           "HTTP/1.1 202 Accepted\r\n"
-          "Access-Control-Allow-Origin: *\r\n"
-          "Content-Length: 0\r\n"
-          "Connection: close\r\n\r\n";
+          "Content-Length: 0\r\n" +
+          cors_header + "Connection: close\r\n\r\n";
       socket->write(http_response);
       socket->disconnectFromHost();
       return;
@@ -176,16 +224,24 @@ void HttpTransport::HandleHttpRequest(QTcpSocket* socket,
 
     QByteArray response_body =
         QJsonDocument(json_response).toJson(QJsonDocument::Compact);
+    QByteArray protocol_header;
+    if (json_response.value("result").isObject()) {
+      const QString negotiated_version = json_response.value("result")
+                                             .toObject()
+                                             .value("protocolVersion")
+                                             .toString();
+      if (!negotiated_version.isEmpty()) {
+        protocol_header =
+            "MCP-Protocol-Version: " + negotiated_version.toUtf8() + "\r\n";
+      }
+    }
 
     QByteArray http_response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: application/json\r\n"
-        "Access-Control-Allow-Origin: *\r\n"
         "Content-Length: " +
-        QByteArray::number(response_body.size()) +
-        "\r\n"
-        "Connection: close\r\n\r\n" +
-        response_body;
+        QByteArray::number(response_body.size()) + "\r\n" + cors_header +
+        protocol_header + "Connection: close\r\n\r\n" + response_body;
 
     socket->write(http_response);
     socket->disconnectFromHost();

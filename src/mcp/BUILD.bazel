@@ -17,6 +17,7 @@ cc_library(
     srcs = [
         "mcp_bridge.cpp",
         "mcp_protocol.cpp",
+        "mcp_protocol_version.cpp",
         "mcp_server.cpp",
         "mcp_tools_data.cpp",
         "mcp_tools_ui.cpp",
@@ -27,6 +28,7 @@ cc_library(
     hdrs = [
         "mcp_bridge.h",
         "mcp_protocol.h",
+        "mcp_protocol_version.h",
         "mcp_server.h",
         "mcp_tools_data.h",
         "mcp_tools_ui.h",

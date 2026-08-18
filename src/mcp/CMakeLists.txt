@@ -2,6 +2,7 @@ add_library(
   GeoViewerMcp ${LIB_TYPE}
   mcp_bridge.cpp
   mcp_protocol.cpp
+  mcp_protocol_version.cpp
   mcp_server.cpp
   mcp_tools_data.cpp
   mcp_tools_ui.cpp
