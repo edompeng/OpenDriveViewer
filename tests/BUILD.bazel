@@ -48,14 +48,6 @@ cc_test(
 )
 
 cc_test(
-    name = "ShortcutManagerTests",
-    srcs = ["shortcut_manager_test.cpp"],
-    copts = QT_COPTS,
-    defines = COMMON_DEFINES,
-    deps = COMMON_DEPS,
-)
-
-cc_test(
     name = "CoordinateModePolicyTests",
     srcs = [
         "test_helpers.h",

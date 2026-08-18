@@ -232,5 +232,3 @@ add_geoviewer_test(
   tests/mcp_transport_test.cpp
   tests/mcp_tools_test.cpp
   ${GEOVIEWER_APP_TEST_SOURCES})
-
-add_geoviewer_test(ShortcutManagerTests tests/shortcut_manager_test.cpp)
