@@ -78,7 +78,8 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   QMatrix4x4 GetViewMatrix() const;
   const CameraController& GetCamera() const { return camera_; }
   CameraController& GetCamera() { return camera_; }
-  void SetCameraState(const QVector3D& target, float yaw, float pitch, float distance);
+  void SetCameraState(const QVector3D& target, float yaw, float pitch,
+                      float distance);
   CameraController::ViewMode GetViewMode() const {
     return camera_.GetViewMode();
   }
@@ -129,6 +130,7 @@ class GEOVIEWER_EXPORT GeoViewerWidget : public QOpenGLWidget {
   void BeginUserPointsBatch();
   void EndUserPointsBatch();
   void RemoveUserPoint(int index);
+  void RemoveUserPointGroup(int group_id);
   void SetUserPointVisible(int index, bool visible);
   void SetUserPointColor(int index, const QVector3D& color);
   void ClearUserPoints();

@@ -50,6 +50,11 @@
         <translation>(x,y) 或 (x,y,z)， 分号分隔 </translation>
     </message>
     <message>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="237"/>
+        <source>❌ Delete group</source>
+        <translation>❌ 删除此组</translation>
+    </message>
+    <message>
         <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="239"/>
         <source>📋 Copy item info</source>
         <translation>📋 复制项目信息</translation>

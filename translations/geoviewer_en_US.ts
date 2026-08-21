@@ -50,6 +50,11 @@
         <translation>(x,y) or (x,y,z) semicolon separated</translation>
     </message>
     <message>
+        <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="237"/>
+        <source>❌ Delete group</source>
+        <translation>❌ Delete group</translation>
+    </message>
+    <message>
         <location filename="../src/ui/widgets/coordinate_points_widget.cpp" line="239"/>
         <source>📋 Copy item info</source>
         <translation>📋 Copy item info</translation>

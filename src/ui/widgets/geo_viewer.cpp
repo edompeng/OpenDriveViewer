@@ -8,6 +8,7 @@
 #include <QPolygonF>
 #include <QRegularExpression>
 #include <QStringList>
+#include <algorithm>
 #include <future>
 #include "src/core/coordinate_util.h"
 #include "src/core/thread_pool.h"
@@ -223,6 +224,17 @@ void GeoViewerWidget::AddUserPoint(double lon, double lat,
 void GeoViewerWidget::RemoveUserPoint(int index) {
   if (index < 0 || index >= static_cast<int>(user_points_.size())) return;
   user_points_.erase(user_points_.begin() + index);
+  CommitUserPointsChange(true);
+}
+
+void GeoViewerWidget::RemoveUserPointGroup(int group_id) {
+  const auto new_end = std::remove_if(user_points_.begin(), user_points_.end(),
+                                      [group_id](const UserPoint& point) {
+                                        return point.group_id == group_id;
+                                      });
+  if (new_end == user_points_.end()) return;
+
+  user_points_.erase(new_end, user_points_.end());
   CommitUserPointsChange(true);
 }
 

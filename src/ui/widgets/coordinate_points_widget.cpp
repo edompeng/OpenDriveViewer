@@ -20,6 +20,20 @@
 #include "src/logic/input_parsing.h"
 #include "src/ui/widgets/subwindow_style.h"
 
+namespace {
+
+QToolButton* CreateDeleteButton(QWidget* parent) {
+  auto* button = new QToolButton(parent);
+  button->setText("✕");
+  button->setFixedSize(18, 18);
+  button->setStyleSheet(
+      "color: #f66; border: none; padding: 0; font-weight: bold; "
+      "font-size: 12px;");
+  return button;
+}
+
+}  // namespace
+
 CoordinatePointsWidget::CoordinatePointsWidget(
     GeoViewerWidget* viewer, const geoviewer::core::AppSettings& settings,
     QWidget* parent)
@@ -216,7 +230,16 @@ void CoordinatePointsWidget::HandleItemDoubleClicked(QTreeWidgetItem* item,
 void CoordinatePointsWidget::HandleCustomContextMenu(const QPoint& pos) {
   QTreeWidgetItem* item = points_tree_->itemAt(pos);
   if (!item) return;
-  if (item->data(0, Qt::UserRole + 1).toBool()) return;  // is_group
+
+  if (item->data(0, Qt::UserRole + 1).toBool()) {  // is_group
+    const int group_id = item->data(0, Qt::UserRole).toInt();
+    QMenu menu(this);
+    QAction* remove_group = menu.addAction(tr("❌ Delete group"));
+    if (menu.exec(points_tree_->viewport()->mapToGlobal(pos)) == remove_group) {
+      viewer_->RemoveUserPointGroup(group_id);
+    }
+    return;
+  }
 
   int index = item->data(0, Qt::UserRole).toInt();
   auto snap = viewer_->GetUserPointSnapshot(index);
@@ -352,11 +375,7 @@ QWidget* CoordinatePointsWidget::BuildPointItemWidget(int index) {
   layout->addWidget(label, 1);
 
   // Delete button
-  auto* delete_btn = new QToolButton(widget);
-  delete_btn->setText("✕");
-  delete_btn->setFixedSize(18, 18);
-  delete_btn->setStyleSheet(
-      "color: #f66; border: none; font-weight: bold; font-size: 12px;");
+  auto* delete_btn = CreateDeleteButton(widget);
   connect(delete_btn, &QToolButton::clicked, this, [this, index]() {
     viewer_->RemoveUserPoint(index);
     // List is refreshed via the UserPointsChanged signal
@@ -441,21 +460,9 @@ void CoordinatePointsWidget::RefreshPointsList() {
     label->setStyleSheet("color: #eee; font-weight: bold; font-size: 11px;");
     layout->addWidget(label, 1);
 
-    auto* delete_btn = new QToolButton(widget);
-    delete_btn->setText("✕");
-    delete_btn->setFixedSize(18, 18);
-    delete_btn->setStyleSheet(
-        "color: #f66; border: none; font-weight: bold; font-size: 12px;");
-    connect(delete_btn, &QToolButton::clicked, this, [this, gid]() {
-      viewer_->BeginUserPointsBatch();
-      const int cnt = viewer_->UserPointCount();
-      for (int i = cnt - 1; i >= 0; --i) {
-        if (viewer_->GetUserPointSnapshot(i).group_id == gid) {
-          viewer_->RemoveUserPoint(i);
-        }
-      }
-      viewer_->EndUserPointsBatch();
-    });
+    auto* delete_btn = CreateDeleteButton(widget);
+    connect(delete_btn, &QToolButton::clicked, this,
+            [this, gid]() { viewer_->RemoveUserPointGroup(gid); });
     layout->addWidget(delete_btn);
 
     points_tree_->setItemWidget(group_item, 0, widget);
